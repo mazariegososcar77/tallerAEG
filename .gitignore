@@ -1,0 +1,28 @@
+# Dependencias (por si se instala algo en la raiz del monorepo)
+node_modules/
+
+# Variables de entorno
+.env
+.env.local
+*.local
+
+# Configuracion local de Claude Code (no se versiona)
+.claude/settings.local.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de editores / IDE
+.vscode/
+.idea/
+*.swp
+*~

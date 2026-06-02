@@ -1,0 +1,9 @@
+node_modules/
+.env
+
+# Datos locales (JSON que actua como "base de datos" mientras no hay MySQL).
+# Se generan con: npm run seed
+src/data/*.json
+
+# Imagenes de articulos subidas por los usuarios
+uploads/
