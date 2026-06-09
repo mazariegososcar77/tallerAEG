@@ -32,6 +32,10 @@ mysql -u root -p taller_aeg < 002_seed.sql
 | `003_inventory.sql` | Tablas `warehouses`, `article_types`, `articles` (inventario) con FKs e índices. |
 | `004_inventory_seed.sql` | Permisos del inventario, su mapeo a roles, y tipos/bodegas por defecto. |
 | `005_warehouse_color.sql` | Agrega la columna `color` a `warehouses`. |
+| `006_article_pieces.sql` | Tabla `article_pieces` (piezas/items que componen un artículo) con FK a `articles`. |
+| `007_article_labor.sql` | Tabla `article_labor` (mano de obra de un artículo) con FK a `articles`. |
+| `008_clients.sql` | Tablas `client_types`, `loyalty_tiers` (fidelización) y `clients` con FKs e índices. |
+| `009_clients_seed.sql` | Permisos del módulo de clientes, su mapeo a roles, y tipos/niveles por defecto. |
 
 > Nota sobre la contraseña del admin en `002_seed.sql`: MySQL no genera hashes bcrypt. El script
 > trae un hash válido para `Admin123!`. Para regenerarlo:

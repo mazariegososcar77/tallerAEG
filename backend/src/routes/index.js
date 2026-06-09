@@ -6,6 +6,9 @@ import permissionRoutes from './permissionRoutes.js';
 import warehouseRoutes from './warehouseRoutes.js';
 import articleTypeRoutes from './articleTypeRoutes.js';
 import articleRoutes from './articleRoutes.js';
+import clientTypeRoutes from './clientTypeRoutes.js';
+import loyaltyTierRoutes from './loyaltyTierRoutes.js';
+import clientRoutes from './clientRoutes.js';
 
 const router = Router();
 
@@ -27,5 +30,8 @@ router.use('/permissions', permissionRoutes);
 router.use('/warehouses', warehouseRoutes);
 router.use('/article-types', articleTypeRoutes);
 router.use('/articles', articleRoutes);
+router.use('/client-types', clientTypeRoutes);
+router.use('/loyalty-tiers', loyaltyTierRoutes);
+router.use('/clients', clientRoutes);
 
 export default router;

@@ -12,8 +12,10 @@ independientes:
 
 Módulos implementados, funcionales end-to-end:
 1. **Auth + Dashboard + Usuarios/Roles/Permisos (RBAC)**.
-2. **Inventario**: artículos (con imagen y carga masiva por Excel) y catálogos configurables en
-   **Configuración** (tipos de artículo y bodegas).
+2. **Inventario**: artículos (con imagen, piezas, mano de obra y carga masiva por Excel) y catálogos
+   configurables en **Configuración** (tipos de artículo y bodegas).
+3. **Clientes**: registro/edición/visualización de clientes (NIT/DPI, datos de contacto, tipo y nivel
+   de fidelización) y catálogos configurables en **Configuración** (tipos de cliente y fidelización).
 
 ## Estado de la persistencia (importante)
 

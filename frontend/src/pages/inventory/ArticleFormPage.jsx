@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Info, Boxes, Wrench } from 'lucide-react';
 import { articlesApi } from '../../api/articlesApi.js';
 import { useArticleTypes } from '../../hooks/useArticleTypes.js';
 import { useWarehouses } from '../../hooks/useWarehouses.js';
@@ -13,7 +13,9 @@ import Checkbox from '../../components/ui/Checkbox.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
 import ColorDot from '../../components/ui/ColorDot.jsx';
+import Tabs from '../../components/ui/Tabs.jsx';
 import ImagePicker from '../../components/inventory/ImagePicker.jsx';
+import ItemListInput from '../../components/inventory/ItemListInput.jsx';
 
 const emptyForm = {
   code: '',
@@ -29,6 +31,8 @@ const emptyForm = {
   description: '',
   image_url: '',
   is_active: true,
+  pieces: [],
+  labor: [],
 };
 
 export default function ArticleFormPage() {
@@ -42,6 +46,7 @@ export default function ArticleFormPage() {
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const [loadingArticle, setLoadingArticle] = useState(isEdit);
+  const [tab, setTab] = useState('datos');
 
   // Cargar el articulo en modo edicion.
   useEffect(() => {
@@ -63,6 +68,8 @@ export default function ArticleFormPage() {
           description: a.description,
           image_url: a.image_url,
           is_active: a.is_active,
+          pieces: (a.pieces || []).map((p) => p.name),
+          labor: (a.labor || []).map((l) => l.name),
         }),
       )
       .catch((err) => {
@@ -108,6 +115,7 @@ export default function ArticleFormPage() {
     } catch (err) {
       if (err.details?.length) {
         setErrors(Object.fromEntries(err.details.map((d) => [d.field, d.message])));
+        setTab('datos'); // los errores de campos viven en la pestaña de datos
       }
       notify.error(err.message);
     } finally {
@@ -146,7 +154,19 @@ export default function ArticleFormPage() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 lg:grid-cols-3">
+        <Tabs
+          className="mb-6"
+          active={tab}
+          onChange={setTab}
+          tabs={[
+            { key: 'datos', label: 'Datos del artículo', icon: <Info size={16} /> },
+            { key: 'pieces', label: 'Piezas', icon: <Boxes size={16} />, count: form.pieces.length },
+            { key: 'labor', label: 'Mano de obra', icon: <Wrench size={16} />, count: form.labor.length },
+          ]}
+        />
+
+        {/* Pestaña: datos del articulo */}
+        <div className={tab === 'datos' ? 'grid gap-6 lg:grid-cols-3' : 'hidden'}>
           {/* Datos */}
           <Card className="space-y-4 p-6 lg:col-span-2">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -164,19 +184,49 @@ export default function ArticleFormPage() {
             <Textarea label="Descripcion" rows={4} value={form.description} onChange={setField('description')} error={errors.description} />
           </Card>
 
-          {/* Imagen + estado + acciones (aprovecha el alto de la columna) */}
+          {/* Imagen + estado */}
           <Card className="flex flex-col gap-4 p-6">
             <ImagePicker value={form.image_url} onChange={setValue('image_url')} />
             <Checkbox label="Articulo activo" checked={form.is_active} onChange={setValue('is_active')} />
-            <div className="mt-auto flex flex-col gap-2 border-t border-slate-200 pt-4">
-              <Button type="submit" loading={saving}>
-                {isEdit ? 'Guardar cambios' : 'Crear articulo'}
-              </Button>
-              <Button variant="outline" type="button" onClick={() => navigate('/inventario')} disabled={saving}>
-                Cancelar
-              </Button>
-            </div>
           </Card>
+        </div>
+
+        {/* Pestaña: piezas */}
+        <div className={tab === 'pieces' ? 'block' : 'hidden'}>
+          <Card className="p-6">
+            <ItemListInput
+              items={form.pieces}
+              onChange={setValue('pieces')}
+              label="Agregar pieza"
+              placeholder="Escribe el nombre y presiona Enter"
+              emptyText="Aún no hay piezas. Escribe una y presiona Enter."
+              emptyIcon={<Boxes size={28} />}
+            />
+          </Card>
+        </div>
+
+        {/* Pestaña: mano de obra */}
+        <div className={tab === 'labor' ? 'block' : 'hidden'}>
+          <Card className="p-6">
+            <ItemListInput
+              items={form.labor}
+              onChange={setValue('labor')}
+              label="Agregar mano de obra"
+              placeholder="Escribe la tarea y presiona Enter"
+              emptyText="Aún no hay mano de obra. Escribe una y presiona Enter."
+              emptyIcon={<Wrench size={28} />}
+            />
+          </Card>
+        </div>
+
+        {/* Acciones (siempre visibles) */}
+        <div className="mt-6 flex justify-end gap-2 border-t border-slate-200 pt-4">
+          <Button variant="outline" type="button" onClick={() => navigate('/inventario')} disabled={saving}>
+            Cancelar
+          </Button>
+          <Button type="submit" loading={saving}>
+            {isEdit ? 'Guardar cambios' : 'Crear articulo'}
+          </Button>
         </div>
       </form>
     </div>

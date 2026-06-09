@@ -47,8 +47,12 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
 - **Inventario** (`pages/inventory/`): `ArticlesPage` (lista + filtros + carga masiva),
   `ArticleFormPage` (**página completa** en `/inventario/nuevo` y `/inventario/:id/editar`, no modal),
   `BulkUploadModal` (Excel). Imagen vía `components/inventory/ImagePicker` (URL o subida).
-- **Configuración** (`pages/config/`): `ArticleTypesPage` y `WarehousesPage`, ambas envuelven el
-  CRUD reutilizable `components/config/CatalogManager` (catálogos `{ name, description, is_active }`).
+- **Clientes** (`pages/clients/`): `ClientsPage` (lista + filtros), `ClientFormModal` (alta/edición con
+  NIT/DPI, contacto, tipo y fidelización) y `ClientViewModal` (detalle de solo lectura).
+- **Configuración** (`pages/config/`): `ArticleTypesPage`, `WarehousesPage` y `ClientTypesPage`
+  envuelven el CRUD reutilizable `components/config/CatalogManager` (catálogos
+  `{ name, description, is_active }`). `LoyaltyTiersPage` (fidelización: nivel, descuento %, beneficios)
+  es una página propia porque no encaja en ese catálogo simple.
 - **Sidebar contraíble:** `Sidebar` guarda `collapsed` en localStorage; el botón "Contraer" (abajo)
   alterna icono-solo. El nav se agrupa por secciones (Configuración / Administración).
 

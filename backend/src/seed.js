@@ -35,6 +35,18 @@ const PERMISSION_CATALOG = [
   { module: 'Configuracion', code: 'warehouses.create', description: 'Crear bodegas' },
   { module: 'Configuracion', code: 'warehouses.update', description: 'Editar bodegas' },
   { module: 'Configuracion', code: 'warehouses.delete', description: 'Eliminar bodegas' },
+  { module: 'Clientes', code: 'clients.view', description: 'Ver clientes' },
+  { module: 'Clientes', code: 'clients.create', description: 'Crear clientes' },
+  { module: 'Clientes', code: 'clients.update', description: 'Editar clientes' },
+  { module: 'Clientes', code: 'clients.delete', description: 'Eliminar clientes' },
+  { module: 'Configuracion', code: 'client-types.view', description: 'Ver tipos de cliente' },
+  { module: 'Configuracion', code: 'client-types.create', description: 'Crear tipos de cliente' },
+  { module: 'Configuracion', code: 'client-types.update', description: 'Editar tipos de cliente' },
+  { module: 'Configuracion', code: 'client-types.delete', description: 'Eliminar tipos de cliente' },
+  { module: 'Configuracion', code: 'loyalty.view', description: 'Ver niveles de fidelizacion' },
+  { module: 'Configuracion', code: 'loyalty.create', description: 'Crear niveles de fidelizacion' },
+  { module: 'Configuracion', code: 'loyalty.update', description: 'Editar niveles de fidelizacion' },
+  { module: 'Configuracion', code: 'loyalty.delete', description: 'Eliminar niveles de fidelizacion' },
 ];
 
 const PERMISSIONS = PERMISSION_CATALOG.map((p, i) => ({ id: i + 1, ...p }));
@@ -65,6 +77,11 @@ const ROLE_DEFS = [
       'articles.update',
       'article-types.view',
       'warehouses.view',
+      'clients.view',
+      'clients.create',
+      'clients.update',
+      'client-types.view',
+      'loyalty.view',
     ],
   },
   {
@@ -79,6 +96,9 @@ const ROLE_DEFS = [
       'articles.view',
       'article-types.view',
       'warehouses.view',
+      'clients.view',
+      'client-types.view',
+      'loyalty.view',
     ],
   },
 ];
@@ -93,6 +113,19 @@ const ARTICLE_TYPES = [
 const WAREHOUSES = [
   { id: 1, name: 'Bodega Central', description: 'Bodega principal', color: '#16285C' },
   { id: 2, name: 'Bodega de Repuestos', description: 'Almacen de repuestos', color: '#E8551C' },
+];
+
+// Catalogos iniciales del modulo de clientes.
+const CLIENT_TYPES = [
+  { id: 1, name: 'Particular', description: 'Persona individual' },
+  { id: 2, name: 'Empresa', description: 'Empresa o negocio' },
+  { id: 3, name: 'Gobierno', description: 'Entidad gubernamental' },
+];
+
+const LOYALTY_TIERS = [
+  { id: 1, name: 'Bronce', discount: 5, benefits: 'Descuento basico en servicios', color: '#CD7F32', icon: 'shield' },
+  { id: 2, name: 'Plata', discount: 10, benefits: 'Descuento y atencion prioritaria', color: '#9CA3AF', icon: 'medal' },
+  { id: 3, name: 'Oro', discount: 15, benefits: 'Descuento maximo, atencion VIP y entregas express', color: '#D4AF37', icon: 'crown' },
 ];
 
 async function seed() {
@@ -149,9 +182,15 @@ async function seed() {
   writeCollection('warehouses', catalog(WAREHOUSES));
   writeCollection('articles', []);
 
+  // catalogos y datos del modulo de clientes
+  writeCollection('client_types', catalog(CLIENT_TYPES));
+  writeCollection('loyalty_tiers', catalog(LOYALTY_TIERS));
+  writeCollection('clients', []);
+
   console.log('Datos inicializados:');
   console.log(`  ${PERMISSIONS.length} permisos, ${roles.length} roles, 1 usuario.`);
   console.log(`  ${ARTICLE_TYPES.length} tipos de articulo, ${WAREHOUSES.length} bodegas, 0 articulos.`);
+  console.log(`  ${CLIENT_TYPES.length} tipos de cliente, ${LOYALTY_TIERS.length} niveles de fidelizacion, 0 clientes.`);
   console.log('  Admin -> admin@talleraeg.com / Admin123!');
 }
 

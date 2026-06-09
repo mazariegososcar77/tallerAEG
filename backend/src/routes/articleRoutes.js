@@ -22,6 +22,10 @@ const createSchema = z.object({
   description: z.string().max(1000).optional(),
   image_url: z.string().max(500).optional(),
   is_active: z.boolean().optional(),
+  // Piezas que componen el articulo (lista de nombres). Se guardan en su propia tabla.
+  pieces: z.array(z.string().trim().min(1).max(190)).optional(),
+  // Mano de obra del articulo (lista de nombres). Se guarda en su propia tabla.
+  labor: z.array(z.string().trim().min(1).max(190)).optional(),
 });
 
 const updateSchema = createSchema.partial().refine((d) => Object.keys(d).length > 0, {

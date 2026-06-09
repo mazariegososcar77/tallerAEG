@@ -10,6 +10,9 @@ import ArticlesPage from '../pages/inventory/ArticlesPage.jsx';
 import ArticleFormPage from '../pages/inventory/ArticleFormPage.jsx';
 import ArticleTypesPage from '../pages/config/ArticleTypesPage.jsx';
 import WarehousesPage from '../pages/config/WarehousesPage.jsx';
+import ClientTypesPage from '../pages/config/ClientTypesPage.jsx';
+import LoyaltyTiersPage from '../pages/config/LoyaltyTiersPage.jsx';
+import ClientsPage from '../pages/clients/ClientsPage.jsx';
 
 export default function AppRoutes() {
   return (
@@ -53,7 +56,33 @@ export default function AppRoutes() {
           }
         />
 
+        {/* Clientes */}
+        <Route
+          path="clientes"
+          element={
+            <ProtectedRoute permission="clients.view">
+              <ClientsPage />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Configuracion */}
+        <Route
+          path="configuracion/tipos-cliente"
+          element={
+            <ProtectedRoute permission="client-types.view">
+              <ClientTypesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="configuracion/fidelizacion"
+          element={
+            <ProtectedRoute permission="loyalty.view">
+              <LoyaltyTiersPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="configuracion/tipos"
           element={

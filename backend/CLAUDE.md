@@ -70,6 +70,11 @@ Módulo 2 (inventario):
 - **article_types**: `id, name, description, is_active, ...`
 - **articles**: `id, code, name, type_id, warehouse_id, quantity, unit, price, brand, model, location,
   description, image_url, is_active, ...`
+- **article_pieces**: `id, article_id, name, created_at, updated_at` (piezas/items que componen un
+  artículo; N por artículo). Se sincronizan con `articlePieceRepository.replaceForArticle` cuando el
+  payload de crear/actualizar trae `pieces: string[]`; al borrar el artículo se eliminan en cascada.
+- **article_labor**: igual que `article_pieces` pero para la mano de obra del artículo (payload
+  `labor: string[]`, `articleLaborRepository`).
 
 `src/data/` está en `.gitignore` (se regenera con `npm run seed`).
 
@@ -83,3 +88,20 @@ Módulo 2 (inventario):
 - **Carga masiva:** el Excel se parsea en el frontend; `POST /articles/bulk` recibe `{ items }` con
   tipo y bodega **por nombre**, valida fila por fila e inserta las válidas
   (`articleService.bulkCreate` → `{ created, errors:[{row,message}] }`).
+
+## Clientes — notas
+
+- Tablas: **clients** (`nit?, dpi?, first_name, last_name, email, address, phone, client_type_id?,
+  loyalty_tier_id?, is_active`), **client_types** (catálogo) y **loyalty_tiers** (fidelización:
+  `name, discount, benefits, color, icon`). `color` es un hex `#RRGGBB` e `icon` es una key de
+  icono (lucide) para el distintivo visual del nivel. Migraciones `008_clients.sql` /
+  `009_clients_seed.sql` / `010_loyalty_tier_appearance.sql`.
+- Endpoints: `/clients` (CRUD), `/client-types` y `/loyalty-tiers` (CRUD). Borrado de tipo/nivel
+  bloqueado (409) si hay clientes que lo usan.
+- **Regla NIT/DPI:** al menos uno debe venir (solo uno puede quedar vacío); se valida en el schema
+  zod de `clientRoutes` y de nuevo en `clientService`. NIT y DPI son únicos cuando no están vacíos.
+- `clientService.toPublic` resuelve `full_name`, `client_type_name`, `loyalty_tier_name`,
+  `loyalty_tier_color`, `loyalty_tier_icon`, `loyalty_discount` y `loyalty_benefits`.
+- **Permisos:** `clients.*`, `client-types.*`, `loyalty.*` (ids 23–34 en el seed). Para topear datos
+  ya sembrados sin reinicializar: `node scripts/backfill_clients.mjs` (idempotente) y
+  `node scripts/backfill_loyalty_appearance.mjs` (agrega `color`/`icon` a niveles existentes).

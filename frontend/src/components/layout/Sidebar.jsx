@@ -8,6 +8,9 @@ import {
   Users,
   ShieldCheck,
   KeyRound,
+  Contact,
+  UserCog,
+  Award,
   ChevronsLeft,
   ChevronsRight,
 } from 'lucide-react';
@@ -22,6 +25,7 @@ const NAV_GROUPS = [
     items: [
       { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
       { to: '/inventario', label: 'Inventario', icon: Package, permission: 'articles.view' },
+      { to: '/clientes', label: 'Clientes', icon: Contact, permission: 'clients.view' },
     ],
   },
   {
@@ -29,6 +33,8 @@ const NAV_GROUPS = [
     items: [
       { to: '/configuracion/tipos', label: 'Tipos de articulo', icon: Tags, permission: 'article-types.view' },
       { to: '/configuracion/bodegas', label: 'Bodegas', icon: Warehouse, permission: 'warehouses.view' },
+      { to: '/configuracion/tipos-cliente', label: 'Tipos de cliente', icon: UserCog, permission: 'client-types.view' },
+      { to: '/configuracion/fidelizacion', label: 'Fidelizacion', icon: Award, permission: 'loyalty.view' },
     ],
   },
   {

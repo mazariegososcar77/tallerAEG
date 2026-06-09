@@ -1,10 +1,12 @@
 /** Logica de negocio de articulos del inventario (CRUD + carga masiva). */
 import * as articleRepository from '../repositories/articleRepository.js';
+import * as articlePieceRepository from '../repositories/articlePieceRepository.js';
+import * as articleLaborRepository from '../repositories/articleLaborRepository.js';
 import * as articleTypeRepository from '../repositories/articleTypeRepository.js';
 import * as warehouseRepository from '../repositories/warehouseRepository.js';
 import { ApiError } from '../utils/ApiError.js';
 
-/** Forma publica: agrega type_name y warehouse_name resueltos. */
+/** Forma publica: agrega type_name, warehouse_name, piezas y mano de obra del articulo. */
 function toPublic(article) {
   const type = articleTypeRepository.findById(article.type_id);
   const warehouse = warehouseRepository.findById(article.warehouse_id);
@@ -13,6 +15,8 @@ function toPublic(article) {
     type_name: type ? type.name : null,
     warehouse_name: warehouse ? warehouse.name : null,
     warehouse_color: warehouse ? warehouse.color || '' : '',
+    pieces: articlePieceRepository.getByArticleId(article.id),
+    labor: articleLaborRepository.getByArticleId(article.id),
   };
 }
 
@@ -32,35 +36,47 @@ export function getById(id) {
 }
 
 export function create(data) {
-  if (articleRepository.findByCode(data.code)) {
+  // Piezas y mano de obra viajan en el mismo payload pero se guardan en sus propias colecciones.
+  const { pieces, labor, ...articleData } = data;
+  if (articleRepository.findByCode(articleData.code)) {
     throw new ApiError(409, 'Ya existe un articulo con ese codigo');
   }
-  assertRefs(data.type_id, data.warehouse_id);
-  return toPublic(articleRepository.create(data));
+  assertRefs(articleData.type_id, articleData.warehouse_id);
+  const article = articleRepository.create(articleData);
+  if (pieces) articlePieceRepository.replaceForArticle(article.id, pieces);
+  if (labor) articleLaborRepository.replaceForArticle(article.id, labor);
+  return toPublic(article);
 }
 
 export function update(id, data) {
+  const { pieces, labor, ...articleData } = data;
   const existing = articleRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Articulo no encontrado');
 
-  if (data.code && data.code.toLowerCase().trim() !== existing.code.toLowerCase()) {
-    const clash = articleRepository.findByCode(data.code);
+  if (articleData.code && articleData.code.toLowerCase().trim() !== existing.code.toLowerCase()) {
+    const clash = articleRepository.findByCode(articleData.code);
     if (clash && clash.id !== existing.id) {
       throw new ApiError(409, 'Ya existe un articulo con ese codigo');
     }
   }
-  const typeId = data.type_id ?? existing.type_id;
-  const warehouseId = data.warehouse_id ?? existing.warehouse_id;
+  const typeId = articleData.type_id ?? existing.type_id;
+  const warehouseId = articleData.warehouse_id ?? existing.warehouse_id;
   assertRefs(typeId, warehouseId);
 
-  const patch = { ...data };
+  const patch = { ...articleData };
   if (patch.type_id !== undefined) patch.type_id = Number(patch.type_id);
   if (patch.warehouse_id !== undefined) patch.warehouse_id = Number(patch.warehouse_id);
-  return toPublic(articleRepository.update(id, patch));
+  const updated = articleRepository.update(id, patch);
+  // Solo se sincronizan si el cliente las envio (undefined = no tocar).
+  if (pieces !== undefined) articlePieceRepository.replaceForArticle(id, pieces);
+  if (labor !== undefined) articleLaborRepository.replaceForArticle(id, labor);
+  return toPublic(updated);
 }
 
 export function remove(id) {
   if (!articleRepository.findById(id)) throw new ApiError(404, 'Articulo no encontrado');
+  articlePieceRepository.removeByArticleId(id);
+  articleLaborRepository.removeByArticleId(id);
   articleRepository.remove(id);
 }
 
