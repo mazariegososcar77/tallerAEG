@@ -1,38 +1,44 @@
-# Orquestación del Sistema Taller AEG
-#
-# Uso (desde esta carpeta "docker/"):
-#   docker compose up -d --build
-#   docker compose logs -f
-#   docker compose down
-#
-# El frontend queda expuesto en el puerto 4000 del host. Desde la IP pública
-# de la máquina virtual: http://<IP_PUBLICA>:4000
-# El backend NO se expone al host: solo es accesible dentro de la red de Docker;
-# el frontend (nginx) hace proxy de /api hacia él.
-
+# Orquestacion del Sistema Taller AEG
 services:
+  db:
+    image: mysql:8.0
+    container_name: talleraeg_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: AEGRoot2026$
+      MYSQL_DATABASE: talleraeg
+      MYSQL_USER: aeg_user
+      MYSQL_PASSWORD: AEG2026$
+    volumes:
+      - db_data:/var/lib/mysql
+      - ../backend/migraciones:/docker-entrypoint-initdb.d
+    networks:
+      - talleraeg
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
     image: talleraeg-backend
     restart: unless-stopped
+    depends_on:
+      - db
     environment:
       PORT: 4000
-      # CAMBIA este secreto en producción.
-      JWT_SECRET: ${JWT_SECRET:-cambia-este-secreto-en-produccion}
-      JWT_EXPIRES: ${JWT_EXPIRES:-8h}
-      # Sin CORS: el navegador habla con nginx (mismo origen), no directo al backend.
-      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      JWT_SECRET: cambia-este-secreto-en-produccion
+      JWT_EXPIRES: 8h
+      CORS_ORIGIN: "*"
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: talleraeg
+      DB_USER: aeg_user
+      DB_PASSWORD: AEG2026$
     volumes:
-      # Persisten los "datos" JSON y las imágenes subidas entre reinicios.
       - backend_data:/app/src/data
       - backend_uploads:/app/uploads
     networks:
       - talleraeg
     expose:
       - "4000"
-
   frontend:
     build:
       context: ../frontend
@@ -42,15 +48,13 @@ services:
     depends_on:
       - backend
     ports:
-      # host:contenedor  -> accesible en http://<IP_PUBLICA>:4000
       - "4000:80"
     networks:
       - talleraeg
-
 networks:
   talleraeg:
     driver: bridge
-
 volumes:
+  db_data:
   backend_data:
   backend_uploads:

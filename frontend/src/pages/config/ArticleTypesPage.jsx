@@ -1,3 +1,4 @@
+import { Tags } from "lucide-react";
 import { useArticleTypes } from '../../hooks/useArticleTypes.js';
 import { articleTypesApi } from '../../api/articleTypesApi.js';
 import CatalogManager from '../../components/config/CatalogManager.jsx';
@@ -13,6 +14,7 @@ export default function ArticleTypesPage() {
       loading={loading}
       reload={reload}
       api={articleTypesApi}
+      emoji={<Tags size={26} color="#E8551C" />}
       permPrefix="article-types"
     />
   );

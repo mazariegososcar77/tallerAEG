@@ -1,40 +1,27 @@
-/** Acceso a datos de la mano de obra de un articulo. Unico punto que conoce el origen (hoy JSON). */
-import { readCollection, writeCollection, nextId, now } from '../lib/jsonStore.js';
+import pool from '../lib/db.js';
 
-const COLLECTION = 'article_labor';
-
-/** Items de mano de obra de un articulo, en orden de insercion. */
-export function getByArticleId(articleId) {
-  const aid = Number(articleId);
-  return readCollection(COLLECTION).filter((l) => l.article_id === aid);
+export async function getAll() {
+  const [rows] = await pool.query('SELECT * FROM article_labor');
+  return rows;
 }
-
-/**
- * Reemplaza por completo la mano de obra de un articulo por la lista de nombres dada.
- * Borra los existentes y vuelve a insertar (sincronizacion simple).
- */
-export function replaceForArticle(articleId, names) {
-  const aid = Number(articleId);
-  const rows = readCollection(COLLECTION).filter((l) => l.article_id !== aid);
-  const timestamp = now();
-  for (const raw of names) {
-    const name = String(raw).trim();
-    if (!name) continue;
-    rows.push({
-      id: nextId(rows),
-      article_id: aid,
-      name,
-      created_at: timestamp,
-      updated_at: timestamp,
-    });
-  }
-  writeCollection(COLLECTION, rows);
+export async function findById(id) {
+  const [rows] = await pool.query('SELECT * FROM article_labor WHERE id = ?', [id]);
+  return rows[0] || null;
 }
-
-/** Borra toda la mano de obra de un articulo (al eliminar el articulo). */
-export function removeByArticleId(articleId) {
-  const aid = Number(articleId);
-  const rows = readCollection(COLLECTION);
-  const next = rows.filter((l) => l.article_id !== aid);
-  if (next.length !== rows.length) writeCollection(COLLECTION, next);
+export async function create(data) {
+  const fields = Object.keys(data).join(', ');
+  const placeholders = Object.keys(data).map(() => '?').join(', ');
+  const values = Object.values(data);
+  const [result] = await pool.query('INSERT INTO article_labor (' + fields + ') VALUES (' + placeholders + ')', values);
+  return findById(result.insertId);
+}
+export async function update(id, patch) {
+  const fields = Object.keys(patch).map(k => k + ' = ?').join(', ');
+  const values = Object.values(patch);
+  await pool.query('UPDATE article_labor SET ' + fields + ' WHERE id = ?', [...values, id]);
+  return findById(id);
+}
+export async function remove(id) {
+  const [result] = await pool.query('DELETE FROM article_labor WHERE id = ?', [id]);
+  return result.affectedRows > 0;
 }

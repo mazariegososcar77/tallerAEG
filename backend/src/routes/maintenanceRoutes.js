@@ -1,0 +1,13 @@
+import { Router } from 'express';
+import * as maintenanceController from '../controllers/maintenanceController.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { requirePermission } from '../middleware/rbac.middleware.js';
+const router = Router();
+router.use(authenticate);
+router.get('/upcoming', requirePermission('dashboard.view'), maintenanceController.upcoming);
+router.get('/', requirePermission('dashboard.view'), maintenanceController.list);
+router.get('/:id', requirePermission('dashboard.view'), maintenanceController.getById);
+router.post('/', requirePermission('dashboard.view'), maintenanceController.create);
+router.put('/:id', requirePermission('dashboard.view'), maintenanceController.update);
+router.delete('/:id', requirePermission('dashboard.view'), maintenanceController.remove);
+export default router;

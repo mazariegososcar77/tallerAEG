@@ -9,20 +9,15 @@ import articleRoutes from './articleRoutes.js';
 import clientTypeRoutes from './clientTypeRoutes.js';
 import loyaltyTierRoutes from './loyaltyTierRoutes.js';
 import clientRoutes from './clientRoutes.js';
+import workOrderRoutes from './workOrderRoutes.js';
+import machineRoutes from './machineRoutes.js';
+import maintenanceRoutes from './maintenanceRoutes.js';
+import quoteRoutes from './quoteRoutes.js';
+import partCategoryRoutes from './partCategoryRoutes.js';
 
 const router = Router();
 
-/**
- * @openapi
- * /health:
- *   get:
- *     tags: [Sistema]
- *     summary: Healthcheck
- *     responses:
- *       200: { description: El servicio esta arriba }
- */
 router.get('/health', (_req, res) => res.json({ status: 'ok' }));
-
 router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
@@ -33,5 +28,10 @@ router.use('/articles', articleRoutes);
 router.use('/client-types', clientTypeRoutes);
 router.use('/loyalty-tiers', loyaltyTierRoutes);
 router.use('/clients', clientRoutes);
+router.use('/work-orders', workOrderRoutes);
+router.use('/machines', machineRoutes);
+router.use('/maintenance', maintenanceRoutes);
+router.use('/quotes', quoteRoutes);
+router.use('/part-categories', partCategoryRoutes);
 
 export default router;

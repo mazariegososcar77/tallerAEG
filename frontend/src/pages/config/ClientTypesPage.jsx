@@ -1,3 +1,4 @@
+import { UserCog } from "lucide-react";
 import { useClientTypes } from '../../hooks/useClientTypes.js';
 import { clientTypesApi } from '../../api/clientTypesApi.js';
 import CatalogManager from '../../components/config/CatalogManager.jsx';
@@ -13,6 +14,7 @@ export default function ClientTypesPage() {
       loading={loading}
       reload={reload}
       api={clientTypesApi}
+      emoji={<UserCog size={26} color="#E8551C" />}
       permPrefix="client-types"
     />
   );

@@ -9,16 +9,17 @@ import Button from '../../components/ui/Button.jsx';
 
 const emptyForm = { name: '', email: '', password: '', role_id: '', is_active: true };
 
-/** Modal de creacion/edicion de usuario. user=null -> crear. */
 export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
   const isEdit = Boolean(user);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setErrors({});
+    setShowPassword(false);
     if (user) {
       setForm({ name: user.name, email: user.email, password: '', role_id: user.role_id, is_active: user.is_active });
     } else {
@@ -33,15 +34,17 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
     e.preventDefault();
     setLoading(true);
     setErrors({});
-
     const payload = {
       name: form.name,
       email: form.email,
       role_id: Number(form.role_id),
-      is_active: form.is_active,
+      is_active: Boolean(form.is_active),
     };
-    if (!isEdit || form.password) payload.password = form.password;
-
+    if (!isEdit) {
+      payload.password = form.password;
+    } else if (showPassword && form.password && form.password.trim() !== '') {
+      payload.password = form.password;
+    }
     try {
       if (isEdit) {
         await usersApi.update(user.id, payload);
@@ -68,9 +71,7 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
       title={isEdit ? 'Editar usuario' : 'Nuevo usuario'}
       footer={
         <>
-          <Button variant="outline" onClick={onClose} disabled={loading}>
-            Cancelar
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={loading}>Cancelar</Button>
           <Button type="submit" form="user-form" loading={loading}>
             {isEdit ? 'Guardar cambios' : 'Crear usuario'}
           </Button>
@@ -79,36 +80,42 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
     >
       <form id="user-form" onSubmit={handleSubmit} className="space-y-4">
         <Input label="Nombre" name="name" value={form.name} onChange={setField('name')} error={errors.name} required />
-        <Input
-          label="Correo electronico"
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={setField('email')}
-          error={errors.email}
-          required
-        />
-        <Input
-          label={isEdit ? 'Contrasena (dejar en blanco para no cambiar)' : 'Contrasena'}
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={setField('password')}
-          error={errors.password}
-          required={!isEdit}
-        />
-        <Select
-          label="Rol"
-          value={form.role_id}
-          onChange={setValue('role_id')}
-          error={errors.role_id}
-          options={roles.map((r) => ({ value: r.id, label: r.name }))}
-        />
-        <Checkbox
-          label="Usuario activo"
-          checked={form.is_active}
-          onChange={setValue('is_active')}
-        />
+        <Input label="Correo electronico" type="email" name="email" value={form.email} onChange={setField('email')} error={errors.email} required />
+
+        {!isEdit && (
+          <Input label="Contrasena" type="password" name="password" autoComplete="new-password" value={form.password} onChange={setField('password')} error={errors.password} required />
+        )}
+
+        {isEdit && !showPassword && (
+          <div>
+            <button type="button" onClick={() => setShowPassword(true)}
+              style={{ fontSize:13, color:'#E8551C', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline' }}>
+              Cambiar contrasena
+            </button>
+          </div>
+        )}
+
+        {isEdit && showPassword && (
+          <div>
+            <label style={{ display:'block', fontSize:13, fontWeight:500, color:'#374151', marginBottom:4 }}>Nueva contrasena</label>
+            <input
+              type="text"
+              autoComplete="off"
+              value={form.password}
+              onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
+              placeholder="Minimo 6 caracteres"
+              style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid #d1d5db', fontSize:13, boxSizing:'border-box' }}
+            />
+            <button type="button" onClick={() => { setShowPassword(false); setForm(p => ({ ...p, password: '' })); }}
+              style={{ fontSize:12, color:'#6b7280', background:'none', border:'none', cursor:'pointer', padding:'4px 0', textDecoration:'underline' }}>
+              Cancelar cambio
+            </button>
+          </div>
+        )}
+
+        <Select label="Rol" value={form.role_id} onChange={setValue('role_id')} error={errors.role_id}
+          options={roles.map((r) => ({ value: r.id, label: r.name }))} />
+        <Checkbox label="Usuario activo" checked={form.is_active} onChange={setValue('is_active')} />
       </form>
     </Modal>
   );

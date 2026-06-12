@@ -2,11 +2,11 @@ import * as userService from '../services/userService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 export const list = asyncHandler(async (_req, res) => {
-  res.json(userService.list());
+  res.json(await userService.list());
 });
 
 export const getById = asyncHandler(async (req, res) => {
-  res.json(userService.getById(req.params.id));
+  res.json(await userService.getById(req.params.id));
 });
 
 export const create = asyncHandler(async (req, res) => {
@@ -20,6 +20,6 @@ export const update = asyncHandler(async (req, res) => {
 });
 
 export const remove = asyncHandler(async (req, res) => {
-  userService.remove(req.params.id, req.user.id);
+  await userService.remove(req.params.id, req.user.id);
   res.status(204).end();
 });

@@ -12,7 +12,7 @@ export default function Checkbox({ checked, onChange, label, disabled = false, c
       aria-checked={checked}
       disabled={disabled}
       onClick={() => onChange?.(!checked)}
-      className={`group flex items-center gap-2 text-left text-sm text-navy-800
+      className={`group flex items-center gap-2 text-left text-sm text-slate-300
         disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
     >
       <span

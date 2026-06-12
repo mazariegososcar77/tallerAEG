@@ -1,25 +1,14 @@
-/**
- * Acceso a datos de permisos. Los permisos son catalogo fijo (se crean en el seed),
- * por eso aqui solo hay lectura.
- */
-import { readCollection } from '../lib/jsonStore.js';
+import pool from '../lib/db.js';
 
-const COLLECTION = 'permissions';
-
-export function getAll() {
-  return readCollection(COLLECTION);
+export async function getAll() {
+  const [rows] = await pool.query('SELECT * FROM permissions');
+  return rows;
 }
-
-export function findById(id) {
-  return getAll().find((p) => p.id === Number(id)) || null;
+export async function findById(id) {
+  const [rows] = await pool.query('SELECT * FROM permissions WHERE id = ?', [id]);
+  return rows[0] || null;
 }
-
-export function findByIds(ids) {
-  const set = new Set(ids.map(Number));
-  return getAll().filter((p) => set.has(p.id));
-}
-
-export function findByCodes(codes) {
-  const set = new Set(codes);
-  return getAll().filter((p) => set.has(p.code));
+export async function findByRoleId(roleId) {
+  const [rows] = await pool.query('SELECT p.* FROM permissions p JOIN role_permissions rp ON p.id = rp.permission_id WHERE rp.role_id = ?', [roleId]);
+  return rows;
 }

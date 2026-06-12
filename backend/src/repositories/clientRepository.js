@@ -1,75 +1,44 @@
-/** Acceso a datos de clientes. Unico punto que conoce el origen (hoy JSON). */
-import { readCollection, writeCollection, nextId, now } from '../lib/jsonStore.js';
+import pool from '../lib/db.js';
 
-const COLLECTION = 'clients';
+const SELECT = `
+  SELECT c.*,
+    CASE
+      WHEN c.last_name IS NOT NULL AND c.last_name != ''
+        THEN CONCAT(c.first_name, ' ', c.last_name)
+      ELSE c.first_name
+    END as full_name,
+    ct.name as client_type_name,
+    lt.name as loyalty_tier_name,
+    lt.discount as loyalty_discount
+  FROM clients c
+  LEFT JOIN client_types ct ON c.client_type_id = ct.id
+  LEFT JOIN loyalty_tiers lt ON c.loyalty_tier_id = lt.id
+`;
 
-export function getAll() {
-  return readCollection(COLLECTION);
+export async function getAll() {
+  const [rows] = await pool.query(SELECT + ' ORDER BY c.created_at DESC');
+  return rows;
 }
 
-export function findById(id) {
-  return getAll().find((c) => c.id === Number(id)) || null;
+export async function findById(id) {
+  const [rows] = await pool.query(SELECT + ' WHERE c.id = ?', [id]);
+  return rows[0] || null;
 }
 
-/** Busca por NIT (ignora vacios). */
-export function findByNit(nit) {
-  const target = String(nit || '').toLowerCase().trim();
-  if (!target) return null;
-  return getAll().find((c) => (c.nit || '').toLowerCase() === target) || null;
+export async function create(data) {
+  const fields = Object.keys(data).join(', ');
+  const placeholders = Object.keys(data).map(() => '?').join(', ');
+  const [result] = await pool.query('INSERT INTO clients (' + fields + ') VALUES (' + placeholders + ')', Object.values(data));
+  return findById(result.insertId);
 }
 
-/** Busca por DPI (ignora vacios). */
-export function findByDpi(dpi) {
-  const target = String(dpi || '').toLowerCase().trim();
-  if (!target) return null;
-  return getAll().find((c) => (c.dpi || '').toLowerCase() === target) || null;
+export async function update(id, patch) {
+  const fields = Object.keys(patch).map(k => k + ' = ?').join(', ');
+  await pool.query('UPDATE clients SET ' + fields + ' WHERE id = ?', [...Object.values(patch), id]);
+  return findById(id);
 }
 
-export function countByTypeId(typeId) {
-  return getAll().filter((c) => c.client_type_id === Number(typeId)).length;
-}
-
-export function countByLoyaltyTierId(tierId) {
-  return getAll().filter((c) => c.loyalty_tier_id === Number(tierId)).length;
-}
-
-export function create(data) {
-  const rows = getAll();
-  const timestamp = now();
-  const client = {
-    id: nextId(rows),
-    nit: data.nit || '',
-    dpi: data.dpi || '',
-    first_name: data.first_name.trim(),
-    last_name: data.last_name.trim(),
-    email: data.email || '',
-    address: data.address || '',
-    phone: data.phone.trim(),
-    client_type_id: data.client_type_id ?? null,
-    loyalty_tier_id: data.loyalty_tier_id ?? null,
-    is_active: data.is_active ?? true,
-    created_at: timestamp,
-    updated_at: timestamp,
-  };
-  rows.push(client);
-  writeCollection(COLLECTION, rows);
-  return client;
-}
-
-export function update(id, patch) {
-  const rows = getAll();
-  const index = rows.findIndex((c) => c.id === Number(id));
-  if (index === -1) return null;
-  const updated = { ...rows[index], ...patch, id: rows[index].id, updated_at: now() };
-  rows[index] = updated;
-  writeCollection(COLLECTION, rows);
-  return updated;
-}
-
-export function remove(id) {
-  const rows = getAll();
-  const next = rows.filter((c) => c.id !== Number(id));
-  if (next.length === rows.length) return false;
-  writeCollection(COLLECTION, next);
-  return true;
+export async function remove(id) {
+  const [result] = await pool.query('DELETE FROM clients WHERE id = ?', [id]);
+  return result.affectedRows > 0;
 }

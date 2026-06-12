@@ -1,51 +1,24 @@
-/** Acceso a datos de tipos de articulo. Unico punto que conoce el origen (hoy JSON). */
-import { readCollection, writeCollection, nextId, now } from '../lib/jsonStore.js';
+import pool from '../lib/db.js';
 
-const COLLECTION = 'article_types';
-
-export function getAll() {
-  return readCollection(COLLECTION);
+export async function getAll() {
+  const [rows] = await pool.query('SELECT * FROM article_types');
+  return rows;
 }
-
-export function findById(id) {
-  return getAll().find((t) => t.id === Number(id)) || null;
+export async function findById(id) {
+  const [rows] = await pool.query('SELECT * FROM article_types WHERE id = ?', [id]);
+  return rows[0] || null;
 }
-
-export function findByName(name) {
-  const target = String(name).toLowerCase().trim();
-  return getAll().find((t) => t.name.toLowerCase() === target) || null;
+export async function create({ name, description }) {
+  const [result] = await pool.query('INSERT INTO article_types (name, description) VALUES (?, ?)', [name, description]);
+  return findById(result.insertId);
 }
-
-export function create({ name, description = '', is_active = true }) {
-  const rows = getAll();
-  const timestamp = now();
-  const type = {
-    id: nextId(rows),
-    name: name.trim(),
-    description,
-    is_active,
-    created_at: timestamp,
-    updated_at: timestamp,
-  };
-  rows.push(type);
-  writeCollection(COLLECTION, rows);
-  return type;
+export async function update(id, patch) {
+  const fields = Object.keys(patch).map(k => k + ' = ?').join(', ');
+  const values = Object.values(patch);
+  await pool.query('UPDATE article_types SET ' + fields + ' WHERE id = ?', [...values, id]);
+  return findById(id);
 }
-
-export function update(id, patch) {
-  const rows = getAll();
-  const index = rows.findIndex((t) => t.id === Number(id));
-  if (index === -1) return null;
-  const updated = { ...rows[index], ...patch, id: rows[index].id, updated_at: now() };
-  rows[index] = updated;
-  writeCollection(COLLECTION, rows);
-  return updated;
-}
-
-export function remove(id) {
-  const rows = getAll();
-  const next = rows.filter((t) => t.id !== Number(id));
-  if (next.length === rows.length) return false;
-  writeCollection(COLLECTION, next);
-  return true;
+export async function remove(id) {
+  const [result] = await pool.query('DELETE FROM article_types WHERE id = ?', [id]);
+  return result.affectedRows > 0;
 }

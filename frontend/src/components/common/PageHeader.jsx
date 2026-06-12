@@ -1,12 +1,14 @@
-/** Encabezado de pagina: titulo, subtitulo y zona de acciones a la derecha. */
-export default function PageHeader({ title, subtitle, children }) {
+export default function PageHeader({ title, subtitle, emoji, children }) {
   return (
-    <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-navy-800">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-sm text-slate-500">{subtitle}</p>}
+    <div style={{ marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        {emoji && <span style={{ fontSize:26 }}>{emoji}</span>}
+        <div>
+          <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:'#e2e8f0' }}>{title}</h1>
+          {subtitle && <p style={{ fontSize:13, color:'#5a7aa8', margin:0 }}>{subtitle}</p>}
+        </div>
       </div>
-      {children && <div className="flex items-center gap-2">{children}</div>}
+      {children && <div style={{ display:'flex', alignItems:'center', gap:8 }}>{children}</div>}
     </div>
   );
 }

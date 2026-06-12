@@ -1,67 +1,109 @@
 import { useState, useEffect } from 'react';
-import { Users, ShieldCheck, KeyRound } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, ShieldCheck, Contact, Package, ClipboardList, FileText, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { usersApi } from '../api/usersApi.js';
 import { rolesApi } from '../api/rolesApi.js';
-import { permissionsApi } from '../api/permissionsApi.js';
+import { clientsApi } from '../api/clientsApi.js';
+import { articlesApi } from '../api/articlesApi.js';
+import { workOrdersApi } from '../api/workOrdersApi.js';
+import { quotesApi } from '../api/quotesApi.js';
+import { maintenanceApi } from '../api/maintenanceApi.js';
 import { notify } from '../lib/toast.js';
-import Card from '../components/ui/Card.jsx';
-import PageHeader from '../components/common/PageHeader.jsx';
 
-function StatCard({ icon: Icon, label, value, accent }) {
+const C = { bg:'#0C1733', card:'#16285C', dark:'#112048', border:'#1F3470', text:'#e2e8f0', muted:'#5a7aa8', orange:'#E8551C' };
+
+function StatCard({ icon: Icon, label, value, color, emoji, to }) {
+  const navigate = useNavigate();
   return (
-    <Card className="flex items-center gap-4 p-5">
-      <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${accent}`}>
-        <Icon size={24} />
+    <div onClick={() => to && navigate(to)} style={{ background:C.card, border:`1px solid ${color}44`, borderRadius:12, padding:'18px 20px', display:'flex', alignItems:'center', gap:16, cursor: to ? 'pointer' : 'default', transition:'transform 0.15s', }} onMouseEnter={e => { if(to) e.currentTarget.style.transform='translateY(-2px)'; }} onMouseLeave={e => e.currentTarget.style.transform='translateY(0)'}>
+      <div style={{ background:color+'22', borderRadius:10, padding:12, fontSize:22 }}>
+        {emoji ? <span>{emoji}</span> : <Icon size={24} color={color} />}
       </div>
       <div>
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className="text-2xl font-bold text-navy-800">{value ?? '—'}</p>
+        <p style={{ fontSize:12, color:C.muted, margin:0, textTransform:'uppercase', letterSpacing:1, fontWeight:700 }}>{label}</p>
+        <p style={{ fontSize:28, fontWeight:800, color:C.text, margin:0 }}>{value ?? '—'}</p>
       </div>
-    </Card>
+    </div>
   );
 }
 
 export default function DashboardPage() {
   const { user, hasPermission } = useAuth();
-  const [stats, setStats] = useState({ users: null, roles: null, permissions: null });
+  const [stats, setStats] = useState({});
 
   useEffect(() => {
     const load = async () => {
       const next = {};
-      if (hasPermission('users.view')) next.users = (await usersApi.list()).length;
-      if (hasPermission('roles.view')) next.roles = (await rolesApi.list()).length;
-      if (hasPermission('permissions.view')) next.permissions = (await permissionsApi.list()).length;
-      setStats((prev) => ({ ...prev, ...next }));
+      try {
+        if (hasPermission('clients.view'))     next.clients     = (await clientsApi.list()).length;
+        if (hasPermission('articles.view'))    next.articles    = (await articlesApi.list()).length;
+        if (hasPermission('dashboard.view'))   next.workOrders  = (await workOrdersApi.list()).length;
+        if (hasPermission('dashboard.view'))   next.quotes      = (await quotesApi.list()).filter(q => q.status !== 'rechazada' && q.status !== 'vencida').length;
+        if (hasPermission('dashboard.view'))   next.maintenance = (await maintenanceApi.list()).filter(m => m.status === 'proximo' || m.status === 'vencido').length;
+        if (hasPermission('users.view'))       next.users       = (await usersApi.list()).length;
+        if (hasPermission('roles.view'))       next.roles       = (await rolesApi.list()).length;
+      } catch(err) { notify.error(err.message); }
+      setStats(next);
     };
-    load().catch((err) => notify.error(err.message));
+    load();
   }, [hasPermission]);
 
+  const nombre = user?.name?.split(' ')[0] || '';
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos días' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
+
   return (
-    <div>
-      <PageHeader title={`Hola, ${user?.name?.split(' ')[0] || ''}`} subtitle="Resumen del sistema" />
+    <div style={{ padding:'4px 0' }}>
 
-      {/* Banner de bienvenida */}
-      <Card className="mb-6 overflow-hidden">
-        <div className="bg-gradient-to-r from-navy-700 to-navy-600 p-6 text-white">
-          <h2 className="text-xl font-semibold">Panel de administracion</h2>
-          <p className="mt-1 text-navy-100">
-            Tu rol actual es <span className="font-semibold text-orange-300">{user?.role?.name}</span>.
-          </p>
+      {/* Banner */}
+      <div style={{ background:`linear-gradient(135deg, #112048 0%, #1F3470 100%)`, borderRadius:14, padding:'24px 28px', marginBottom:24, border:`1px solid ${C.border}` }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:8 }}>
+          <span style={{ fontSize:32 }}>🔧</span>
+          <div>
+            <h1 style={{ fontSize:22, fontWeight:800, color:'#fff', margin:0 }}>{saludo}, {nombre}!</h1>
+            <p style={{ fontSize:13, color:C.muted, margin:0 }}>
+              Rol: <span style={{ color:C.orange, fontWeight:700 }}>{user?.role?.name}</span>
+            </p>
+          </div>
         </div>
-      </Card>
+        <p style={{ fontSize:13, color:'#94a3b8', margin:0 }}>Panel de administración — Taller AEG</p>
+      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {hasPermission('users.view') && (
-          <StatCard icon={Users} label="Usuarios" value={stats.users} accent="bg-orange-100 text-orange-600" />
+      {/* Stats principales */}
+      <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>📊 Resumen General</p>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:12, marginBottom:24 }}>
+        {hasPermission('clients.view') && (
+          <StatCard icon={Contact} label="Clientes" value={stats.clients} color="#3b82f6" to="/clientes" />
         )}
-        {hasPermission('roles.view') && (
-          <StatCard icon={ShieldCheck} label="Roles" value={stats.roles} accent="bg-navy-100 text-navy-700" />
+        {hasPermission('articles.view') && (
+          <StatCard icon={Package} label="Inventario" value={stats.articles} color="#10b981" to="/inventario" />
         )}
-        {hasPermission('permissions.view') && (
-          <StatCard icon={KeyRound} label="Permisos" value={stats.permissions} accent="bg-orange-100 text-orange-600" />
+        {hasPermission('dashboard.view') && (
+          <StatCard icon={ClipboardList} label="Ordenes de Trabajo" value={stats.workOrders} color={C.orange} to="/ordenes" />
+        )}
+        {hasPermission('dashboard.view') && (
+          <StatCard icon={FileText} label="Cotizaciones Activas" value={stats.quotes} color="#6366f1" to="/cotizaciones" />
+        )}
+        {hasPermission('dashboard.view') && (
+          <StatCard icon={AlertTriangle} label="Mantenimientos Pendientes" value={stats.maintenance} color="#f59e0b" to="/mantenimientos" />
         )}
       </div>
+
+      {/* Stats admin */}
+      {(hasPermission('users.view') || hasPermission('roles.view')) && (
+        <>
+          <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>⚙️ Administración</p>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:12 }}>
+            {hasPermission('users.view') && (
+              <StatCard icon={Users} label="Usuarios" value={stats.users} color="#94a3b8" to="/usuarios" />
+            )}
+            {hasPermission('roles.view') && (
+              <StatCard icon={ShieldCheck} label="Roles" value={stats.roles} color="#94a3b8" to="/roles" />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

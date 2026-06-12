@@ -11,6 +11,12 @@
   body {
     @apply bg-slate-100 text-navy-900 antialiased;
   }
+  main {
+    @apply text-slate-100;
+  }
+  main h1, main h2, main h3 {
+    @apply text-white;
+  }
 }
 
 @layer components {

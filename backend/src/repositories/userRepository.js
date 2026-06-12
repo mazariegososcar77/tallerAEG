@@ -1,61 +1,41 @@
-/**
- * Acceso a datos de usuarios. Unico punto que conoce el origen (hoy JSON).
- * Para migrar a MySQL, reescribir solo este archivo manteniendo la firma.
- */
-import { readCollection, writeCollection, nextId, now } from '../lib/jsonStore.js';
+import pool from '../lib/db.js';
 
-const COLLECTION = 'users';
-
-export function getAll() {
-  return readCollection(COLLECTION);
+export async function getAll() {
+  const [rows] = await pool.query('SELECT * FROM users');
+  return rows;
 }
 
-export function findById(id) {
-  return getAll().find((u) => u.id === Number(id)) || null;
+export async function findById(id) {
+  const [rows] = await pool.query('SELECT * FROM users WHERE id = ?', [id]);
+  return rows[0] || null;
 }
 
-export function findByEmail(email) {
-  const target = String(email).toLowerCase().trim();
-  return getAll().find((u) => u.email.toLowerCase() === target) || null;
+export async function findByEmail(email) {
+  const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email.toLowerCase().trim()]);
+  return rows[0] || null;
 }
 
-export function countByRoleId(roleId) {
-  return getAll().filter((u) => u.role_id === Number(roleId)).length;
+export async function countByRoleId(roleId) {
+  const [rows] = await pool.query('SELECT COUNT(*) as count FROM users WHERE role_id = ?', [roleId]);
+  return rows[0].count;
 }
 
-export function create({ name, email, password_hash, role_id, is_active = true }) {
-  const rows = getAll();
-  const timestamp = now();
-  const user = {
-    id: nextId(rows),
-    name,
-    email: email.toLowerCase().trim(),
-    password_hash,
-    role_id: Number(role_id),
-    is_active,
-    created_at: timestamp,
-    updated_at: timestamp,
-  };
-  rows.push(user);
-  writeCollection(COLLECTION, rows);
-  return user;
+export async function create({ name, email, password_hash, role_id, is_active = true }) {
+  const [result] = await pool.query(
+    'INSERT INTO users (name, email, password_hash, role_id, is_active) VALUES (?, ?, ?, ?, ?)',
+    [name, email.toLowerCase().trim(), password_hash, role_id, is_active]
+  );
+  return findById(result.insertId);
 }
 
-export function update(id, patch) {
-  const rows = getAll();
-  const index = rows.findIndex((u) => u.id === Number(id));
-  if (index === -1) return null;
-  const updated = { ...rows[index], ...patch, id: rows[index].id, updated_at: now() };
-  if (updated.email) updated.email = updated.email.toLowerCase().trim();
-  rows[index] = updated;
-  writeCollection(COLLECTION, rows);
-  return updated;
+export async function update(id, patch) {
+  const fields = Object.keys(patch).map(k => `${k} = ?`).join(', ');
+  const values = Object.values(patch);
+  await pool.query(`UPDATE users SET ${fields} WHERE id = ?`, [...values, id]);
+  return findById(id);
 }
 
-export function remove(id) {
-  const rows = getAll();
-  const next = rows.filter((u) => u.id !== Number(id));
-  if (next.length === rows.length) return false;
-  writeCollection(COLLECTION, next);
-  return true;
+export async function remove(id) {
+  const [result] = await pool.query('DELETE FROM users WHERE id = ?', [id]);
+  return result.affectedRows > 0;
 }
