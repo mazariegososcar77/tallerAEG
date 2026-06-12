@@ -14,10 +14,11 @@ services:
       - ../backend/migraciones:/docker-entrypoint-initdb.d
     networks:
       - talleraeg
-    # Publicado SOLO en el localhost de la VM. Para conectar desde tu maquina
-    # local: tunel SSH ->  ssh -L 3306:localhost:3306 usuario@<IP_DE_LA_VM>
+    # Publicado SOLO en el localhost de la VM, en el puerto 3307 del host
+    # (el 3306 lo ocupa el MySQL nativo de la VM). El contenedor sigue en 3306
+    # internamente. Tunel SSH ->  ssh -L 3306:localhost:3307 usuario@<IP_DE_LA_VM>
     ports:
-      - "127.0.0.1:3306:3306"
+      - "127.0.0.1:3307:3306"
   backend:
     build:
       context: ../backend
