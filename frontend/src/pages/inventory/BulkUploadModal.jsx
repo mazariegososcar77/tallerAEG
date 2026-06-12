@@ -89,7 +89,7 @@ export default function BulkUploadModal({ open, onClose, onDone }) {
           <Button variant="outline" size="sm" onClick={downloadTemplate}>
             <Download size={15} /> Descargar plantilla
           </Button>
-          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-navy-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-navy-800">
+          <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md bg-surface px-3 py-1.5 text-sm font-medium text-white hover:bg-navy-800">
             <Upload size={15} /> Seleccionar Excel
             <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFile} disabled={parsing} />
           </label>

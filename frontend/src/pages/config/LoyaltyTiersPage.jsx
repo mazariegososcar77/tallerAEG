@@ -12,7 +12,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import LoyaltyTierTag from "../../components/clients/LoyaltyTierTag.jsx";
 import { LOYALTY_COLORS, LOYALTY_ICONS, DEFAULT_LOYALTY_COLOR, DEFAULT_LOYALTY_ICON } from "../../lib/loyalty.js";
 
-const C = { card:"#16285C", dark:"#112048", border:"#1F3470", text:"#e2e8f0", muted:"#5a7aa8", orange:"#E8551C" };
+const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#E8551C" };
 const emptyForm = { name:"", discount:0, benefits:"", color:DEFAULT_LOYALTY_COLOR, icon:DEFAULT_LOYALTY_ICON, is_active:true };
 
 export default function LoyaltyTiersPage() {

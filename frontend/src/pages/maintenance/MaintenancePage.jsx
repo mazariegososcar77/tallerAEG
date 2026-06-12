@@ -4,7 +4,7 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Calendar, Plus, Pencil, Trash2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 
-const C = { bg:'#0C1733', card:'#16285C', dark:'#112048', border:'#1F3470', input:'#0C1733', text:'#e2e8f0', muted:'#5a7aa8', orange:'#E8551C', green:'#1D9E75', red:'#ef4444', amber:'#f59e0b' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', green:'#1D9E75', red:'#ef4444', amber:'#f59e0b' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 const STATUS = { al_dia:{ label:'Al dia', color:'#1D9E75', Icon:CheckCircle }, proximo:{ label:'Proximo', color:'#f59e0b', Icon:Clock }, vencido:{ label:'Vencido', color:'#ef4444', Icon:AlertTriangle } };

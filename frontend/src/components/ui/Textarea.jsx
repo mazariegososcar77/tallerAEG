@@ -3,16 +3,16 @@ export default function Textarea({ label, error, id, className = '', rows = 3, .
   return (
     <div className={className}>
       {label && (
-        <label htmlFor={fieldId} className="mb-1 block text-sm font-medium text-slate-300">
+        <label htmlFor={fieldId} className="mb-1 block text-sm font-medium text-muted">
           {label}
         </label>
       )}
       <textarea
         id={fieldId}
         rows={rows}
-        className={`w-full resize-y rounded-md border bg-navy-900 px-3 py-2 text-sm text-slate-100
+        className={`w-full resize-y rounded-md border bg-surface2 px-3 py-2 text-sm text-content
           placeholder:text-slate-500 focus-brand
-          ${error ? 'border-red-400' : 'border-navy-600'}`}
+          ${error ? 'border-red-400' : 'border-line'}`}
         {...props}
       />
       {error && <p className="mt-1 text-xs text-red-400">{error}</p>}

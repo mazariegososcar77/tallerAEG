@@ -11,7 +11,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import BulkUploadModal from './BulkUploadModal.jsx';
 import ArticleViewModal from './ArticleViewModal.jsx';
 
-const C = { bg:'#0C1733', card:'#16285C', dark:'#112048', border:'#1F3470', input:'#0C1733', text:'#e2e8f0', muted:'#5a7aa8', orange:'#E8551C' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 const inp = { background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:13, outline:'none' };
 
 function Thumb({ url, name }) {

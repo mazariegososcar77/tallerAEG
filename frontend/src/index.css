@@ -2,6 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Tokens de tema. El tema OSCURO replica exactamente el look original
+ * (navy-900 fondo, navy-800 tarjetas, etc). El tema CLARO usa un celeste
+ * super claro de fondo, tarjetas blancas y texto oscuro. El sidebar (navy)
+ * y el acento naranja son fijos en ambos temas.
+ */
+:root {
+  /* Tema claro (celeste super claro) */
+  --c-app: #E9F1FB;
+  --c-surface: #FFFFFF;
+  --c-surface-2: #F1F6FC;
+  --c-line: #D3DEEE;
+  --c-hover: #E6EFFA;
+  --c-text: #1E293B;
+  --c-heading: #16285C;
+  --c-muted: #64748B;
+}
+.dark {
+  /* Tema oscuro = look original */
+  --c-app: #0C1733;
+  --c-surface: #112048;
+  --c-surface-2: #0C1733;
+  --c-line: #1F3470;
+  --c-hover: #16285C;
+  --c-text: #E2E8F0;
+  --c-heading: #FFFFFF;
+  --c-muted: #5A7AA8;
+}
+
 @layer base {
   html,
   body,
@@ -9,13 +38,15 @@
     height: 100%;
   }
   body {
-    @apply bg-slate-100 text-navy-900 antialiased;
+    @apply antialiased;
+    background-color: var(--c-app);
+    color: var(--c-text);
   }
   main {
-    @apply text-slate-100;
+    color: var(--c-text);
   }
   main h1, main h2, main h3 {
-    @apply text-white;
+    color: var(--c-heading);
   }
 }
 

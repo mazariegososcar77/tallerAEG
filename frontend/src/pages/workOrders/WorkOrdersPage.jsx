@@ -58,7 +58,7 @@ export default function WorkOrdersPage() {
           <ClipboardList size={26} color="#f97316" />
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Ordenes de Trabajo</h1>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{orders.length} ordenes registradas</p>
+            <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{orders.length} ordenes registradas</p>
           </div>
         </div>
         <button
@@ -71,20 +71,20 @@ export default function WorkOrdersPage() {
 
       {/* Buscador */}
       <div style={{ position: 'relative', marginBottom: 16 }}>
-        <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+        <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--c-muted)' }} />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por No., cliente o equipo..."
-          style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid #1e2d45', background: '#0f172a', color: '#e2e8f0', fontSize: 14, boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid var(--c-line)', background: 'var(--c-surface-2)', color: 'var(--c-text)', fontSize: 14, boxSizing: 'border-box' }}
         />
       </div>
 
       {/* Lista */}
       {loading ? (
-        <p style={{ color: '#64748b', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
+        <p style={{ color: 'var(--c-muted)', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', marginTop: 60, color: '#64748b' }}>
+        <div style={{ textAlign: 'center', marginTop: 60, color: 'var(--c-muted)' }}>
           <ClipboardList size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
           <p>No hay ordenes registradas</p>
         </div>
@@ -93,22 +93,22 @@ export default function WorkOrdersPage() {
           {filtered.map(order => {
             const st = STATUS_LABELS[order.status] || STATUS_LABELS.recibido;
             return (
-              <div key={order.id} style={{ background: '#151d2e', border: '1px solid #1e2d45', borderRadius: 12, padding: '14px 16px' }}>
+              <div key={order.id} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-line)', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 16, color: '#f97316' }}>No. {order.number}</span>
                       <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                     </div>
-                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>{order.client_name || '—'}</p>
-                    <p style={{ margin: '2px 0', fontSize: 13, color: '#94a3b8' }}>{order.equipment_name || 'Sin equipo'} {order.brand ? '· ' + order.brand : ''}</p>
-                    <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>Recibido: {order.received_at?.slice(0,10)} {order.delivery_at ? '· Entrega: ' + order.delivery_at.slice(0,10) : ''}</p>
+                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{order.client_name || '—'}</p>
+                    <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>{order.equipment_name || 'Sin equipo'} {order.brand ? '· ' + order.brand : ''}</p>
+                    <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--c-muted)' }}>Recibido: {order.received_at?.slice(0,10)} {order.delivery_at ? '· Entrega: ' + order.delivery_at.slice(0,10) : ''}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     {order.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(order.total).toFixed(2)}</span>}
-                    <button onClick={() => handleDownloadPDF(order)} style={{ background: '#1e2d45', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Eye size={16} /></button>
-                    <button onClick={() => navigate('/ordenes/' + order.id + '/editar')} style={{ background: '#1e2d45', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
-                    <button onClick={() => handleDelete(order.id)} style={{ background: '#1e2d45', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    <button onClick={() => handleDownloadPDF(order)} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Eye size={16} /></button>
+                    <button onClick={() => navigate('/ordenes/' + order.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
+                    <button onClick={() => handleDelete(order.id)} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
                   </div>
                 </div>
               </div>

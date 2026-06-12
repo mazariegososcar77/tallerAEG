@@ -97,17 +97,17 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
 
         {isEdit && showPassword && (
           <div>
-            <label style={{ display:'block', fontSize:13, fontWeight:500, color:'#374151', marginBottom:4 }}>Nueva contrasena</label>
+            <label style={{ display:'block', fontSize:13, fontWeight:500, color:'var(--c-muted)', marginBottom:4 }}>Nueva contrasena</label>
             <input
               type="text"
               autoComplete="off"
               value={form.password}
               onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
               placeholder="Minimo 6 caracteres"
-              style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid #d1d5db', fontSize:13, boxSizing:'border-box' }}
+              style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid var(--c-line)', background:'var(--c-surface-2)', color:'var(--c-text)', fontSize:13, boxSizing:'border-box' }}
             />
             <button type="button" onClick={() => { setShowPassword(false); setForm(p => ({ ...p, password: '' })); }}
-              style={{ fontSize:12, color:'#6b7280', background:'none', border:'none', cursor:'pointer', padding:'4px 0', textDecoration:'underline' }}>
+              style={{ fontSize:12, color:'var(--c-muted)', background:'none', border:'none', cursor:'pointer', padding:'4px 0', textDecoration:'underline' }}>
               Cancelar cambio
             </button>
           </div>

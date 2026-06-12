@@ -6,7 +6,7 @@ import Topbar from './Topbar.jsx';
 export default function AppLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   return (
-    <div className="flex h-screen overflow-hidden bg-navy-900">
+    <div className="flex h-screen overflow-hidden bg-app">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar onMenu={() => setMobileOpen(true)} />

@@ -2,9 +2,20 @@
 // Paleta tomada del logo "Taller AEG": azul marino + naranja.
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
+        // Tokens semanticos de tema (claro/oscuro). Resuelven a variables CSS
+        // definidas en index.css. El sidebar y el naranja NO usan estos: son fijos.
+        app: 'var(--c-app)',          // fondo general de la app
+        surface: 'var(--c-surface)',  // tarjetas, tablas, modales
+        surface2: 'var(--c-surface-2)', // cabecera de tabla, inputs
+        line: 'var(--c-line)',        // bordes
+        hover: 'var(--c-hover)',      // hover de filas/items
+        content: 'var(--c-text)',     // texto principal
+        heading: 'var(--c-heading)',  // titulos
+        muted: 'var(--c-muted)',      // texto secundario
         navy: {
           50: '#EEF1F8',
           100: '#D5DCEC',

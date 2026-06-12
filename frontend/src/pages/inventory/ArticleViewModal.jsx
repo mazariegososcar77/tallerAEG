@@ -8,7 +8,7 @@ import Tabs from '../../components/ui/Tabs.jsx';
 function Field({ label, children }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</dt>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
       <dd className="mt-0.5 text-navy-800">{children}</dd>
     </div>
   );
@@ -18,7 +18,7 @@ function Field({ label, children }) {
 function ReadOnlyList({ items, emptyIcon, emptyText }) {
   if (items.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 py-12 text-slate-400">
+      <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-slate-200 py-12 text-muted">
         {emptyIcon}
         <p className="text-sm">{emptyText}</p>
       </div>
@@ -93,7 +93,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
                   onError={() => setBroken(true)}
                 />
               ) : (
-                <Package size={40} className="text-slate-300" />
+                <Package size={40} className="text-muted" />
               )}
             </div>
 
@@ -131,7 +131,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
 
               {article.description && (
                 <div className="mt-4">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">Descripcion</dt>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-muted">Descripcion</dt>
                   <dd className="mt-0.5 whitespace-pre-wrap text-sm text-navy-800">{article.description}</dd>
                 </div>
               )}

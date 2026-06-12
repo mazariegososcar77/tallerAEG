@@ -88,14 +88,14 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
         {/* Categoria solo para repuestos */}
         {type === 'part' && (
           <div>
-            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'#5a7aa8', marginBottom:6 }}>CATEGORIA *</label>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--c-muted)', marginBottom:6 }}>CATEGORIA *</label>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:6 }}>
               {categories.map(cat => (
                 <button key={cat.id} onClick={() => setSelectedCat(cat)}
                   style={{
                     padding:'8px 6px', borderRadius:7, cursor:'pointer', fontSize:12, fontWeight:600,
-                    background: selectedCat?.id === cat.id ? '#E8551C22' : '#112048',
-                    border: '1px solid ' + (selectedCat?.id === cat.id ? '#E8551C' : '#1F3470'),
+                    background: selectedCat?.id === cat.id ? '#E8551C22' : 'var(--c-surface-2)',
+                    border: '1px solid ' + (selectedCat?.id === cat.id ? '#E8551C' : 'var(--c-line)'),
                     color: selectedCat?.id === cat.id ? '#E8551C' : '#94a3b8',
                   }}>
                   <div style={{ fontSize:10, color:'#64748b' }}>{cat.prefix}</div>

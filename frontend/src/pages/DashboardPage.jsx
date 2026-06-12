@@ -11,7 +11,7 @@ import { quotesApi } from '../api/quotesApi.js';
 import { maintenanceApi } from '../api/maintenanceApi.js';
 import { notify } from '../lib/toast.js';
 
-const C = { bg:'#0C1733', card:'#16285C', dark:'#112048', border:'#1F3470', text:'#e2e8f0', muted:'#5a7aa8', orange:'#E8551C' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 
 function StatCard({ icon: Icon, label, value, color, emoji, to }) {
   const navigate = useNavigate();
@@ -62,7 +62,7 @@ export default function DashboardPage() {
           <span style={{ fontSize:32 }}>🔧</span>
           <div>
             <h1 style={{ fontSize:22, fontWeight:800, color:'#fff', margin:0 }}>{saludo}, {nombre}!</h1>
-            <p style={{ fontSize:13, color:C.muted, margin:0 }}>
+            <p style={{ fontSize:13, color:'#94a3b8', margin:0 }}>
               Rol: <span style={{ color:C.orange, fontWeight:700 }}>{user?.role?.name}</span>
             </p>
           </div>

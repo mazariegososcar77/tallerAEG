@@ -2,7 +2,7 @@ import { KeyRound } from "lucide-react";
 import { useMemo } from 'react';
 import { usePermissions } from '../../hooks/usePermissions.js';
 
-const C = { card:'#16285C', dark:'#112048', border:'#1F3470', text:'#e2e8f0', muted:'#5a7aa8', orange:'#E8551C' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 
 export default function PermissionsPage() {
   const { permissions, loading } = usePermissions();

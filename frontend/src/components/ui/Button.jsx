@@ -3,9 +3,9 @@ import Spinner from './Spinner.jsx';
 const VARIANTS = {
   primary: 'bg-orange-500 text-white hover:bg-orange-600 disabled:bg-orange-300',
   navy: 'bg-navy-700 text-white hover:bg-navy-800 disabled:bg-navy-400',
-  outline: 'border border-navy-200 text-navy-700 bg-white hover:bg-navy-50',
+  outline: 'border border-line text-content bg-surface hover:bg-hover',
   danger: 'bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300',
-  ghost: 'text-navy-700 hover:bg-navy-50',
+  ghost: 'text-content hover:bg-hover',
 };
 
 const SIZES = {

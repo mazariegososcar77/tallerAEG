@@ -14,7 +14,7 @@ const STATUS_OPTIONS = [
 ];
 const STATUS_COLORS = { recibido:'#1D9E75', en_proceso:'#E8551C', listo:'#3b82f6', entregado:'#6366f1', cancelado:'#ef4444' };
 const DEFAULT_ITEMS = ['Polea','Caja de conexion','Tapa de conexion','Bornera','Argolla','Ventilador','Lazo','Tolva','Placa de datos','Impulsor','Difusor','Housing de impulsor','Caja reductora','Cadena','Tapa capacitor','Base quebrada de motor','Tapas quebradas','Capacitores','Cuña','Retenedor'];
-const C = { bg:'#0C1733', card:'#16285C', dark:'#112048', border:'#1F3470', input:'#0C1733', text:'#e2e8f0', muted:'#5a7aa8', orange:'#E8551C' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 const sec = { background:C.card, border:'1px solid '+C.border, borderRadius:10, marginBottom:12, overflow:'hidden' };
@@ -269,7 +269,7 @@ export default function WorkOrderFormPage() {
                     <div style={{ width:13, height:13, borderRadius:3, border:'1.5px solid '+(item.has_item ? C.orange : '#2a4070'), background:item.has_item ? C.orange : 'transparent', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center' }}>
                       {item.has_item && <span style={{ color:'#fff', fontSize:8, fontWeight:900, lineHeight:1 }}>✓</span>}
                     </div>
-                    <span style={{ fontSize:11, color:item.has_item ? C.text : '#5a7aa8', lineHeight:1.3 }}>{item.name}</span>
+                    <span style={{ fontSize:11, color:item.has_item ? C.text : 'var(--c-muted)', lineHeight:1.3 }}>{item.name}</span>
                   </div>
                 ))}
               </div>

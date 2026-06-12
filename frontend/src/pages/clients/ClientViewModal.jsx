@@ -7,7 +7,7 @@ import LoyaltyTierTag from '../../components/clients/LoyaltyTierTag.jsx';
 function Field({ label, children }) {
   return (
     <div>
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">{label}</dt>
+      <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
       <dd className="mt-0.5 text-navy-800">{children}</dd>
     </div>
   );
