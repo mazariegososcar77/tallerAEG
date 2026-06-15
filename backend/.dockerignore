@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log*
+.env
+.env.local
+*.local
+src/data/*.json
+uploads/*
+!uploads/.gitkeep
+*.log
+.git
+.vscode
+.idea

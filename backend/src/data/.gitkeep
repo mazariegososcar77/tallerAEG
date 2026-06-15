@@ -1,0 +1,2 @@
+# Esta carpeta guarda los JSON que actuan como base de datos en desarrollo.
+# Los .json se generan con `npm run seed` y estan ignorados por git.

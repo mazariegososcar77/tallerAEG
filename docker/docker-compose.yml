@@ -1,0 +1,65 @@
+# Orquestacion del Sistema Taller AEG
+services:
+  db:
+    image: mysql:8.0
+    container_name: talleraeg_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: AEGRoot2026$$
+      MYSQL_DATABASE: talleraeg
+      MYSQL_USER: aeg_user
+      MYSQL_PASSWORD: AEG2026$$
+    volumes:
+      - db_data:/var/lib/mysql
+      - ../backend/migraciones:/docker-entrypoint-initdb.d
+    networks:
+      - talleraeg
+    # Publicado SOLO en el localhost de la VM, en el puerto 3307 del host
+    # (el 3306 lo ocupa el MySQL nativo de la VM). El contenedor sigue en 3306
+    # internamente. Tunel SSH ->  ssh -L 3306:localhost:3307 usuario@<IP_DE_LA_VM>
+    ports:
+      - "127.0.0.1:3307:3306"
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    image: talleraeg-backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PORT: 4000
+      JWT_SECRET: cambia-este-secreto-en-produccion
+      JWT_EXPIRES: 8h
+      CORS_ORIGIN: "*"
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: talleraeg
+      DB_USER: aeg_user
+      DB_PASSWORD: AEG2026$$
+    volumes:
+      - backend_data:/app/src/data
+      - backend_uploads:/app/uploads
+    networks:
+      - talleraeg
+    expose:
+      - "4000"
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    image: talleraeg-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "4000:80"
+    networks:
+      - talleraeg
+networks:
+  talleraeg:
+    driver: bridge
+volumes:
+  db_data:
+  backend_data:
+  backend_uploads:

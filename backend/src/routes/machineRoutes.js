@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import * as machineController from '../controllers/machineController.js';
+import { authenticate } from '../middleware/auth.middleware.js';
+import { requirePermission } from '../middleware/rbac.middleware.js';
+const router = Router();
+router.use(authenticate);
+router.get('/', requirePermission('dashboard.view'), machineController.list);
+router.get('/:id', requirePermission('dashboard.view'), machineController.getById);
+router.post('/', requirePermission('dashboard.view'), machineController.create);
+router.put('/:id', requirePermission('dashboard.view'), machineController.update);
+router.delete('/:id', requirePermission('dashboard.view'), machineController.remove);
+export default router;
