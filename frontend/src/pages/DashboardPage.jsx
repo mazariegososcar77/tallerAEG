@@ -10,6 +10,7 @@ import { workOrdersApi } from '../api/workOrdersApi.js';
 import { quotesApi } from '../api/quotesApi.js';
 import { maintenanceApi } from '../api/maintenanceApi.js';
 import { notify } from '../lib/toast.js';
+import MaintenanceCalendar from '../components/dashboard/MaintenanceCalendar.jsx';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 
@@ -89,6 +90,16 @@ export default function DashboardPage() {
           <StatCard icon={AlertTriangle} label="Mantenimientos Pendientes" value={stats.maintenance} color="#f59e0b" to="/mantenimientos" />
         )}
       </div>
+
+      {/* Calendario de mantenimientos */}
+      {hasPermission('dashboard.view') && (
+        <>
+          <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>📅 Calendario de Mantenimientos</p>
+          <div style={{ marginBottom:24 }}>
+            <MaintenanceCalendar />
+          </div>
+        </>
+      )}
 
       {/* Stats admin */}
       {(hasPermission('users.view') || hasPermission('roles.view')) && (
