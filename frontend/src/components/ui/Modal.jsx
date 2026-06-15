@@ -27,11 +27,11 @@ export default function Modal({ open, onClose, title, children, footer, size = '
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <div
-        className={`w-full ${widths[size]} rounded-xl bg-surface shadow-xl animate-slide-up border border-line`}
+        className={`flex max-h-[90vh] w-full ${widths[size]} flex-col rounded-xl bg-surface shadow-xl animate-slide-up border border-line`}
         style={accentColor ? { borderTop: `4px solid ${accentColor}` } : undefined}
       >
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h3 className="text-lg font-semibold text-heading">{title}</h3>
+        <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">
+          <h3 className="text-base font-semibold text-heading sm:text-lg">{title}</h3>
           <button
             onClick={onClose}
             className="rounded-md p-1 text-muted hover:bg-hover hover:text-content"
@@ -40,9 +40,9 @@ export default function Modal({ open, onClose, title, children, footer, size = '
             <X size={20} />
           </button>
         </div>
-        <div className="px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 py-4">{children}</div>
         {footer && (
-          <div className="flex justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>
         )}
       </div>
     </div>

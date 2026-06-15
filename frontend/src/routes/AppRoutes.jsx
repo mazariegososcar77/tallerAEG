@@ -19,6 +19,9 @@ import MaintenancePage from '../pages/maintenance/MaintenancePage.jsx';
 import WorkOrderFormPage from '../pages/workOrders/WorkOrderFormPage.jsx';
 import QuotesPage from '../pages/quotes/QuotesPage.jsx';
 import QuoteFormPage from '../pages/quotes/QuoteFormPage.jsx';
+import GeneralSettingsPage from '../pages/config/GeneralSettingsPage.jsx';
+import SystemParamsPage from '../pages/config/SystemParamsPage.jsx';
+import CatalogsPage from '../pages/config/CatalogsPage.jsx';
 
 export default function AppRoutes() {
   return (
@@ -50,6 +53,9 @@ export default function AppRoutes() {
         <Route path="configuracion/fidelizacion" element={<ProtectedRoute permission="loyalty.view"><LoyaltyTiersPage /></ProtectedRoute>} />
         <Route path="configuracion/tipos" element={<ProtectedRoute permission="article-types.view"><ArticleTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
+        <Route path="configuracion/general" element={<ProtectedRoute permission="dashboard.view"><GeneralSettingsPage /></ProtectedRoute>} />
+        <Route path="configuracion/parametros" element={<ProtectedRoute permission="dashboard.view"><SystemParamsPage /></ProtectedRoute>} />
+        <Route path="configuracion/catalogos" element={<ProtectedRoute permission="dashboard.view"><CatalogsPage /></ProtectedRoute>} />
         <Route path="usuarios" element={<ProtectedRoute permission="users.view"><UsersPage /></ProtectedRoute>} />
         <Route path="roles" element={<ProtectedRoute permission="roles.view"><RolesPage /></ProtectedRoute>} />
         <Route path="permisos" element={<ProtectedRoute permission="permissions.view"><PermissionsPage /></ProtectedRoute>} />

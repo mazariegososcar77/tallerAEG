@@ -7,13 +7,9 @@ import { usersApi } from '../../api/usersApi.js';
 import { notify } from '../../lib/toast.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import UserFormModal from './UserFormModal.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
-
-const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
-  return isMobile;
-};
 
 export default function UsersPage() {
   const { users, loading, reload } = useUsers();

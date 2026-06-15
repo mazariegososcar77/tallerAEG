@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, ShieldCheck } from 'lucide-react';
 import { useRoles } from '../../hooks/useRoles.js';
 import { usePermissions } from '../../hooks/usePermissions.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { rolesApi } from '../../api/rolesApi.js';
 import { notify } from '../../lib/toast.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
@@ -14,6 +15,7 @@ export default function RolesPage() {
   const { roles, loading, reload } = useRoles();
   const { permissions } = usePermissions();
   const { hasPermission } = useAuth();
+  const isMobile = useIsMobile();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -47,11 +49,13 @@ export default function RolesPage() {
       </div>
 
       <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'150px 1fr 150px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
-          {['Rol','Descripcion','Permisos','Acciones'].map((h,i) => (
-            <span key={i} style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', textAlign:i===3?'right':'left' }}>{h}</span>
-          ))}
-        </div>
+        {!isMobile && (
+          <div style={{ display:'grid', gridTemplateColumns:'150px 1fr 150px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
+            {['Rol','Descripcion','Permisos','Acciones'].map((h,i) => (
+              <span key={i} style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', textAlign:i===3?'right':'left' }}>{h}</span>
+            ))}
+          </div>
+        )}
         {loading ? (
           <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
         ) : roles.length === 0 ? (
@@ -59,14 +63,28 @@ export default function RolesPage() {
             <span style={{ fontSize:48, opacity:.3 }}>🛡️</span>
             <p>No hay roles registrados</p>
           </div>
-        ) : roles.map(r => (
+        ) : isMobile ? roles.map(r => (
+          <div key={r.id} style={{ padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:10 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{r.name}</p>
+                <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{r.description || '—'}</p>
+                <span style={{ display:'inline-block', marginTop:6, background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{r.permissions.length} permisos</span>
+              </div>
+              <div style={{ display:'flex', gap:6 }}>
+                {hasPermission('roles.update') && <button onClick={() => openEdit(r)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>}
+                {hasPermission('roles.delete') && <button onClick={() => setDeleting(r)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'8px 10px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={15}/></button>}
+              </div>
+            </div>
+          </div>
+        )) : roles.map(r => (
           <div key={r.id} style={{ display:'grid', gridTemplateColumns:'150px 1fr 150px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
             <span style={{ fontWeight:700, color:C.text }}>{r.name}</span>
             <span style={{ fontSize:13, color:C.muted }}>{r.description || '—'}</span>
             <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{r.permissions.length} permisos</span>
             <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-              {hasPermission('roles.update') && <button onClick={() => openEdit(r)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
-              {hasPermission('roles.delete') && <button onClick={() => setDeleting(r)} style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
+              {hasPermission('roles.update') && <button onClick={() => openEdit(r)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
+              {hasPermission('roles.delete') && <button onClick={() => setDeleting(r)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
             </div>
           </div>
         ))}

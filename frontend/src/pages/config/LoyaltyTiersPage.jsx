@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Award } from "lucide-react";
 import { useLoyaltyTiers } from "../../hooks/useLoyaltyTiers.js";
 import { loyaltyTiersApi } from "../../api/loyaltyTiersApi.js";
 import { useAuth } from "../../hooks/useAuth.js";
+import { useIsMobile } from "../../hooks/useIsMobile.js";
 import { notify } from "../../lib/toast.js";
 import Modal from "../../components/ui/Modal.jsx";
 import Input from "../../components/ui/Input.jsx";
@@ -18,6 +19,7 @@ const emptyForm = { name:"", discount:0, benefits:"", color:DEFAULT_LOYALTY_COLO
 export default function LoyaltyTiersPage() {
   const { tiers, loading, reload } = useLoyaltyTiers();
   const { hasPermission } = useAuth();
+  const isMobile = useIsMobile();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
@@ -66,14 +68,35 @@ export default function LoyaltyTiersPage() {
         )}
       </div>
       <div style={{ background:C.card, border:"1px solid "+C.border, borderRadius:12, overflow:"hidden" }}>
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 1fr 100px 100px", background:C.dark, padding:"10px 16px", borderBottom:"1px solid "+C.border }}>
-          {["Nivel","Descuento","Beneficios","Estado","Acciones"].map((h,i) => (
-            <span key={i} style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:"uppercase", letterSpacing:".6px", textAlign:i===4?"right":"left" }}>{h}</span>
-          ))}
-        </div>
+        {!isMobile && (
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 1fr 100px 100px", background:C.dark, padding:"10px 16px", borderBottom:"1px solid "+C.border }}>
+            {["Nivel","Descuento","Beneficios","Estado","Acciones"].map((h,i) => (
+              <span key={i} style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:"uppercase", letterSpacing:".6px", textAlign:i===4?"right":"left" }}>{h}</span>
+            ))}
+          </div>
+        )}
         {loading ? <p style={{ color:C.muted, textAlign:"center", padding:40 }}>Cargando...</p>
         : tiers.length === 0 ? <div style={{ textAlign:"center", padding:"48px 0", color:C.muted }}><p>No hay niveles.</p></div>
-        : tiers.map(t => (
+        : isMobile ? tiers.map(t => (
+          <div key={t.id} style={{ padding:"14px 16px", borderBottom:"1px solid "+C.border }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <LoyaltyTierTag name={t.name} color={t.color} icon={t.icon} />
+                <p style={{ margin:"6px 0 0", fontSize:12, color:C.muted }}>{t.benefits || "—"}</p>
+                <div style={{ display:"flex", gap:6, marginTop:6, flexWrap:"wrap" }}>
+                  <span style={{ background:C.orange+"22", color:C.orange, border:"1px solid "+C.orange+"44", borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:600 }}>{Number(t.discount).toFixed(0)}% desc.</span>
+                  <span style={{ background:t.is_active?"#10b98122":"#ef444422", color:t.is_active?"#10b981":"#ef4444", border:"1px solid "+(t.is_active?"#10b98144":"#ef444444"), borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:600 }}>
+                    {t.is_active ? "Activo" : "Inactivo"}
+                  </span>
+                </div>
+              </div>
+              <div style={{ display:"flex", gap:6 }}>
+                {hasPermission("loyalty.update") && <button onClick={() => { setEditing(t); setFormOpen(true); }} title="Editar" style={{ background:C.dark, border:"1px solid "+C.border, borderRadius:6, padding:"8px 10px", cursor:"pointer", color:C.muted }}><Pencil size={15}/></button>}
+                {hasPermission("loyalty.delete") && <button onClick={() => setDeleting(t)} title="Eliminar" style={{ background:"#ef444415", border:"1px solid #ef444440", borderRadius:6, padding:"8px 10px", cursor:"pointer", color:"#ef4444" }}><Trash2 size={15}/></button>}
+              </div>
+            </div>
+          </div>
+        )) : tiers.map(t => (
           <div key={t.id} style={{ display:"grid", gridTemplateColumns:"1fr 100px 1fr 100px 100px", padding:"12px 16px", borderBottom:"1px solid "+C.border, alignItems:"center" }}>
             <LoyaltyTierTag name={t.name} color={t.color} icon={t.icon} />
             <span style={{ background:C.orange+"22", color:C.orange, border:"1px solid "+C.orange+"44", borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:600, width:"fit-content" }}>{Number(t.discount).toFixed(0)}%</span>
@@ -82,8 +105,8 @@ export default function LoyaltyTiersPage() {
               {t.is_active ? "Activo" : "Inactivo"}
             </span>
             <div style={{ display:"flex", gap:6, justifyContent:"flex-end" }}>
-              {hasPermission("loyalty.update") && <button onClick={() => { setEditing(t); setFormOpen(true); }} style={{ background:C.dark, border:"1px solid "+C.border, borderRadius:6, padding:"5px 8px", cursor:"pointer", color:C.muted }}><Pencil size={14}/></button>}
-              {hasPermission("loyalty.delete") && <button onClick={() => setDeleting(t)} style={{ background:"#ef444415", border:"1px solid #ef444440", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#ef4444" }}><Trash2 size={14}/></button>}
+              {hasPermission("loyalty.update") && <button onClick={() => { setEditing(t); setFormOpen(true); }} title="Editar" style={{ background:C.dark, border:"1px solid "+C.border, borderRadius:6, padding:"5px 8px", cursor:"pointer", color:C.muted }}><Pencil size={14}/></button>}
+              {hasPermission("loyalty.delete") && <button onClick={() => setDeleting(t)} title="Eliminar" style={{ background:"#ef444415", border:"1px solid #ef444440", borderRadius:6, padding:"5px 8px", cursor:"pointer", color:"#ef4444" }}><Trash2 size={14}/></button>}
             </div>
           </div>
         ))}
