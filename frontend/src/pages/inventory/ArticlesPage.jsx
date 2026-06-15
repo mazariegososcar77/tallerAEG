@@ -5,6 +5,7 @@ import { useArticles } from '../../hooks/useArticles.js';
 import { useArticleTypes } from '../../hooks/useArticleTypes.js';
 import { useWarehouses } from '../../hooks/useWarehouses.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
@@ -30,6 +31,7 @@ export default function ArticlesPage() {
   const { types } = useArticleTypes();
   const { warehouses } = useWarehouses();
   const { hasPermission } = useAuth();
+  const isMobile = useIsMobile();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
@@ -82,7 +84,7 @@ export default function ArticlesPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 200px 200px', gap:10, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por codigo o nombre..." style={{ ...inp, width:'100%', paddingLeft:32, boxSizing:'border-box' }} />
@@ -97,37 +99,70 @@ export default function ArticlesPage() {
         </select>
       </div>
 
-      {/* Tabla */}
-      <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
-        <div style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
-          {['','Codigo','Nombre','Tipo','Bodega','Cantidad','Precio','Acciones'].map((h,i) => (
-            <span key={i} style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', textAlign: i===7?'right':'left' }}>{h}</span>
+      {/* Tabla Desktop */}
+      {!isMobile && (
+        <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
+            {['','Codigo','Nombre','Tipo','Bodega','Cantidad','Precio','Acciones'].map((h,i) => (
+              <span key={i} style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', textAlign: i===7?'right':'left' }}>{h}</span>
+            ))}
+          </div>
+          {loading ? (
+            <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
+              <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
+            </div>
+          ) : filtered.map(a => (
+            <div key={a.id} style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
+              <div><Thumb url={a.image_url} name={a.name} /></div>
+              <span style={{ fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</span>
+              <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
+              <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
+              <span style={{ fontSize:13, color:C.muted }}>{a.warehouse_name}</span>
+              <span style={{ fontSize:13, color:C.text }}>{a.quantity} {a.unit}</span>
+              <span style={{ fontSize:13, fontWeight:600, color:'#10b981' }}>Q {Number(a.price).toFixed(2)}</span>
+              <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
+                {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
+                {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
+              </div>
+            </div>
           ))}
         </div>
-        {loading ? (
-          <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
-            <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
-            <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
-          </div>
-        ) : filtered.map(a => (
-          <div key={a.id} style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
-            <div><Thumb url={a.image_url} name={a.name} /></div>
-            <span style={{ fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</span>
-            <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
-            <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
-            <span style={{ fontSize:13, color:C.muted }}>{a.warehouse_name}</span>
-            <span style={{ fontSize:13, color:C.text }}>{a.quantity} {a.unit}</span>
-            <span style={{ fontSize:13, fontWeight:600, color:'#10b981' }}>Q {Number(a.price).toFixed(2)}</span>
-            <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-              <button onClick={() => setViewing(a)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
-              {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
-              {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
+      )}
+
+      {/* Cards Mobile */}
+      {isMobile && (
+        <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
+          {loading ? (
+            <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
+              <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
-          </div>
-        ))}
-      </div>
+          ) : filtered.map(a => (
+            <div key={a.id} style={{ display:'flex', gap:12, padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
+              <Thumb url={a.image_url} name={a.name} />
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
+                <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>
+                <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{a.warehouse_name || '—'} · {a.quantity} {a.unit} · <span style={{ color:'#10b981', fontWeight:600 }}>Q {Number(a.price).toFixed(2)}</span></p>
+                <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
+                  {a.type_name && <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{a.type_name}</span>}
+                </div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Eye size={15}/></button>
+                {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>}
+                {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'8px 10px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={15}/></button>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <BulkUploadModal open={bulkOpen} onClose={() => setBulkOpen(false)} onDone={reload} />
       <ArticleViewModal open={Boolean(viewing)} onClose={() => setViewing(null)} article={viewing} />

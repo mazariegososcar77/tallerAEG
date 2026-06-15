@@ -7,6 +7,7 @@ import Input from '../ui/Input.jsx';
 import Checkbox from '../ui/Checkbox.jsx';
 import ColorPicker from '../ui/ColorPicker.jsx';
 import ConfirmDialog from '../ui/ConfirmDialog.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", input:"var(--c-surface-2)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#E8551C" };
 const DEFAULT_COLOR = "#16285C";
@@ -16,7 +17,7 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
   const canCreate = hasPermission(`${permPrefix}.create`);
   const canUpdate = hasPermission(`${permPrefix}.update`);
   const canDelete = hasPermission(`${permPrefix}.delete`);
-  const isMobile = window.innerWidth < 768;
+  const isMobile = useIsMobile();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);

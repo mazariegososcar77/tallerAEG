@@ -25,7 +25,7 @@ export default function PermissionsPage() {
       {loading ? (
         <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(320px, 1fr))', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap:12 }}>
           {Object.entries(groups).map(([module, perms]) => (
             <div key={module} style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:'16px 18px' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>

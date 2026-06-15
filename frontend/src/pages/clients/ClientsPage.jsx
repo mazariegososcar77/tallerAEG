@@ -9,14 +9,10 @@ import { notify } from '../../lib/toast.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import ClientFormModal from './ClientFormModal.jsx';
 import ClientViewModal from './ClientViewModal.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 const inp = { background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:13, outline:'none' };
-
-const useIsMobile = () => {
-  const [isMobile] = useState(window.innerWidth < 768);
-  return isMobile;
-};
 
 export default function ClientsPage() {
   const { clients, loading, reload } = useClients();
