@@ -55,4 +55,13 @@
   .focus-brand {
     @apply focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-orange-400;
   }
+
+  /* Oculta la barra de scroll (usado por el carrusel del dashboard). */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
