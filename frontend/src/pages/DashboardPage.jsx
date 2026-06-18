@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, ShieldCheck, Contact, Package, ClipboardList, FileText, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, ShieldCheck, Contact, Package, ClipboardList, FileText, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.js';
 import { useIsMobile } from '../hooks/useIsMobile.js';
 import { usersApi } from '../api/usersApi.js';
@@ -15,13 +15,15 @@ import MaintenanceCalendar from '../components/dashboard/MaintenanceCalendar.jsx
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
 
-const VISIBLE = 3; // tarjetas visibles en el carrusel
+// Altura del area visible del carrusel (~3 tarjetas) y mascara de desvanecido en los bordes.
+const CAROUSEL_HEIGHT = 300;
+const FADE_MASK = 'linear-gradient(to bottom, transparent 0, #000 14%, #000 86%, transparent 100%)';
 
 function NavCard({ icon: Icon, label, value, color, onClick }) {
   return (
     <div
       onClick={onClick}
-      style={{ background:C.card, border:`1px solid ${color}44`, borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'center', gap:16, cursor:'pointer', transition:'transform 0.15s, box-shadow 0.15s' }}
+      style={{ background:C.card, border:`1px solid ${color}44`, borderRadius:12, padding:'16px 18px', display:'flex', alignItems:'center', gap:16, cursor:'pointer', scrollSnapAlign:'start', flexShrink:0, transition:'transform 0.15s, box-shadow 0.15s' }}
       onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow=`0 6px 18px ${color}22`; }}
       onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='none'; }}
     >
@@ -41,7 +43,6 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [stats, setStats] = useState({});
-  const [start, setStart] = useState(0);
 
   useEffect(() => {
     const load = async () => {
@@ -71,14 +72,16 @@ export default function DashboardPage() {
     hasPermission('roles.view')     && { key:'roles',       icon:ShieldCheck,   label:'Roles',                  value:stats.roles,       color:'#94a3b8', to:'/roles' },
   ].filter(Boolean);
 
-  const total = cards.length;
-  const canScroll = total > VISIBLE && !isMobile;
-  const visibleCards = isMobile ? cards : (canScroll ? Array.from({ length: VISIBLE }, (_, i) => cards[(start + i) % total]) : cards);
-
-  const goUp = () => setStart(s => (s - 1 + total) % total);
-  const goDown = () => setStart(s => (s + 1) % total);
-
-  const arrowBtn = { display:'flex', alignItems:'center', justifyContent:'center', width:'100%', padding:'6px 0', background:C.dark, border:`1px solid ${C.border}`, borderRadius:10, color:C.muted, cursor:'pointer' };
+  // En escritorio el carrusel es un area con scroll y desvanecido en los bordes;
+  // en movil se muestran todas las tarjetas apiladas (la pagina hace scroll).
+  const scrollAreaStyle = isMobile
+    ? { display:'flex', flexDirection:'column', gap:12 }
+    : {
+        display:'flex', flexDirection:'column', gap:12,
+        maxHeight: CAROUSEL_HEIGHT, overflowY:'auto', paddingBottom:2,
+        scrollSnapType:'y proximity',
+        WebkitMaskImage: FADE_MASK, maskImage: FADE_MASK,
+      };
 
   return (
     <div style={{ padding:'4px 0' }}>
@@ -86,22 +89,16 @@ export default function DashboardPage() {
 
       <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', alignItems:'flex-start', gap:20 }}>
 
-        {/* Carrusel vertical de accesos */}
-        <div style={{ width: isMobile ? '100%' : 300, flexShrink:0, display:'flex', flexDirection:'column', gap:10 }}>
-          {canScroll && (
-            <button onClick={goUp} style={arrowBtn} title="Anterior" aria-label="Anterior"><ChevronUp size={18} /></button>
-          )}
-          {visibleCards.map(c => (
+        {/* Carrusel vertical de accesos (scroll + desvanecido) */}
+        <div className="no-scrollbar" style={{ width: isMobile ? '100%' : 300, flexShrink:0, ...scrollAreaStyle }}>
+          {cards.map(c => (
             <NavCard key={c.key} icon={c.icon} label={c.label} value={c.value} color={c.color} onClick={() => navigate(c.to)} />
           ))}
-          {canScroll && (
-            <button onClick={goDown} style={arrowBtn} title="Siguiente" aria-label="Siguiente"><ChevronDown size={18} /></button>
-          )}
         </div>
 
         {/* Calendario (vista principal) */}
         {hasPermission('dashboard.view') && (
-          <div style={{ flex:1, width: isMobile ? '100%' : 'auto', minWidth:0 }}>
+          <div style={{ flex:1, width: isMobile ? '100%' : 'auto', minWidth:0, display:'flex', justifyContent:'center' }}>
             <MaintenanceCalendar />
           </div>
         )}
