@@ -3,12 +3,23 @@ import { maintenanceApi } from '../../api/maintenanceApi.js';
 import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Calendar, Plus, Pencil, Trash2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import Modal from '../../components/ui/Modal.jsx';
+import Select from '../../components/ui/Select.jsx';
+import Input from '../../components/ui/Input.jsx';
+import Textarea from '../../components/ui/Textarea.jsx';
+import DatePicker from '../../components/ui/DatePicker.jsx';
+import Button from '../../components/ui/Button.jsx';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', green:'#1D9E75', red:'#ef4444', amber:'#f59e0b' };
-const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
-const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 const STATUS = { al_dia:{ label:'Al dia', color:'#1D9E75', Icon:CheckCircle }, proximo:{ label:'Proximo', color:'#f59e0b', Icon:Clock }, vencido:{ label:'Vencido', color:'#ef4444', Icon:AlertTriangle } };
 const FREQ = { mensual:'Mensual', trimestral:'Trimestral', semestral:'Semestral', anual:'Anual', personalizado:'Personalizado' };
+const FREQ_OPTIONS = [
+  { value:'trimestral',    label:'Trimestral (90 dias)' },
+  { value:'semestral',     label:'Semestral (180 dias)' },
+  { value:'anual',         label:'Anual (365 dias)' },
+  { value:'mensual',       label:'Mensual (30 dias)' },
+  { value:'personalizado', label:'Personalizado' },
+];
 
 export default function MaintenancePage() {
   const [records, setRecords] = useState([]);
@@ -92,25 +103,63 @@ export default function MaintenancePage() {
           })}
         </div>
       )}
-      {showForm && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:16 }}>
-          <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:24, width:'100%', maxWidth:520, maxHeight:'90vh', overflowY:'auto' }}>
-            <h2 style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:20 }}>{editing ? 'Editar Mantenimiento' : 'Nuevo Mantenimiento'}</h2>
-            <div style={{ display:'grid', gap:12 }}>
-              <div><label style={lbl}>Cliente *</label><select value={form.client_id} onChange={e => { set('client_id', e.target.value); set('machine_id', ''); }} style={{ ...inp, cursor:'pointer' }}><option value=''>Seleccionar cliente...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.full_name || c.first_name}</option>)}</select></div>
-              <div><label style={lbl}>Maquina *</label><select value={form.machine_id} onChange={e => set('machine_id', e.target.value)} style={{ ...inp, cursor:'pointer' }} disabled={!form.client_id}><option value=''>Seleccionar maquina...</option>{clientMachines.map(m => <option key={m.id} value={m.id}>{m.name}{m.brand ? ' - '+m.brand : ''}</option>)}</select></div>
-              <div><label style={lbl}>Frecuencia</label><select value={form.frequency} onChange={e => set('frequency', e.target.value)} style={{ ...inp, cursor:'pointer' }}><option value='trimestral'>Trimestral (90 dias)</option><option value='semestral'>Semestral (180 dias)</option><option value='anual'>Anual (365 dias)</option><option value='mensual'>Mensual (30 dias)</option><option value='personalizado'>Personalizado</option></select></div>
-              {form.frequency === 'personalizado' && <div><label style={lbl}>Cada cuantos dias</label><input type='number' value={form.frequency_days} onChange={e => set('frequency_days', e.target.value)} style={inp} /></div>}
-              <div><label style={lbl}>Ultimo Servicio</label><input type='date' value={form.last_service} onChange={e => set('last_service', e.target.value)} onClick={e => e.target.showPicker && e.target.showPicker()} style={inp} /></div>
-              <div><label style={lbl}>Descripcion</label><textarea value={form.description} onChange={e => set('description', e.target.value)} rows={2} style={{ ...inp, resize:'vertical' }} /></div>
-            </div>
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:16 }}>
-              <button onClick={() => setShowForm(false)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'9px 18px', color:C.text, cursor:'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ background:C.orange, border:'none', borderRadius:7, padding:'9px 20px', color:'#fff', fontWeight:700, cursor:'pointer' }}>Guardar</button>
-            </div>
-          </div>
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? 'Editar Mantenimiento' : 'Nuevo Mantenimiento'}
+        size="md"
+        accentColor={C.orange}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleSave}>Guardar</Button>
+          </>
+        )}
+      >
+        <div style={{ display:'grid', gap:14 }}>
+          <Select
+            label="Cliente *"
+            value={form.client_id}
+            onChange={v => { set('client_id', v); set('machine_id', ''); }}
+            placeholder="Seleccionar cliente..."
+            options={clients.map(c => ({ value: c.id, label: c.full_name || c.first_name }))}
+          />
+          <Select
+            label="Maquina *"
+            value={form.machine_id}
+            onChange={v => set('machine_id', v)}
+            placeholder={form.client_id ? 'Seleccionar maquina...' : 'Seleccione un cliente primero'}
+            disabled={!form.client_id}
+            options={clientMachines.map(m => ({ value: m.id, label: m.name + (m.brand ? ' - ' + m.brand : '') }))}
+          />
+          <Select
+            label="Frecuencia"
+            value={form.frequency}
+            onChange={v => set('frequency', v)}
+            options={FREQ_OPTIONS}
+          />
+          {form.frequency === 'personalizado' && (
+            <Input
+              label="Cada cuantos dias"
+              type="number"
+              min="1"
+              value={form.frequency_days}
+              onChange={e => set('frequency_days', e.target.value)}
+            />
+          )}
+          <DatePicker
+            label="Ultimo Servicio"
+            value={form.last_service}
+            onChange={v => set('last_service', v)}
+          />
+          <Textarea
+            label="Descripcion"
+            rows={2}
+            value={form.description}
+            onChange={e => set('description', e.target.value)}
+          />
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

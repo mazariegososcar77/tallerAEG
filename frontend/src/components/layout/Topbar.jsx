@@ -13,12 +13,20 @@ export default function Topbar({ onMenu }) {
     navigate('/login');
   };
   const initial = (user?.name || '?').charAt(0).toUpperCase();
+  const nombre = user?.name?.split(' ')[0] || '';
+  const hora = new Date().getHours();
+  const saludo = hora < 12 ? 'Buenos dias' : hora < 18 ? 'Buenas tardes' : 'Buenas noches';
   return (
     <header style={{ background:'var(--c-surface)', borderBottom:'1px solid var(--c-line)', padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-      <button onClick={onMenu} style={{ background:'transparent', border:'none', color:'var(--c-muted)', cursor:'pointer', padding:8, borderRadius:6, display:'flex' }} className="lg:hidden" aria-label="Abrir menu">
-        <Menu size={20} />
-      </button>
-      <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:12 }}>
+      <div style={{ display:'flex', alignItems:'center', gap:10, minWidth:0 }}>
+        <button onClick={onMenu} style={{ background:'transparent', border:'none', color:'var(--c-muted)', cursor:'pointer', padding:8, borderRadius:6, display:'flex', flexShrink:0 }} className="lg:hidden" aria-label="Abrir menu">
+          <Menu size={20} />
+        </button>
+        <p style={{ fontSize:15, fontWeight:700, color:'var(--c-text)', margin:0, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
+          {saludo}{nombre ? `, ${nombre}` : ''}
+        </p>
+      </div>
+      <div style={{ marginLeft:'auto', flexShrink:0, display:'flex', alignItems:'center', gap:12 }}>
         <button
           onClick={toggleTheme}
           style={{ background:'transparent', border:'1px solid var(--c-line)', color:'var(--c-muted)', cursor:'pointer', padding:8, borderRadius:8, display:'flex' }}
