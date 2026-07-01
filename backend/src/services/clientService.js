@@ -2,7 +2,8 @@ import * as clientRepository from '../repositories/clientRepository.js';
 import { ApiError } from '../utils/ApiError.js';
 
 function normalize(data) {
-  const nullIfEmpty = ['nit', 'dpi', 'email', 'trade_name', 'contact_name', 'dependency', 'last_name'];
+  // last_name NO se incluye: es obligatorio (NOT NULL); si va vacío se guarda como ''.
+  const nullIfEmpty = ['nit', 'dpi', 'email', 'trade_name', 'contact_name', 'dependency'];
   const result = { ...data };
   for (const key of nullIfEmpty) {
     if (result[key] !== undefined && result[key] !== null && String(result[key]).trim() === '') {

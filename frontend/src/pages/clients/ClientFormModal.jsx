@@ -192,7 +192,8 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
           </>
         )}
 
-        <Checkbox label="Cliente activo" checked={form.is_active} onChange={setValue('is_active')} />
+        {/* El estado activo solo se gestiona al editar; un cliente nuevo entra activo por defecto. */}
+        {isEdit && <Checkbox label="Cliente activo" checked={form.is_active} onChange={setValue('is_active')} />}
       </form>
     </Modal>
   );

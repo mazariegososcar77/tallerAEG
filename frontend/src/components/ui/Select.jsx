@@ -1,10 +1,14 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 
 /**
  * Dropdown propio (reemplaza el <select> nativo del navegador) con el estilo de la app.
  * options: [{ value, label }]. onChange recibe directamente el value seleccionado.
  * Soporta teclado (flechas, Enter, Esc) y cierre al hacer clic afuera.
+ *
+ * El panel de opciones se renderiza en un portal con posición `fixed` para que
+ * no lo recorte ningún contenedor con overflow (p. ej. el cuerpo de un Modal).
  */
 export default function Select({
   label,
@@ -18,15 +22,52 @@ export default function Select({
 }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
-  const ref = useRef(null);
+  const [pos, setPos] = useState(null); // { left, width, top?|bottom?, maxHeight }
+  const ref = useRef(null);       // wrapper del botón
+  const btnRef = useRef(null);    // botón disparador
+  const listRef = useRef(null);   // panel de opciones (en el portal)
 
   const selected = options.find((o) => String(o.value) === String(value));
 
-  // Cerrar al hacer clic fuera.
+  // Calcula la posición del panel a partir del botón, decidiendo si abre hacia
+  // abajo o hacia arriba según el espacio disponible en la ventana.
+  const updatePosition = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+    const maxHeight = Math.min(224, (openUp ? spaceAbove : spaceBelow) - 12);
+    setPos({
+      left: rect.left,
+      width: rect.width,
+      maxHeight: Math.max(maxHeight, 80),
+      ...(openUp
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+    });
+  }, []);
+
+  // Reposicionar al abrir y mientras esté abierto (scroll/resize de la ventana).
+  useEffect(() => {
+    if (!open) return undefined;
+    updatePosition();
+    const onScroll = () => updatePosition();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open, updatePosition]);
+
+  // Cerrar al hacer clic fuera (considera botón y panel, que vive en el portal).
   useEffect(() => {
     if (!open) return undefined;
     const onClickAway = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      if (ref.current?.contains(e.target)) return;
+      if (listRef.current?.contains(e.target)) return;
+      setOpen(false);
     };
     document.addEventListener('mousedown', onClickAway);
     return () => document.removeEventListener('mousedown', onClickAway);
@@ -73,6 +114,7 @@ export default function Select({
 
       <div className="relative" ref={ref}>
         <button
+          ref={btnRef}
           type="button"
           disabled={disabled}
           onClick={() => setOpen((o) => !o)}
@@ -93,11 +135,18 @@ export default function Select({
           />
         </button>
 
-        {open && (
+        {open && pos && createPortal(
           <ul
+            ref={listRef}
             role="listbox"
-            className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-md border border-line
-              bg-surface py-1 shadow-lg animate-fade-in"
+            style={{
+              position: 'fixed',
+              left: pos.left,
+              width: pos.width,
+              maxHeight: pos.maxHeight,
+              ...(pos.top != null ? { top: pos.top } : { bottom: pos.bottom }),
+            }}
+            className="z-[60] overflow-auto rounded-md border border-line bg-surface py-1 shadow-lg animate-fade-in"
           >
             {options.length === 0 && (
               <li className="px-3 py-2 text-sm text-muted">Sin opciones</li>
@@ -121,7 +170,8 @@ export default function Select({
                 </li>
               );
             })}
-          </ul>
+          </ul>,
+          document.body,
         )}
       </div>
 

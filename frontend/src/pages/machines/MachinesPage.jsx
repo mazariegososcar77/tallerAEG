@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Wrench, Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { withUppercase } from '../../lib/text.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', red:'#ef4444' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
@@ -96,16 +97,16 @@ export default function MachinesPage() {
             <h2 style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:20 }}>{editing ? 'Editar Maquina' : 'Nueva Maquina'}</h2>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div style={{ gridColumn:'span 2' }}><label style={lbl}>Cliente *</label><select value={form.client_id} onChange={e => set('client_id', e.target.value)} style={{ ...inp, cursor:'pointer' }}><option value=''>Seleccionar...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.full_name || c.first_name}</option>)}</select></div>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre *</label><input value={form.name} onChange={e => set('name', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Marca</label><input value={form.brand} onChange={e => set('brand', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Modelo</label><input value={form.model} onChange={e => set('model', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Serie</label><input value={form.serial} onChange={e => set('serial', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Ubicacion</label><input value={form.location} onChange={e => set('location', e.target.value)} style={inp} /></div>
+              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre *</label><input value={form.name} onChange={withUppercase(e => set('name', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Marca</label><input value={form.brand} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Modelo</label><input value={form.model} onChange={withUppercase(e => set('model', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Serie</label><input value={form.serial} onChange={withUppercase(e => set('serial', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Ubicacion</label><input value={form.location} onChange={withUppercase(e => set('location', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>KW</label><input type='number' value={form.kw} onChange={e => set('kw', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Voltaje</label><input value={form.voltage} onChange={e => set('voltage', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Amperaje</label><input value={form.amperage} onChange={e => set('amperage', e.target.value)} style={inp} /></div>
+              <div><label style={lbl}>Voltaje</label><input value={form.voltage} onChange={withUppercase(e => set('voltage', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Amperaje</label><input value={form.amperage} onChange={withUppercase(e => set('amperage', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>RPM</label><input type='number' value={form.rpm} onChange={e => set('rpm', e.target.value)} style={inp} /></div>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Notas</label><textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} style={{ ...inp, resize:'vertical' }} /></div>
+              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Notas</label><textarea value={form.notes} onChange={withUppercase(e => set('notes', e.target.value))} rows={2} style={{ ...inp, resize:'vertical' }} /></div>
             </div>
             <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:16 }}>
               <button onClick={() => setShowForm(false)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'9px 18px', color:C.text, cursor:'pointer' }}>Cancelar</button>
