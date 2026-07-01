@@ -7,6 +7,7 @@ import { clientTypesApi } from '../../api/clientTypesApi.js';
 import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
 import ClientFormModal from '../clients/ClientFormModal.jsx';
 import ArticleQuickModal from '../../components/quotes/ArticleQuickModal.jsx';
+import { withUppercase } from '../../lib/text.js';
 
 const STATUS_OPTIONS = [
   { value:'borrador',  label:'Borrador' },
@@ -57,7 +58,7 @@ function ItemsTable({ items, onChange, onAdd, onRemove, color, articles, onOpenM
               {onOpenModal && <option disabled>______________</option>}
               {(articles||[]).map(a => <option key={a.id} value={a.name}>{a.name}{a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}{a.quantity===0 ? ' (sin stock)' : ''}</option>)}
             </select>
-            <input value={item.description} onChange={e => onChange(i,'description',e.target.value)} placeholder="O escribir descripcion..." style={{ ...inp, fontSize:11 }} />
+            <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="O escribir descripcion..." style={{ ...inp, fontSize:11 }} />
             <input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} />
             <input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} />
             <input readOnly value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700 }} />
@@ -246,15 +247,15 @@ export default function QuoteFormPage() {
               <div style={g('1fr 1fr 1fr 1fr')}>
                 <div style={{ gridColumn:'span 2' }}>
                   <label style={lbl}>Nombre del Equipo / Maquina</label>
-                  <input value={eq.name} onChange={e => setEqField(ei,'name',e.target.value)} placeholder="Ej: Motor trifasico" style={inp} />
+                  <input value={eq.name} onChange={withUppercase(e => setEqField(ei,'name',e.target.value))} placeholder="Ej: Motor trifasico" style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Marca</label>
-                  <input value={eq.brand} onChange={e => setEqField(ei,'brand',e.target.value)} style={inp} />
+                  <input value={eq.brand} onChange={withUppercase(e => setEqField(ei,'brand',e.target.value))} style={inp} />
                 </div>
                 <div>
                   <label style={lbl}>Modelo / Serie</label>
-                  <input value={eq.model} onChange={e => setEqField(ei,'model',e.target.value)} style={inp} />
+                  <input value={eq.model} onChange={withUppercase(e => setEqField(ei,'model',e.target.value))} style={inp} />
                 </div>
               </div>
               <div style={{ marginTop:14, background:C.dark, borderRadius:8, padding:'12px 14px', border:'1px solid #3b82f633' }}>

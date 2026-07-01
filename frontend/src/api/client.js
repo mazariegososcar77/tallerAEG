@@ -30,8 +30,13 @@ client.interceptors.response.use(
       }
     }
 
+    // Mensaje siempre en español: el del backend si existe; si no hubo respuesta
+    // (red caída, servidor apagado) se evita el texto en inglés de axios.
     const normalized = new Error(
-      error.response?.data?.error || error.message || 'Error de conexion con el servidor',
+      error.response?.data?.error
+        || (error.response
+          ? 'Ocurrió un error inesperado. Inténtalo de nuevo.'
+          : 'No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.'),
     );
     normalized.status = status;
     normalized.details = error.response?.data?.details;

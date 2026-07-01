@@ -36,6 +36,10 @@ mysql -u root -p taller_aeg < 002_seed.sql
 | `007_article_labor.sql` | Tabla `article_labor` (mano de obra de un artículo) con FK a `articles`. |
 | `008_clients.sql` | Tablas `client_types`, `loyalty_tiers` (fidelización) y `clients` con FKs e índices. |
 | `009_clients_seed.sql` | Permisos del módulo de clientes, su mapeo a roles, y tipos/niveles por defecto. |
+| `010_loyalty_tier_appearance.sql` | Agrega `color` e `icon` a `loyalty_tiers`. |
+| `011_work_orders.sql` | Tablas del módulo de órdenes de trabajo. |
+| `012_machines_maintenance.sql` | Tablas de máquinas y mantenimientos programados. |
+| `013_clients_nullable_optional.sql` | Hace `email` de `clients` nullable (campo opcional). `last_name` sigue obligatorio. |
 
 > Nota sobre la contraseña del admin en `002_seed.sql`: MySQL no genera hashes bcrypt. El script
 > trae un hash válido para `Admin123!`. Para regenerarlo:

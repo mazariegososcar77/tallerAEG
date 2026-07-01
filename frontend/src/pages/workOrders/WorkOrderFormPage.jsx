@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { getToken } from '../../lib/authStorage.js';
+import { withUppercase } from '../../lib/text.js';
 
 const WORK_TYPES = ['Rebobinado','Mantenimiento','Reparacion','Cambio de conexion','Calculo de voltaje','Otros'];
 const STATUS_OPTIONS = [
@@ -193,9 +194,9 @@ export default function WorkOrderFormPage() {
               </div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap:10, marginTop:10 }}>
-              <div><label style={lbl}>Autorizado por</label><input value={form.authorized_by||''} onChange={e => set('authorized_by', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Proyecto</label><input value={form.project||''} onChange={e => set('project', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>No. Cotizacion</label><input value={form.quotation_number||''} onChange={e => set('quotation_number', e.target.value)} style={inp} /></div>
+              <div><label style={lbl}>Autorizado por</label><input value={form.authorized_by||''} onChange={withUppercase(e => set('authorized_by', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Proyecto</label><input value={form.project||''} onChange={withUppercase(e => set('project', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>No. Cotizacion</label><input value={form.quotation_number||''} onChange={withUppercase(e => set('quotation_number', e.target.value))} style={inp} /></div>
               <div>
                 <label style={lbl}>Estado</label>
                 <select value={form.status} onChange={e => set('status', e.target.value)} style={{ ...inp, cursor:'pointer' }}>
@@ -211,17 +212,17 @@ export default function WorkOrderFormPage() {
           <SectionHeader title="Datos del Equipo" />
           <div style={secBody}>
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap:10 }}>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre del Equipo</label><input value={form.equipment_name||''} onChange={e => set('equipment_name', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Marca</label><input value={form.brand||''} onChange={e => set('brand', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Serie / Modelo</label><input value={form.serial||''} onChange={e => set('serial', e.target.value)} style={inp} /></div>
+              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre del Equipo</label><input value={form.equipment_name||''} onChange={withUppercase(e => set('equipment_name', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Marca</label><input value={form.brand||''} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Serie / Modelo</label><input value={form.serial||''} onChange={withUppercase(e => set('serial', e.target.value))} style={inp} /></div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr 1fr' : 'repeat(6,1fr)', gap:10, marginTop:10 }}>
               <div><label style={lbl}>KW</label><input type='number' value={form.kw||''} onChange={e => set('kw', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Voltaje</label><input value={form.voltage||''} onChange={e => set('voltage', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Amperaje</label><input value={form.amperage||''} onChange={e => set('amperage', e.target.value)} style={inp} /></div>
+              <div><label style={lbl}>Voltaje</label><input value={form.voltage||''} onChange={withUppercase(e => set('voltage', e.target.value))} style={inp} /></div>
+              <div><label style={lbl}>Amperaje</label><input value={form.amperage||''} onChange={withUppercase(e => set('amperage', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>RPM</label><input type='number' value={form.rpm||''} onChange={e => set('rpm', e.target.value)} style={inp} /></div>
               <div><label style={lbl}>HP</label><input type='number' value={form.hp||''} onChange={e => set('hp', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Frame</label><input value={form.frame||''} onChange={e => set('frame', e.target.value)} style={inp} /></div>
+              <div><label style={lbl}>Frame</label><input value={form.frame||''} onChange={withUppercase(e => set('frame', e.target.value))} style={inp} /></div>
             </div>
           </div>
         </div>
@@ -239,17 +240,17 @@ export default function WorkOrderFormPage() {
                 </select>
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
-                <div><label style={lbl}>DTE No.</label><input value={form.dte_number||''} onChange={e => set('dte_number', e.target.value)} style={inp} /></div>
-                <div><label style={lbl}>O.C. No.</label><input value={form.oc_number||''} onChange={e => set('oc_number', e.target.value)} style={inp} /></div>
+                <div><label style={lbl}>DTE No.</label><input value={form.dte_number||''} onChange={withUppercase(e => set('dte_number', e.target.value))} style={inp} /></div>
+                <div><label style={lbl}>O.C. No.</label><input value={form.oc_number||''} onChange={withUppercase(e => set('oc_number', e.target.value))} style={inp} /></div>
               </div>
               <div style={{ marginTop:10 }}>
                 <label style={lbl}>Observaciones</label>
-                <textarea value={form.observations||''} onChange={e => set('observations', e.target.value)} rows={3} style={{ ...inp, resize:'vertical' }} />
+                <textarea value={form.observations||''} onChange={withUppercase(e => set('observations', e.target.value))} rows={3} style={{ ...inp, resize:'vertical' }} />
               </div>
               <div style={{ borderTop:'1px solid '+C.border, margin:'12px 0' }} />
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                <div><label style={lbl}>Tecnico Desarma</label><input value={form.tech_disarm||''} onChange={e => set('tech_disarm', e.target.value)} style={inp} /></div>
-                <div><label style={lbl}>Tecnico Arma</label><input value={form.tech_assemble||''} onChange={e => set('tech_assemble', e.target.value)} style={inp} /></div>
+                <div><label style={lbl}>Tecnico Desarma</label><input value={form.tech_disarm||''} onChange={withUppercase(e => set('tech_disarm', e.target.value))} style={inp} /></div>
+                <div><label style={lbl}>Tecnico Arma</label><input value={form.tech_assemble||''} onChange={withUppercase(e => set('tech_assemble', e.target.value))} style={inp} /></div>
               </div>
               <div style={{ background:C.input, border:'2px solid '+C.orange+'55', borderRadius:8, padding:'10px 14px', marginTop:10 }}>
                 <label style={{ ...lbl, color:C.orange }}>Total (Q)</label>

@@ -112,10 +112,8 @@ export default function MaintenanceCalendar() {
     return `${d} de ${MONTHS[m - 1]} de ${y}`;
   };
 
-  const cellH = isMobile ? 38 : 46;
-
   return (
-    <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:16, width:'100%', maxWidth:560 }}>
+    <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:16, width:'100%' }}>
 
       {/* Movil: boton para mostrar/ocultar el calendario */}
       {isMobile && (
@@ -194,7 +192,7 @@ export default function MaintenanceCalendar() {
               disabled={!has}
               title={has ? titleParts.join(' · ') : undefined}
               style={{
-                position:'relative', height:cellH, borderRadius:8, fontSize:13, fontWeight:isToday ? 800 : 500,
+                position:'relative', aspectRatio:'1 / 0.82', minHeight:36, borderRadius:8, fontSize:'clamp(12px, 1.4vw, 15px)', fontWeight:isToday ? 800 : 500,
                 border:'1px solid ' + (isToday ? C.orange : (has ? tint + '66' : 'transparent')),
                 background: has ? tint + '22' : 'transparent',
                 color: has ? tint : C.text,

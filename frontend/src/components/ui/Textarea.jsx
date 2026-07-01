@@ -1,5 +1,14 @@
-export default function Textarea({ label, error, id, className = '', rows = 3, ...props }) {
+import { uppercaseInPlace } from '../../lib/text.js';
+
+export default function Textarea({ label, error, id, className = '', rows = 3, noUppercase = false, onChange, ...props }) {
   const fieldId = id || props.name;
+
+  // Mayúsculas mientras el usuario escribe (conserva la posición del cursor).
+  const handleChange = (e) => {
+    if (!noUppercase) uppercaseInPlace(e.target);
+    onChange?.(e);
+  };
+
   return (
     <div className={className}>
       {label && (
@@ -10,6 +19,7 @@ export default function Textarea({ label, error, id, className = '', rows = 3, .
       <textarea
         id={fieldId}
         rows={rows}
+        onChange={handleChange}
         className={`w-full resize-y rounded-md border bg-surface2 px-3 py-2 text-sm text-content
           placeholder:text-slate-500 focus-brand
           ${error ? 'border-red-400' : 'border-line'}`}
