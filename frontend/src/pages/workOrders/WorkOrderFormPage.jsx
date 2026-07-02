@@ -2,8 +2,14 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
+import { clientTypesApi } from '../../api/clientTypesApi.js';
+import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
 import { getToken } from '../../lib/authStorage.js';
 import { withUppercase } from '../../lib/text.js';
+import { useAuth } from '../../hooks/useAuth.js';
+import Combobox from '../../components/ui/Combobox.jsx';
+import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import ClientFormModal from '../clients/ClientFormModal.jsx';
 
 const WORK_TYPES = ['Rebobinado','Mantenimiento','Reparacion','Cambio de conexion','Calculo de voltaje','Otros'];
 const STATUS_OPTIONS = [
@@ -61,7 +67,11 @@ export default function WorkOrderFormPage() {
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
+  const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
+  const [clientTypes, setClientTypes] = useState([]);
+  const [loyaltyTiers, setLoyaltyTiers] = useState([]);
+  const [showClientModal, setShowClientModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [orderNumber, setOrderNumber] = useState('—');
   const [form, setForm] = useState({
@@ -77,6 +87,8 @@ export default function WorkOrderFormPage() {
 
   useEffect(() => {
     clientsApi.list().then(setClients);
+    clientTypesApi.list().then(setClientTypes);
+    loyaltyTiersApi.list().then(setLoyaltyTiers);
     if (isEdit) {
       workOrdersApi.get(id).then(order => {
         const { items:oi, ...rest } = order;
@@ -92,6 +104,12 @@ export default function WorkOrderFormPage() {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
+  // Tras crear un cliente "rapido": recarga la lista y lo deja seleccionado.
+  const handleClientSaved = (created) => {
+    clientsApi.list().then(setClients);
+    if (created?.id) set('client_id', created.id);
+    setShowClientModal(false);
+  };
 
   const handleSubmit = async () => {
     if (!form.client_id) return alert('Selecciona un cliente');
@@ -177,10 +195,13 @@ export default function WorkOrderFormPage() {
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap:10 }}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Cliente *</label>
-                <select value={form.client_id} onChange={e => set('client_id', e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-                  <option value=''>Seleccionar cliente...</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.full_name || c.first_name}</option>)}
-                </select>
+                <ClientPicker
+                  clients={clients}
+                  value={form.client_id}
+                  onChange={v => set('client_id', v)}
+                  canCreate={hasPermission('clients.quick-create')}
+                  onCreateNew={() => setShowClientModal(true)}
+                />
               </div>
               <div>
                 <label style={lbl}>Fecha Recibido *</label>
@@ -199,9 +220,7 @@ export default function WorkOrderFormPage() {
               <div><label style={lbl}>No. Cotizacion</label><input value={form.quotation_number||''} onChange={withUppercase(e => set('quotation_number', e.target.value))} style={inp} /></div>
               <div>
                 <label style={lbl}>Estado</label>
-                <select value={form.status} onChange={e => set('status', e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-                  {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
               </div>
             </div>
           </div>
@@ -234,10 +253,8 @@ export default function WorkOrderFormPage() {
             <div style={secBody}>
               <div>
                 <label style={lbl}>Tipo de Trabajo</label>
-                <select value={form.work_type||''} onChange={e => set('work_type', e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-                  <option value=''>Seleccionar...</option>
-                  {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
+                  options={WORK_TYPES.map(t => ({ value:t, label:t }))} placeholder="Seleccionar..." />
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:10 }}>
                 <div><label style={lbl}>DTE No.</label><input value={form.dte_number||''} onChange={withUppercase(e => set('dte_number', e.target.value))} style={inp} /></div>
@@ -279,6 +296,16 @@ export default function WorkOrderFormPage() {
         </div>
         <div style={{ paddingBottom:32 }} />
       </div>
+
+      <ClientFormModal
+        open={showClientModal}
+        onClose={() => setShowClientModal(false)}
+        onSaved={handleClientSaved}
+        client={null}
+        quick
+        clientTypes={clientTypes}
+        loyaltyTiers={loyaltyTiers}
+      />
     </div>
   );
 }

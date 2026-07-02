@@ -47,6 +47,9 @@ const PERMISSION_CATALOG = [
   { module: 'Configuracion', code: 'loyalty.create', description: 'Crear niveles de fidelizacion' },
   { module: 'Configuracion', code: 'loyalty.update', description: 'Editar niveles de fidelizacion' },
   { module: 'Configuracion', code: 'loyalty.delete', description: 'Eliminar niveles de fidelizacion' },
+  // Permisos de validacion de clientes (ids 35 y 36; coherentes con 014_clients_validation.sql).
+  { module: 'Clientes', code: 'clients.quick-create', description: 'Crear clientes rapidos (desde ordenes/cotizaciones)' },
+  { module: 'Clientes', code: 'clients.validate', description: 'Validar clientes' },
 ];
 
 const PERMISSIONS = PERMISSION_CATALOG.map((p, i) => ({ id: i + 1, ...p }));
@@ -80,6 +83,7 @@ const ROLE_DEFS = [
       'clients.view',
       'clients.create',
       'clients.update',
+      'clients.quick-create',
       'client-types.view',
       'loyalty.view',
     ],

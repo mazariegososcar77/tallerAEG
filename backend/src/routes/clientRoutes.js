@@ -35,7 +35,11 @@ router.use(authenticate);
 
 router.get('/',    requirePermission('clients.view'),   clientController.list);
 router.post('/',   requirePermission('clients.create'), validate(createSchema), clientController.create);
+// Alta rapida desde ordenes/cotizaciones: crea el cliente sin validar.
+router.post('/quick', requirePermission('clients.quick-create'), validate(createSchema), clientController.quickCreate);
 router.get('/:id', requirePermission('clients.view'),   clientController.getById);
+// Marca un cliente como validado (revision del administrador).
+router.patch('/:id/validate', requirePermission('clients.validate'), clientController.validate);
 router.put('/:id', requirePermission('clients.update'), validate(updateSchema), clientController.update);
 router.delete('/:id', requirePermission('clients.delete'), clientController.remove);
 

@@ -7,6 +7,9 @@ import { clientTypesApi } from '../../api/clientTypesApi.js';
 import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
 import ClientFormModal from '../clients/ClientFormModal.jsx';
 import ArticleQuickModal from '../../components/quotes/ArticleQuickModal.jsx';
+import Combobox from '../../components/ui/Combobox.jsx';
+import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import { useAuth } from '../../hooks/useAuth.js';
 import { withUppercase } from '../../lib/text.js';
 
 const STATUS_OPTIONS = [
@@ -49,15 +52,16 @@ function ItemsTable({ items, onChange, onAdd, onRemove, color, articles, onOpenM
         const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
         return (
           <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 70px 100px 90px 30px', gap:6, marginBottom:5 }}>
-            <select value={''} onChange={e => {
-              if (e.target.value === '__new__') { onOpenModal && onOpenModal(); return; }
-              if (e.target.value) onChange(i,'description', e.target.value);
-            }} style={{ ...inp, cursor:'pointer', marginBottom: articles?.length ? 4 : 0 }}>
-              <option value=''>Seleccionar o escribir...</option>
-              {onOpenModal && <option value='__new__' style={{ fontWeight:700 }}>+ Agregar nuevo</option>}
-              {onOpenModal && <option disabled>______________</option>}
-              {(articles||[]).map(a => <option key={a.id} value={a.name}>{a.name}{a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}{a.quantity===0 ? ' (sin stock)' : ''}</option>)}
-            </select>
+            <Combobox
+              value={''}
+              onChange={v => { if (v) onChange(i,'description', v); }}
+              options={(articles||[]).map(a => ({ value:a.name, label:`${a.name}${a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}${a.quantity===0 ? ' (sin stock)' : ''}`, keywords:a.name }))}
+              searchable
+              onCreateNew={onOpenModal}
+              createLabel="Agregar nuevo"
+              placeholder="Seleccionar o escribir..."
+              wrapperStyle={{ marginBottom: articles?.length ? 4 : 0 }}
+            />
             <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="O escribir descripcion..." style={{ ...inp, fontSize:11 }} />
             <input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} />
             <input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} />
@@ -78,6 +82,7 @@ export default function QuoteFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+  const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState([]);
@@ -116,8 +121,9 @@ export default function QuoteFormPage() {
   }, [id]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]:v }));
-  const handleClientSaved = () => {
-    clientsApi.list().then(data => { setClients(data); if (data.length>0) set('client_id', data[data.length-1].id); });
+  const handleClientSaved = (created) => {
+    clientsApi.list().then(setClients);
+    if (created?.id) set('client_id', created.id);
     setShowClientModal(false);
   };
   const handleArticleSaved = (created) => {
@@ -190,12 +196,13 @@ export default function QuoteFormPage() {
             <div style={g('1fr 1fr 1fr 1fr')}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Cliente *</label>
-                <select value={form.client_id} onChange={e => { if (e.target.value==='__new__') { setShowClientModal(true); return; } set('client_id',e.target.value); }} style={{ ...inp, cursor:'pointer' }}>
-                  <option value=''>Seleccionar cliente...</option>
-                  <option value='__new__' style={{ color:C.orange, fontWeight:700 }}>+ Nuevo cliente</option>
-                  <option disabled>______________</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.full_name||c.first_name}</option>)}
-                </select>
+                <ClientPicker
+                  clients={clients}
+                  value={form.client_id}
+                  onChange={v => set('client_id', v)}
+                  canCreate={hasPermission('clients.quick-create')}
+                  onCreateNew={() => setShowClientModal(true)}
+                />
               </div>
               <div>
                 <label style={lbl}>Fecha *</label>
@@ -209,16 +216,12 @@ export default function QuoteFormPage() {
             <div style={{ ...g('1fr 1fr 1fr 1fr'), marginTop:10 }}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Tipo de Trabajo</label>
-                <select value={form.work_type||''} onChange={e => set('work_type',e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-                  <option value=''>Seleccionar...</option>
-                  {WORK_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
+                  options={WORK_TYPES.map(t => ({ value:t, label:t }))} placeholder="Seleccionar..." />
               </div>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Estado</label>
-                <select value={form.status} onChange={e => set('status',e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-                  {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
+                <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
               </div>
             </div>
             <div style={{ marginTop:10 }}>
@@ -310,7 +313,7 @@ export default function QuoteFormPage() {
         onSaved={handleArticleSaved}
         type={articleModal || 'labor'}
       />
-      <ClientFormModal open={showClientModal} onClose={() => setShowClientModal(false)} onSaved={handleClientSaved} client={null} clientTypes={clientTypes} loyaltyTiers={loyaltyTiers} />
+      <ClientFormModal open={showClientModal} onClose={() => setShowClientModal(false)} onSaved={handleClientSaved} client={null} quick clientTypes={clientTypes} loyaltyTiers={loyaltyTiers} />
     </div>
   );
 }

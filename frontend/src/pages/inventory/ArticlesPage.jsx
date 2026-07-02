@@ -9,6 +9,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
+import Combobox from '../../components/ui/Combobox.jsx';
 import BulkUploadModal from './BulkUploadModal.jsx';
 import ArticleViewModal from './ArticleViewModal.jsx';
 
@@ -89,14 +90,10 @@ export default function ArticlesPage() {
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por codigo o nombre..." style={{ ...inp, width:'100%', paddingLeft:32, boxSizing:'border-box' }} />
         </div>
-        <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-          <option value=''>Todos los tipos</option>
-          {types.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-        </select>
-        <select value={warehouseFilter} onChange={e => setWarehouseFilter(e.target.value)} style={{ ...inp, cursor:'pointer' }}>
-          <option value=''>Todas las bodegas</option>
-          {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
-        </select>
+        <Combobox value={typeFilter} onChange={setTypeFilter}
+          options={[{ value:'', label:'Todos los tipos' }, ...types.map(t => ({ value:t.id, label:t.name }))]} />
+        <Combobox value={warehouseFilter} onChange={setWarehouseFilter}
+          options={[{ value:'', label:'Todas las bodegas' }, ...warehouses.map(w => ({ value:w.id, label:w.name }))]} />
       </div>
 
       {/* Tabla Desktop */}

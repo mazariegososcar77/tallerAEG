@@ -10,6 +10,12 @@ export const getById = asyncHandler(async (req, res) => {
 export const create = asyncHandler(async (req, res) => {
   res.status(201).json(await clientService.create(req.body));
 });
+export const quickCreate = asyncHandler(async (req, res) => {
+  res.status(201).json(await clientService.quickCreate(req.body));
+});
+export const validate = asyncHandler(async (req, res) => {
+  res.json(await clientService.validate(req.params.id));
+});
 export const update = asyncHandler(async (req, res) => {
   res.json(await clientService.update(req.params.id, req.body));
 });
