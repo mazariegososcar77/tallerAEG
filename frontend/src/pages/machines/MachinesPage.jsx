@@ -3,6 +3,8 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Wrench, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { withUppercase } from '../../lib/text.js';
+import Combobox from '../../components/ui/Combobox.jsx';
+import ClientPicker from '../../components/clients/ClientPicker.jsx';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', red:'#ef4444' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
@@ -60,10 +62,13 @@ export default function MachinesPage() {
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder='Buscar...' style={{ ...inp, paddingLeft:32 }} />
         </div>
-        <select value={clientFilter} onChange={e => { setClientFilter(e.target.value); loadMachines(e.target.value || undefined); }} style={{ ...inp, width:'auto', minWidth:200, cursor:'pointer' }}>
-          <option value=''>Todos los clientes</option>
-          {clients.map(c => <option key={c.id} value={c.id}>{c.full_name || c.first_name}</option>)}
-        </select>
+        <Combobox
+          value={clientFilter}
+          onChange={v => { setClientFilter(v); loadMachines(v || undefined); }}
+          options={[{ value:'', label:'Todos los clientes' }, ...clients.map(c => ({ value:c.id, label:c.full_name || c.first_name, keywords:`${c.full_name||''} ${c.nit||''} ${c.dpi||''}` }))]}
+          searchable
+          wrapperStyle={{ minWidth:200 }}
+        />
       </div>
       {loading ? <p style={{ color:C.muted, textAlign:'center', marginTop:40 }}>Cargando...</p> : (
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
@@ -96,7 +101,7 @@ export default function MachinesPage() {
           <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:24, width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto' }}>
             <h2 style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:20 }}>{editing ? 'Editar Maquina' : 'Nueva Maquina'}</h2>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Cliente *</label><select value={form.client_id} onChange={e => set('client_id', e.target.value)} style={{ ...inp, cursor:'pointer' }}><option value=''>Seleccionar...</option>{clients.map(c => <option key={c.id} value={c.id}>{c.full_name || c.first_name}</option>)}</select></div>
+              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Cliente *</label><ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} /></div>
               <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre *</label><input value={form.name} onChange={withUppercase(e => set('name', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>Marca</label><input value={form.brand} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>Modelo</label><input value={form.model} onChange={withUppercase(e => set('model', e.target.value))} style={inp} /></div>

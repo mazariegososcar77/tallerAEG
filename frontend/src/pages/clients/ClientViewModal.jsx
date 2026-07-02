@@ -38,6 +38,11 @@ export default function ClientViewModal({ open, onClose, client }) {
           ) : (
             <Badge variant="gray">Inactivo</Badge>
           )}
+          {client.is_validated === 0 ? (
+            <Badge variant="warning">Pendiente de validación</Badge>
+          ) : (
+            <Badge variant="success">Validado</Badge>
+          )}
         </div>
 
         <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">

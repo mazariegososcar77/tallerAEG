@@ -3,10 +3,11 @@ const VARIANTS = {
   orange: 'bg-orange-100 text-orange-700',
   success: 'bg-green-100 text-green-700',
   danger: 'bg-red-100 text-red-700',
+  warning: 'bg-amber-100 text-amber-700',
   gray: 'bg-slate-100 text-slate-600',
 };
 
-/** Etiqueta tipo pill. variant: navy | orange | success | danger | gray */
+/** Etiqueta tipo pill. variant: navy | orange | success | danger | warning | gray */
 export default function Badge({ variant = 'gray', className = '', children }) {
   return (
     <span

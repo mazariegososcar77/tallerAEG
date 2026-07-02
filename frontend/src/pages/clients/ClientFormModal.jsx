@@ -28,7 +28,7 @@ function getClientCategory(clientTypes, clientTypeId) {
   return 'empresa';
 }
 
-export default function ClientFormModal({ open, onClose, onSaved, client, clientTypes, loyaltyTiers }) {
+export default function ClientFormModal({ open, onClose, onSaved, client, clientTypes, loyaltyTiers, quick = false }) {
   const isEdit = Boolean(client);
   const [form, setForm] = useState(emptyForm);
   const [errors, setErrors] = useState({});
@@ -78,9 +78,11 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
       dependency: form.dependency,
     };
     try {
-      if (isEdit) { await clientsApi.update(client.id, payload); notify.success('Cliente actualizado'); }
-      else { await clientsApi.create(payload); notify.success('Cliente creado'); }
-      onSaved();
+      let saved;
+      if (isEdit) { saved = await clientsApi.update(client.id, payload); notify.success('Cliente actualizado'); }
+      else if (quick) { saved = await clientsApi.quickCreate(payload); notify.success('Cliente creado (pendiente de validacion)'); }
+      else { saved = await clientsApi.create(payload); notify.success('Cliente creado'); }
+      onSaved(saved);
     } catch (err) {
       if (err.details?.length) setErrors(Object.fromEntries(err.details.map(d => [d.field, d.message])));
       notify.error(err.message);
@@ -119,6 +121,16 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
       }
     >
       <form id="client-form" onSubmit={handleSubmit} className="space-y-4">
+
+        {/* Aviso de alta rapida: el cliente entra pendiente de validacion. */}
+        {quick && !isEdit && (
+          <div style={{ display:'flex', alignItems:'flex-start', gap:8, padding:'8px 12px', background:'#f59e0b18', border:'1px solid #f59e0b55', borderRadius:8 }}>
+            <span style={{ fontSize:15, lineHeight:1.3 }}>⏳</span>
+            <span style={{ fontSize:12.5, color:'var(--c-text)', lineHeight:1.4 }}>
+              Este cliente se creará como <strong>pendiente de validación</strong>. Podrás usarlo de inmediato; un administrador revisará sus datos.
+            </span>
+          </div>
+        )}
 
         {/* Tipo de cliente primero */}
         <div>

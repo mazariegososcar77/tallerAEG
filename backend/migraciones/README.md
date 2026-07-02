@@ -40,6 +40,7 @@ mysql -u root -p taller_aeg < 002_seed.sql
 | `011_work_orders.sql` | Tablas del módulo de órdenes de trabajo. |
 | `012_machines_maintenance.sql` | Tablas de máquinas y mantenimientos programados. |
 | `013_clients_nullable_optional.sql` | Hace `email` de `clients` nullable (campo opcional). `last_name` sigue obligatorio. |
+| `014_clients_validation.sql` | Agrega `is_validated` a `clients` y los permisos `clients.quick-create` y `clients.validate` (con su mapeo a roles). |
 
 > Nota sobre la contraseña del admin en `002_seed.sql`: MySQL no genera hashes bcrypt. El script
 > trae un hash válido para `Admin123!`. Para regenerarlo:

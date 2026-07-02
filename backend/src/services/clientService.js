@@ -24,7 +24,23 @@ export async function getById(id) {
 }
 
 export async function create(data) {
+  // is_validated no viaja en el payload (el schema zod lo descarta); la columna
+  // usa su DEFAULT (1), asi que las altas del modulo Clientes entran validadas.
   return clientRepository.create(normalize(data));
+}
+
+// Alta "de ultima instancia" desde el selector de Ordenes/Cotizaciones: el
+// cliente puede usarse de inmediato pero entra SIN validar para que un
+// administrador revise sus datos despues.
+export async function quickCreate(data) {
+  return clientRepository.create({ ...normalize(data), is_validated: 0 });
+}
+
+// Marca un cliente como validado tras la revision del administrador.
+export async function validate(id) {
+  const existing = await clientRepository.findById(id);
+  if (!existing) throw new ApiError(404, 'Cliente no encontrado');
+  return clientRepository.update(id, { is_validated: 1 });
 }
 
 export async function update(id, patch) {
