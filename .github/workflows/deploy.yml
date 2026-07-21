@@ -27,7 +27,7 @@ jobs:
           else
             echo "path=/home/oscar/tallerAEG-dev" >> $GITHUB_OUTPUT
             echo "project=talleraeg-dev" >> $GITHUB_OUTPUT
-            echo "branch=develop" >> $GITHUB_OUTPUT
+            echo "branch=developer" >> $GITHUB_OUTPUT
           fi
 
       - name: Desplegar en la VM
