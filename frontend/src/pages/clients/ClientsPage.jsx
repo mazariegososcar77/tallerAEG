@@ -12,7 +12,7 @@ import ClientFormModal from './ClientFormModal.jsx';
 import ClientViewModal from './ClientViewModal.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
-const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 const inp = { background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:13, outline:'none' };
 
 export default function ClientsPage() {
@@ -91,7 +91,7 @@ export default function ClientsPage() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <Contact size={26} color="#E8551C" />
+          <Contact size={26} color="#CA8A04" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Clientes</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>

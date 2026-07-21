@@ -94,9 +94,9 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
                 <button key={cat.id} onClick={() => setSelectedCat(cat)}
                   style={{
                     padding:'8px 6px', borderRadius:7, cursor:'pointer', fontSize:12, fontWeight:600,
-                    background: selectedCat?.id === cat.id ? '#E8551C22' : 'var(--c-surface-2)',
-                    border: '1px solid ' + (selectedCat?.id === cat.id ? '#E8551C' : 'var(--c-line)'),
-                    color: selectedCat?.id === cat.id ? '#E8551C' : '#94a3b8',
+                    background: selectedCat?.id === cat.id ? '#CA8A0422' : 'var(--c-surface-2)',
+                    border: '1px solid ' + (selectedCat?.id === cat.id ? '#CA8A04' : 'var(--c-line)'),
+                    color: selectedCat?.id === cat.id ? '#CA8A04' : '#94a3b8',
                   }}>
                   <div style={{ fontSize:10, color:'#64748b' }}>{cat.prefix}</div>
                   {cat.name}

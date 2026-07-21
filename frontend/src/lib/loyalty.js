@@ -10,11 +10,11 @@ export const LOYALTY_COLORS = [
   { key: 'emerald', label: 'Esmeralda', value: '#10B981' },
   { key: 'sapphire', label: 'Zafiro', value: '#2563EB' },
   { key: 'ruby', label: 'Rubi', value: '#DC2626' },
-  { key: 'orange', label: 'Naranja', value: '#E8551C' },
-  { key: 'navy', label: 'Azul marino', value: '#16285C' },
+  { key: 'yellow', label: 'Amarillo', value: '#CA8A04' },
+  { key: 'green', label: 'Verde oscuro', value: '#164B2C' },
 ];
 
-export const DEFAULT_LOYALTY_COLOR = '#E8551C';
+export const DEFAULT_LOYALTY_COLOR = '#CA8A04';
 
 /** Iconos distintivos disponibles (lucide). Se guarda el `key` en BD. */
 export const LOYALTY_ICONS = [

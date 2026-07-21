@@ -89,7 +89,7 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
         {isEdit && !showPassword && (
           <div>
             <button type="button" onClick={() => setShowPassword(true)}
-              style={{ fontSize:13, color:'#E8551C', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline' }}>
+              style={{ fontSize:13, color:'#CA8A04', background:'none', border:'none', cursor:'pointer', padding:0, textDecoration:'underline' }}>
               Cambiar contrasena
             </button>
           </div>
