@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - develop
 
 jobs:
   deploy:
@@ -16,12 +17,26 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Definir entorno según rama
+        id: env
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "path=/home/oscar/tallerAEG" >> $GITHUB_OUTPUT
+            echo "project=talleraeg-prod" >> $GITHUB_OUTPUT
+            echo "branch=main" >> $GITHUB_OUTPUT
+          else
+            echo "path=/home/oscar/tallerAEG-dev" >> $GITHUB_OUTPUT
+            echo "project=talleraeg-dev" >> $GITHUB_OUTPUT
+            echo "branch=develop" >> $GITHUB_OUTPUT
+          fi
+
       - name: Desplegar en la VM
         run: |
-          ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << 'EOF'
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << EOF
             set -e
-            cd ${{ secrets.PROJECT_PATH }}
-            git pull origin main
-            docker compose up -d --build
+            cd ${{ steps.env.outputs.path }}
+            git pull origin ${{ steps.env.outputs.branch }}
+            cd docker
+            docker compose -p ${{ steps.env.outputs.project }} up -d --build
             docker image prune -f
           EOF
