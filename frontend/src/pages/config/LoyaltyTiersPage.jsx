@@ -13,7 +13,7 @@ import ConfirmDialog from "../../components/ui/ConfirmDialog.jsx";
 import LoyaltyTierTag from "../../components/clients/LoyaltyTierTag.jsx";
 import { LOYALTY_COLORS, LOYALTY_ICONS, DEFAULT_LOYALTY_COLOR, DEFAULT_LOYALTY_ICON } from "../../lib/loyalty.js";
 
-const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#E8551C" };
+const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#CA8A04" };
 const emptyForm = { name:"", discount:0, benefits:"", color:DEFAULT_LOYALTY_COLOR, icon:DEFAULT_LOYALTY_ICON, is_active:true };
 
 export default function LoyaltyTiersPage() {
@@ -55,7 +55,7 @@ export default function LoyaltyTiersPage() {
     <div style={{ padding:"20px 16px", maxWidth:900, margin:"0 auto" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:12, marginBottom:20 }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <Award size={26} color="#E8551C" />
+          <Award size={26} color="#CA8A04" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Fidelizacion</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>Niveles de fidelizacion: descuento y beneficios</p>

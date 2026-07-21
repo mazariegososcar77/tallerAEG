@@ -9,8 +9,8 @@ import ColorPicker from '../ui/ColorPicker.jsx';
 import ConfirmDialog from '../ui/ConfirmDialog.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
-const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", input:"var(--c-surface-2)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#E8551C" };
-const DEFAULT_COLOR = "#16285C";
+const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", input:"var(--c-surface-2)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#CA8A04" };
+const DEFAULT_COLOR = "#164B2C";
 
 export default function CatalogManager({ title, subtitle, emoji, entityLabel, items, loading, reload, api, permPrefix, withColor=false }) {
   const { hasPermission } = useAuth();

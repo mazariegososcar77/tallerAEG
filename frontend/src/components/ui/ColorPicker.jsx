@@ -2,12 +2,13 @@ import { Check } from 'lucide-react';
 
 // Paleta de colores sugeridos (mas la opcion personalizada al final).
 const PRESETS = [
-  '#16285C', // navy marca
-  '#E8551C', // naranja marca
+  '#164B2C', // verde marca
+  '#CA8A04', // amarillo marca
   '#2563EB', // azul
   '#0891B2', // cian
   '#059669', // verde
-  '#CA8A04', // amarillo
+  '#EAB308', // amarillo claro
+  '#EA580C', // naranja
   '#DC2626', // rojo
   '#7C3AED', // morado
   '#DB2777', // rosa

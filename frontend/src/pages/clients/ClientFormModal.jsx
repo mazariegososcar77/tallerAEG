@@ -100,7 +100,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
 
   const categoryLabels = {
     particular: { icon: '👤', label: 'Persona Individual', color: '#3b82f6' },
-    empresa:    { icon: '🏢', label: 'Empresa / Sociedad', color: '#E8551C' },
+    empresa:    { icon: '🏢', label: 'Empresa / Sociedad', color: '#CA8A04' },
     gobierno:   { icon: '🏛️', label: 'Entidad de Gobierno', color: '#1D9E75' },
   };
   const cat = category ? categoryLabels[category] : null;

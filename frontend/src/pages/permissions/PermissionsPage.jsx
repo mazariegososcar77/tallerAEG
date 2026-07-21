@@ -2,7 +2,7 @@ import { KeyRound } from "lucide-react";
 import { useMemo } from 'react';
 import { usePermissions } from '../../hooks/usePermissions.js';
 
-const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 
 export default function PermissionsPage() {
   const { permissions, loading } = usePermissions();
@@ -15,7 +15,7 @@ export default function PermissionsPage() {
   return (
     <div style={{ padding:'20px 16px', maxWidth:1100, margin:'0 auto' }}>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:20 }}>
-        <KeyRound size={26} color="#E8551C" />
+        <KeyRound size={26} color="#CA8A04" />
         <div>
           <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Permisos</h1>
           <p style={{ fontSize:13, color:C.muted, margin:0 }}>Catalogo de permisos del sistema (solo lectura)</p>
