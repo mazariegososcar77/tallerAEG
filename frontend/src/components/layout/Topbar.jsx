@@ -55,7 +55,7 @@ export default function Topbar({ onMenu }) {
           <p style={{ fontSize:11, color:'var(--c-muted)', margin:0 }}>{user?.role?.name}</p>
         </div>
         {/* Circulo con la inicial del usuario, a modo de avatar */}
-        <div style={{ width:36, height:36, borderRadius:'50%', background:'#E8551C', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, color:'#fff', fontSize:15 }}>
+        <div style={{ width:36, height:36, borderRadius:'50%', background:'#CA8A04', display:'flex', alignItems:'center', justifyContent:'center', fontWeight:700, color:'#fff', fontSize:15 }}>
           {initial}
         </div>
         {/* Boton para cerrar sesion */}

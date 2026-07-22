@@ -5,7 +5,7 @@ import { maintenanceApi } from '../../api/maintenanceApi.js';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { notify } from '../../lib/toast.js';
 
-const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', red:'#ef4444' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const pad = (n) => String(n).padStart(2, '0');
 

@@ -14,7 +14,7 @@ export default function App() {
           position="top-center"
           toastOptions={{
             duration: 3500,
-            style: { borderRadius: '10px', background: '#16285C', color: '#fff', fontSize: '14px' },
+            style: { borderRadius: '10px', background: '#164B2C', color: '#fff', fontSize: '14px' },
             success: { iconTheme: { primary: '#22c55e', secondary: '#fff' } },
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}

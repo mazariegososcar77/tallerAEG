@@ -63,7 +63,7 @@ export default function QuotesPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <FileText size={26} color="#E8551C" />
+          <FileText size={26} color="#CA8A04" />
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Cotizaciones</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{quotes.length} cotizaciones registradas</p>
@@ -71,7 +71,7 @@ export default function QuotesPage() {
         </div>
         <button
           onClick={() => navigate('/cotizaciones/nueva')}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#E8551C', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#CA8A04', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
         >
           <Plus size={18} /> Nueva Cotización
         </button>
@@ -105,7 +105,7 @@ export default function QuotesPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700, fontSize: 16, color: '#E8551C' }}>No. {q.number}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, color: '#CA8A04' }}>No. {q.number}</span>
                       <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                     </div>
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{q.client_name || '—'}</p>

@@ -62,7 +62,7 @@ export default function WorkOrderViewModal({ open, onClose, orderId, onDownload 
       onClose={onClose}
       title="Detalle de la orden"
       size="lg"
-      accentColor="#E8551C"
+      accentColor="#CA8A04"
       footer={
         <>
           {order && (

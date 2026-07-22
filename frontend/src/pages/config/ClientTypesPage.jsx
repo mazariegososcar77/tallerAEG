@@ -21,7 +21,7 @@ export default function ClientTypesPage() {
       loading={loading}
       reload={reload}
       api={clientTypesApi}
-      emoji={<UserCog size={26} color="#E8551C" />}
+      emoji={<UserCog size={26} color="#CA8A04" />}
       permPrefix="client-types"
     />
   );

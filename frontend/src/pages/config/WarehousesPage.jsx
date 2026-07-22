@@ -21,7 +21,7 @@ export default function WarehousesPage() {
       loading={loading}
       reload={reload}
       api={warehousesApi}
-      emoji={<Warehouse size={26} color="#E8551C" />}
+      emoji={<Warehouse size={26} color="#CA8A04" />}
       permPrefix="warehouses"
       withColor
     />
