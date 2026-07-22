@@ -1,9 +1,8 @@
 # Migraciones — Base de datos MySQL
 
-Esquema **destino** del sistema en MySQL 8. Mientras el backend usa archivos JSON
-(`src/data/`), estos scripts dejan lista la estructura para cuando se instale la base de datos real.
-La forma de los JSON refleja estas tablas, así que migrar será reescribir la capa
-`src/repositories/` sin tocar servicios ni controladores.
+Esquema real del sistema en MySQL 8 — el backend ya usa esta base (`src/repositories/*.js` vía
+`src/lib/db.js`), no archivos JSON. No hay migrador automático: hay que aplicar estos scripts a mano,
+en orden, sobre la base de datos.
 
 ## Convención
 
@@ -41,6 +40,16 @@ mysql -u root -p taller_aeg < 002_seed.sql
 | `012_machines_maintenance.sql` | Tablas de máquinas y mantenimientos programados. |
 | `013_clients_nullable_optional.sql` | Hace `email` de `clients` nullable (campo opcional). `last_name` sigue obligatorio. |
 | `014_clients_validation.sql` | Agrega `is_validated` a `clients` y los permisos `clients.quick-create` y `clients.validate` (con su mapeo a roles). |
+| `015_quotes.sql` | Tablas `quotes`/`quote_items` (catch-up: el codigo ya las usaba sin migracion). |
+| `016_part_categories.sql` | Tabla `part_categories` (catch-up, mismo motivo). |
+| `017_work_orders_quote_link.sql` | Agrega `quote_id` a `work_orders` (FK a `quotes`, `ON DELETE SET NULL`). |
+| `018_work_reports.sql` | Tablas `work_reports` y `work_report_photos` (reporte fotografico en 4 etapas por orden). |
+| `019_invoices.sql` | Tablas `invoices` e `invoice_items`. Campos `fel_*` quedan NULL hasta integrar un certificador FEL real. |
+| `020_reports_billing_seed.sql` | Permisos `work-reports.*`/`billing.*` y su mapeo a roles. |
+| `021_work_reports_force_edit.sql` | Permiso `work-reports.force-edit` (solo Administrador): editar fotos/notas de un reporte ya finalizado. |
+| `022_work_reports_signatures.sql` | Agrega `tech_signature_url/name` y `client_signature_url/name` a `work_reports`. |
+| `023_labor_catalog_seed.sql` | Agrega el tipo de artículo `Mano de Obra` (id 4) y la bodega lógica `Servicios` (id 3) — el alta rápida de mano de obra desde Cotizaciones los asume fijos y fallaba sin ellos. |
+| `024_part_categories_management.sql` | Siembra categorías iniciales en `part_categories` (estaba vacía) y agrega permisos `part-categories.*` para la pantalla de gestión nueva. |
 
 > Nota sobre la contraseña del admin en `002_seed.sql`: MySQL no genera hashes bcrypt. El script
 > trae un hash válido para `Admin123!`. Para regenerarlo:

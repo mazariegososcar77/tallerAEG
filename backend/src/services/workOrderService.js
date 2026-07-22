@@ -17,12 +17,18 @@ export async function create({ items, ...data }) {
   if (data.kw === '') data.kw = null;
   if (data.rpm === '') data.rpm = null;
   if (data.hp === '') data.hp = null;
+  if (data.quote_id === '' || data.quote_id === undefined) data.quote_id = null;
+  if (data.received_at === '') data.received_at = null;
+  if (data.delivery_at === '') data.delivery_at = null;
   return workOrderRepository.create({ ...data, number }, items);
 }
 
-export async function update(id, { items, ...data }) {
+export async function update(id, { items, client_name, ...data }) {
   const existing = await workOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de trabajo no encontrada');
+  if (data.quote_id === '') data.quote_id = null;
+  if (data.received_at === '') data.received_at = null;
+  if (data.delivery_at === '') data.delivery_at = null;
   return workOrderRepository.update(id, data, items);
 }
 

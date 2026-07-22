@@ -84,11 +84,6 @@ export default function WorkOrderViewModal({ open, onClose, orderId, onDownload 
                 {st.label}
               </span>
             )}
-            {order.total > 0 && (
-              <span className="ml-auto text-lg font-bold text-emerald-500">
-                Q {Number(order.total).toFixed(2)}
-              </span>
-            )}
           </div>
 
           <Section icon={ClipboardList} title="Informacion general">

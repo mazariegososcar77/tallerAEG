@@ -39,7 +39,7 @@ export async function create({ items, ...data }) {
   return quoteRepository.create({ ...data, number }, items || []);
 }
 
-export async function update(id, { items, ...data }) {
+export async function update(id, { items, client_name, ...data }) {
   const existing = await quoteRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Cotización no encontrada');
   normalize(data);
