@@ -1,3 +1,5 @@
+// Este archivo define las direcciones web (rutas) para la FACTURACION: ver la lista de facturas,
+// ver el detalle, certificar una factura y descargar su PDF.
 import { Router } from 'express';
 import { z } from 'zod';
 import * as invoiceController from '../controllers/invoiceController.js';
@@ -7,10 +9,12 @@ import { validate } from '../middleware/validate.middleware.js';
 
 const router = Router();
 
+// Para certificar una factura: exige un correo con formato valido (a donde se le avisaria al cliente).
 const certifySchema = z.object({
   email: z.string().trim().email('Correo invalido'),
 });
 
+// A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
 /**
@@ -23,6 +27,7 @@ router.use(authenticate);
  *     responses:
  *       200: { description: Lista de facturas }
  */
+// Ver la lista de facturas.
 router.get('/', requirePermission('billing.view'), invoiceController.list);
 
 /**
@@ -37,6 +42,7 @@ router.get('/', requirePermission('billing.view'), invoiceController.list);
  *       200: { description: Factura }
  *       404: { description: No encontrada }
  */
+// Ver el detalle de una factura especifica.
 router.get('/:id', requirePermission('billing.view'), invoiceController.getById);
 
 /**
@@ -54,6 +60,7 @@ router.get('/:id', requirePermission('billing.view'), invoiceController.getById)
  *     responses:
  *       200: { description: Factura certificada }
  */
+// Certificar una factura (marcarla como certificada). Solo quien tiene el permiso de certificar.
 router.post('/:id/certify', requirePermission('billing.certify'), validate(certifySchema), invoiceController.certify);
 
 /**
@@ -67,6 +74,7 @@ router.post('/:id/certify', requirePermission('billing.certify'), validate(certi
  *     responses:
  *       200: { description: PDF de la factura }
  */
+// Descargar el PDF de la factura.
 router.get('/:id/pdf', requirePermission('billing.view'), invoiceController.pdf);
 
 export default router;

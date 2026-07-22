@@ -5,21 +5,26 @@ import { notify } from '../../lib/toast.js';
 import Input from '../ui/Input.jsx';
 import Button from '../ui/Button.jsx';
 
+// Este es el formulario de inicio de sesion (pantalla de Login): pide correo
+// y contrasena, y si son correctos entra al sistema y lleva al Dashboard.
 export default function LoginForm() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState(''); // lo que el usuario escribe en el campo de correo
+  const [password, setPassword] = useState(''); // lo que el usuario escribe en el campo de contrasena
+  const [loading, setLoading] = useState(false); // true mientras se esta verificando el usuario (muestra el boton "cargando")
 
+  // Se ejecuta cuando el usuario aprieta "Iniciar sesion" (o Enter).
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // evita que la pagina se recargue, como hacen los formularios normales
     setLoading(true);
     try {
+      // Intenta iniciar sesion con el correo y la contrasena escritos.
       const profile = await login(email, password);
       notify.success(`Bienvenido, ${profile.name}`);
-      navigate('/dashboard');
+      navigate('/dashboard'); // si todo sale bien, entra al panel principal
     } catch (err) {
+      // Si el correo/contrasena estan mal, o hay un error, se muestra un aviso.
       notify.error(err.message);
     } finally {
       setLoading(false);

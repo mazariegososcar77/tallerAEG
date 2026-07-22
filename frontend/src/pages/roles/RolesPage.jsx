@@ -1,3 +1,7 @@
+// PANTALLA: Lista de Roles. Muestra los roles del sistema (por ejemplo "Técnico",
+// "Administrador") con cuántos permisos tiene cada uno. Desde aquí se crea un
+// rol nuevo, se edita uno existente (abre la ventana de "RoleFormModal" donde se
+// eligen los permisos) o se elimina.
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, ShieldCheck } from 'lucide-react';
 import { useRoles } from '../../hooks/useRoles.js';
@@ -23,6 +27,7 @@ export default function RolesPage() {
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (r) => { setEditing(r); setFormOpen(true); };
   const handleSaved = () => { setFormOpen(false); reload(); };
+  // Elimina el rol seleccionado, despues de confirmar.
   const handleDelete = async () => {
     try {
       await rolesApi.remove(deleting.id);

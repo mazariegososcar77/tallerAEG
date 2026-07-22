@@ -1,4 +1,12 @@
-/** Configuracion de OpenAPI/Swagger generada a partir de los comentarios JSDoc de las rutas. */
+/**
+ * En palabras simples: este archivo arma la "guia de uso" tecnica de la
+ * API (todas las direcciones/endpoints que el sistema ofrece), que se puede
+ * ver de forma visual e interactiva en /api/docs. Es una herramienta para
+ * programadores, util cuando se quiere probar o entender que hace cada
+ * endpoint del backend.
+ *
+ * Configuracion de OpenAPI/Swagger generada a partir de los comentarios JSDoc de las rutas.
+ */
 import path from 'path';
 import { fileURLToPath } from 'url';
 import swaggerJsdoc from 'swagger-jsdoc';

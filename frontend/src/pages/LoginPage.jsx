@@ -1,3 +1,11 @@
+// ============================================================================
+// PANTALLA: Inicio de Sesión (Login)
+// Es la primera pantalla que ve cualquier persona al entrar al sistema, antes
+// de identificarse. Del lado izquierdo se muestra un carrusel de imágenes de
+// marca (se oculta en pantallas pequeñas) y del lado derecho el formulario
+// para escribir el correo y la contraseña. Si la persona ya inició sesión, la
+// pantalla la manda directo al Panel Principal en vez de mostrar el formulario.
+// ============================================================================
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth.js';
 import ImageCarousel from '../components/auth/ImageCarousel.jsx';
@@ -7,6 +15,8 @@ import Spinner from '../components/ui/Spinner.jsx';
 export default function LoginPage() {
   const { user, loading } = useAuth();
 
+  // Mientras se revisa si ya hay una sesión guardada, se muestra un
+  // indicador de "cargando" en vez del formulario.
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-100">
@@ -15,6 +25,8 @@ export default function LoginPage() {
     );
   }
 
+  // Si ya hay un usuario con sesión iniciada, no tiene sentido ver el
+  // login otra vez: se le redirige directo al Panel Principal.
   if (user) return <Navigate to="/dashboard" replace />;
 
   return (

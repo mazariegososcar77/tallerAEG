@@ -1,3 +1,8 @@
+// PANTALLA: Ventana emergente para crear o editar un Usuario del sistema.
+// Se le pone nombre, correo, contraseña (solo obligatoria al crear), se le
+// asigna un rol (que define que puede hacer) y si esta activo o no. Al editar
+// un usuario existente, la contraseña esta oculta por defecto y solo se
+// cambia si el usuario del sistema hace clic en "Cambiar contrasena".
 import { useState, useEffect } from 'react';
 import { usersApi } from '../../api/usersApi.js';
 import { notify } from '../../lib/toast.js';
@@ -30,6 +35,9 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
   const setField = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
   const setValue = (field) => (value) => setForm((prev) => ({ ...prev, [field]: value }));
 
+  // Guarda el usuario. La contrasena solo se envia si es un usuario nuevo, o si
+  // se esta editando y el usuario del sistema decidio cambiarla (con "Cambiar contrasena")
+  // y escribio algo — asi no se borra la contrasena actual por accidente.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -86,6 +94,7 @@ export default function UserFormModal({ open, onClose, onSaved, user, roles }) {
           <Input label="Contrasena" type="password" name="password" autoComplete="new-password" value={form.password} onChange={setField('password')} error={errors.password} required />
         )}
 
+        {/* Al editar, la contrasena esta escondida por defecto; este link la deja cambiar */}
         {isEdit && !showPassword && (
           <div>
             <button type="button" onClick={() => setShowPassword(true)}

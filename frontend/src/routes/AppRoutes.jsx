@@ -1,3 +1,10 @@
+/**
+ * Este archivo es el "mapa" de toda la aplicacion: define que direccion (url)
+ * muestra que pantalla. Por ejemplo, "/clientes" muestra la pantalla de
+ * clientes. Cada pantalla esta envuelta en un <ProtectedRoute>, que es el
+ * "guardia" que exige tener sesion iniciada (y a veces un permiso especifico)
+ * antes de dejar entrar — ver routes/ProtectedRoute.jsx.
+ */
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import AppLayout from '../components/layout/AppLayout.jsx';
@@ -40,30 +47,51 @@ export default function AppRoutes() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
+
+        {/* --- Pantalla principal --- */}
         <Route path="dashboard" element={<DashboardPage />} />
+
+        {/* --- Rutas de Inventario (articulos del taller) --- */}
         <Route path="inventario" element={<ProtectedRoute permission="articles.view"><ArticlesPage /></ProtectedRoute>} />
         <Route path="inventario/nuevo" element={<ProtectedRoute permission="articles.create"><ArticleFormPage /></ProtectedRoute>} />
         <Route path="inventario/:id/editar" element={<ProtectedRoute permission="articles.update"><ArticleFormPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Clientes --- */}
         <Route path="clientes" element={<ProtectedRoute permission="clients.view"><ClientsPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Ordenes de Trabajo --- */}
         <Route path="ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage /></ProtectedRoute>} />
+        <Route path="ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
+        <Route path="ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Cotizaciones --- */}
         <Route path="cotizaciones" element={<ProtectedRoute permission="dashboard.view"><QuotesPage /></ProtectedRoute>} />
         <Route path="cotizaciones/nueva" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage /></ProtectedRoute>} />
         <Route path="cotizaciones/:id/editar" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage /></ProtectedRoute>} />
-        <Route path="ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
-        <Route path="ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Reportes de Trabajo (fotos de cada reparacion) --- */}
         <Route path="reportes" element={<ProtectedRoute permission="work-reports.view"><WorkReportsPage /></ProtectedRoute>} />
         <Route path="reportes/:id/editar" element={<ProtectedRoute permission="work-reports.view"><WorkReportFormPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Facturacion --- */}
         <Route path="facturacion" element={<ProtectedRoute permission="billing.view"><InvoicesPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Maquinas y Mantenimiento --- */}
         <Route path="maquinas" element={<ProtectedRoute permission="dashboard.view"><MachinesPage /></ProtectedRoute>} />
         <Route path="mantenimientos" element={<ProtectedRoute permission="dashboard.view"><MaintenancePage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Configuracion (catalogos y ajustes del sistema) --- */}
         <Route path="configuracion/tipos-cliente" element={<ProtectedRoute permission="client-types.view"><ClientTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/fidelizacion" element={<ProtectedRoute permission="loyalty.view"><LoyaltyTiersPage /></ProtectedRoute>} />
         <Route path="configuracion/tipos" element={<ProtectedRoute permission="article-types.view"><ArticleTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
         <Route path="configuracion/categorias-pieza" element={<ProtectedRoute permission="part-categories.view"><PartCategoriesPage /></ProtectedRoute>} />
+        {/* Las siguientes tres son pantallas "Proximamente" (aun sin funcionalidad real) */}
         <Route path="configuracion/general" element={<ProtectedRoute permission="dashboard.view"><GeneralSettingsPage /></ProtectedRoute>} />
         <Route path="configuracion/parametros" element={<ProtectedRoute permission="dashboard.view"><SystemParamsPage /></ProtectedRoute>} />
         <Route path="configuracion/catalogos" element={<ProtectedRoute permission="dashboard.view"><CatalogsPage /></ProtectedRoute>} />
+
+        {/* --- Rutas de Administracion (usuarios, roles y permisos) --- */}
         <Route path="usuarios" element={<ProtectedRoute permission="users.view"><UsersPage /></ProtectedRoute>} />
         <Route path="roles" element={<ProtectedRoute permission="roles.view"><RolesPage /></ProtectedRoute>} />
         <Route path="permisos" element={<ProtectedRoute permission="permissions.view"><PermissionsPage /></ProtectedRoute>} />

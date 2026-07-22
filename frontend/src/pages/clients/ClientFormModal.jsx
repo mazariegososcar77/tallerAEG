@@ -1,3 +1,14 @@
+// ============================================================================
+// VENTANA: Nuevo / Editar Cliente
+// Se abre desde la pantalla de Clientes al presionar "Nuevo cliente" o el
+// lápiz de editar. Es un formulario que cambia sus campos según el "Tipo de
+// cliente" elegido: Persona Individual, Empresa/Sociedad o Entidad de
+// Gobierno piden datos distintos (por ejemplo, una empresa pide NIT y Razón
+// Social; una persona pide Nombre y Apellido). También puede usarse en modo
+// "alta rápida" (quick) desde otras pantallas: ahí el cliente se guarda de
+// inmediato pero queda marcado como "pendiente de validación" hasta que un
+// administrador revise sus datos.
+// ============================================================================
 import { useState, useEffect } from 'react';
 import { clientsApi } from '../../api/clientsApi.js';
 import { notify } from '../../lib/toast.js';
@@ -8,6 +19,7 @@ import Textarea from '../../components/ui/Textarea.jsx';
 import Checkbox from '../../components/ui/Checkbox.jsx';
 import Button from '../../components/ui/Button.jsx';
 
+// Formulario vacío: valores iniciales cuando se crea un cliente nuevo.
 const emptyForm = {
   nit: '', dpi: '', first_name: '', last_name: '',
   email: '', address: '', phone: '',
@@ -18,6 +30,9 @@ const emptyForm = {
 
 const UNASSIGNED = '';
 
+// A partir del "Tipo de cliente" elegido, decide a qué categoría general
+// pertenece (particular, empresa o gobierno) para saber qué campos del
+// formulario mostrar. Se adivina revisando el nombre del tipo.
 function getClientCategory(clientTypes, clientTypeId) {
   if (!clientTypeId) return null;
   const ct = clientTypes.find(t => String(t.id) === String(clientTypeId));
@@ -34,6 +49,9 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  // Cada vez que se abre la ventana, rellena el formulario: si se está
+  // editando un cliente, copia sus datos; si es uno nuevo, deja el
+  // formulario vacío.
   useEffect(() => {
     if (!open) return;
     setErrors({});
@@ -57,6 +75,10 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
 
   const category = getClientCategory(clientTypes, form.client_type_id);
 
+  // Se ejecuta al presionar "Guardar cambios" / "Crear cliente": junta los
+  // datos del formulario y los envía al servidor. Según el caso, actualiza
+  // un cliente existente, lo crea normalmente, o lo crea en modo "alta
+  // rápida" (queda pendiente de validación).
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);

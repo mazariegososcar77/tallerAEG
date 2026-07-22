@@ -1,3 +1,17 @@
+// PANTALLA: Alta / edición de una Orden de Trabajo. Aquí se registra el equipo
+// que el cliente trajo al taller (datos técnicos), quién lo recibió, qué trabajo
+// se le va a hacer, qué piezas trae el equipo, los técnicos que lo desarman y lo
+// arman, y el estado (recibido → en_proceso → listo → entregado, o cancelado).
+// Se puede prellenar automáticamente trayendo los datos desde una cotización ya
+// aprobada (llega por el link "Crear Orden" de Cotizaciones); si esa cotización
+// tenía varios equipos, se puede elegir cuál de ellos usar.
+//
+// IMPORTANTE (decisión del negocio, a propósito): esta pantalla NUNCA muestra
+// precios ni el total. La orden de trabajo la usan los técnicos del taller, y
+// ellos no necesitan ver cuánto cuesta nada — el precio es cosa de Cotizaciones
+// y Facturación (administración). El campo "total" se guarda internamente
+// (heredado de la cotización de origen) pero no hay ningún campo en pantalla
+// para verlo ni editarlo.
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
@@ -129,6 +143,7 @@ export default function WorkOrderFormPage() {
   }, [id, fromQuoteId]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Marca o desmarca una pieza de la lista de "Partes del Equipo" (que piezas trae el equipo al llegar).
   const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
   // Tras crear un cliente "rapido": recarga la lista y lo deja seleccionado.
   const handleClientSaved = (created) => {
@@ -137,6 +152,7 @@ export default function WorkOrderFormPage() {
     setShowClientModal(false);
   };
 
+  // Guarda la orden de trabajo (nueva o editada). Exige que tenga un cliente seleccionado.
   const handleSubmit = async () => {
     if (!form.client_id) return alert('Selecciona un cliente');
     setSaving(true);
@@ -148,6 +164,7 @@ export default function WorkOrderFormPage() {
     finally { setSaving(false); }
   };
 
+  // Descarga el PDF de la orden ya guardada (por eso pide guardar primero si es nueva).
   const handleDownloadPDF = async () => {
     if (!id) return alert('Guarda la orden primero');
     try {
@@ -233,7 +250,7 @@ export default function WorkOrderFormPage() {
           </div>
         )}
 
-        {/* Info general */}
+        {/* Info general: cliente, fechas de recibido/entrega, quien autorizo, estado de la orden */}
         <div style={sec}>
           <SectionHeader title="Informacion General" />
           <div style={secBody}>
@@ -271,7 +288,7 @@ export default function WorkOrderFormPage() {
           </div>
         </div>
 
-        {/* Datos del equipo */}
+        {/* Datos tecnicos del equipo (motor) que se esta reparando */}
         <div style={sec}>
           <SectionHeader title="Datos del Equipo" />
           <div style={secBody}>
@@ -291,7 +308,7 @@ export default function WorkOrderFormPage() {
           </div>
         </div>
 
-        {/* Trabajo + Partes */}
+        {/* Trabajo a realizar (sin precios) + lista de piezas que trae el equipo */}
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
           <div style={sec}>
             <SectionHeader title="Trabajo a Realizar" />

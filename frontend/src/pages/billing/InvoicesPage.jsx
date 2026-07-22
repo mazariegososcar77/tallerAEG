@@ -1,3 +1,15 @@
+// ============================================================================
+// PANTALLA: Facturación
+// Se accede desde el menú "Facturación" (/facturacion). Muestra la lista de
+// todas las facturas generadas por el sistema (se crean automáticamente al
+// finalizar un Reporte de Trabajo). Desde aquí se puede:
+//   - Buscar y filtrar facturas por cliente, rango de fechas o "solo
+//     pendientes de certificar".
+//   - Ver una vista previa del PDF o descargarlo.
+//   - Certificar una factura pendiente (abre la ventana CertifyInvoiceModal).
+// La certificación fiscal (FEL) real todavía no está integrada; certificar
+// aquí solo cambia el estado interno de la factura.
+// ============================================================================
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { invoicesApi } from '../../api/invoicesApi.js';
@@ -29,13 +41,21 @@ export default function InvoicesPage() {
   const [toCertify, setToCertify] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
+  // Vuelve a traer la lista de facturas desde el servidor (se usa al cargar
+  // la pantalla y después de certificar una factura, para refrescar datos).
   const reload = () => invoicesApi.list().then(setInvoices);
 
+  // Al entrar a la pantalla: carga las facturas y la lista de clientes
+  // (esta última se usa para el filtro "Cliente").
   useEffect(() => {
     reload().finally(() => setLoading(false));
     clientsApi.list().then(setClients);
   }, []);
 
+  // Si se llega a esta pantalla con un enlace tipo "?invoice=123" (por
+  // ejemplo, al terminar un Reporte de Trabajo que acaba de generar esa
+  // factura), se abre automáticamente la ventana de certificar para esa
+  // factura en particular.
   useEffect(() => {
     const invoiceId = searchParams.get('invoice');
     if (invoiceId && invoices.length) {
@@ -45,6 +65,8 @@ export default function InvoicesPage() {
     }
   }, [invoices, searchParams, setSearchParams]);
 
+  // Aplica los filtros de la pantalla (solo pendientes, cliente, fechas y
+  // texto de búsqueda) sobre la lista completa de facturas ya cargada.
   const filtered = invoices.filter(inv => {
     if (onlyPending && inv.status !== 'pendiente_certificacion') return false;
     if (clientId && String(inv.client_id) !== String(clientId)) return false;
@@ -58,6 +80,7 @@ export default function InvoicesPage() {
     return true;
   });
 
+  // Descarga el PDF de la factura al dispositivo del usuario.
   const handleDownloadPDF = async (inv) => {
     try {
       const token = getToken();
@@ -72,6 +95,8 @@ export default function InvoicesPage() {
     } catch (e) { notify.error('Error al generar PDF'); }
   };
 
+  // Abre el PDF de la factura en una pestaña nueva del navegador, para
+  // verla sin necesidad de descargarla primero.
   const handlePreviewPDF = async (inv) => {
     try {
       const token = getToken();
@@ -84,6 +109,8 @@ export default function InvoicesPage() {
     } catch (e) { notify.error('Error al generar la vista previa'); }
   };
 
+  // Se llama cuando la ventana de certificar confirma los datos: le pide al
+  // servidor que marque la factura como certificada y refresca la lista.
   const handleCertified = async (id, email) => {
     await invoicesApi.certify(id, email);
     notify.success('Factura certificada');
@@ -100,7 +127,8 @@ export default function InvoicesPage() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros: buscar por texto, por cliente, por rango de fechas, o
+          mostrar solo las facturas que aún no se han certificado. */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 10, marginBottom: 16, alignItems: 'end' }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: 34, color: 'var(--c-muted)' }} />

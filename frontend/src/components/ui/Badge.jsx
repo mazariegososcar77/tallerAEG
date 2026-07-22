@@ -1,3 +1,6 @@
+// Esta es una "etiquetita" de color (como una pastilla) que se usa por toda la
+// aplicación para mostrar un estado corto, por ejemplo "Pendiente", "Aprobada"
+// o "Vencido". Solo cambia de color según el texto que necesite resaltar.
 const VARIANTS = {
   navy: 'bg-navy-100 text-navy-800',
   orange: 'bg-orange-100 text-orange-700',

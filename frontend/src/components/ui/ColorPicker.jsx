@@ -14,7 +14,15 @@ const PRESETS = [
   '#475569', // gris
 ];
 
-/** Selector de color: paleta de presets + un selector personalizado. value/onChange en #RRGGBB. */
+/**
+ * Es el "selector de color": muestra una fila de circulitos de colores ya
+ * definidos para que el usuario elija uno con un clic (por ejemplo, al crear
+ * una bodega). También trae un último círculo con "+" que abre el selector
+ * de color propio del sistema operativo, por si se quiere un color distinto
+ * a los de la lista.
+ *
+ * Selector de color: paleta de presets + un selector personalizado. value/onChange en #RRGGBB.
+ */
 export default function ColorPicker({ label, value, onChange }) {
   const current = (value || '').toLowerCase();
   const isCustom = current && !PRESETS.includes(current);

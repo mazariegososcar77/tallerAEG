@@ -1,4 +1,8 @@
-/** Indicador de carga (SVG animado). */
+/**
+ * Es la "ruedita" que gira para avisar que algo se está cargando o
+ * procesando (por ejemplo, mientras se guarda un formulario o se trae
+ * información del servidor). Aparece dentro de botones, tablas, etc.
+ */
 export default function Spinner({ size = 20, className = '' }) {
   return (
     <svg

@@ -2,6 +2,13 @@ import { useEffect } from 'react';
 import { X } from 'lucide-react';
 
 /**
+ * Es la "ventana emergente" (el recuadro que aparece encima de todo, con un
+ * fondo oscuro detrás) que se usa para formularios cortos, confirmaciones o
+ * detalles, sin salir de la pantalla en la que se está. Se puede cerrar
+ * presionando la tecla ESC, haciendo clic fuera del recuadro, o con el
+ * botón "X". `accentColor` es opcional y solo pinta una franja de color
+ * arriba del recuadro para darle un toque distintivo.
+ *
  * Modal centrado con overlay. Cierra con ESC o clic en el fondo.
  * `accentColor` (hex) pinta un borde superior de acento (4px).
  */

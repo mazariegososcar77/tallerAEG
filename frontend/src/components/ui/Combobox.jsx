@@ -3,6 +3,19 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, Plus } from 'lucide-react';
 
 /**
+ * Es otro "menú desplegable" para elegir una opción de una lista, como
+ * Select.jsx, pero con dos poderes extra que se usan en pantallas como
+ * Órdenes, Cotizaciones y Máquinas:
+ *   - Si se le activa `searchable`, muestra una cajita de búsqueda arriba
+ *     de las opciones para poder escribir y filtrar en listas largas (por
+ *     ejemplo, buscar un cliente entre cientos).
+ *   - Si se le pasa `onCreateNew`, agrega una opción especial "+ Nuevo" al
+ *     principio de la lista, para poder crear un registro nuevo sin salir
+ *     del formulario (por ejemplo, dar de alta un cliente nuevo desde ahí
+ *     mismo mientras se llena una cotización).
+ * También puede mostrarle a cada opción una pequeña etiqueta de color
+ * (`badge`) al lado, por ejemplo para indicar un estado.
+ *
  * Dropdown estilizado (reemplaza el <select> nativo) pensado para las paginas
  * densas con estilos inline (Ordenes, Cotizaciones, Maquinas, etc.). Usa las
  * mismas variables de tema (--c-*) que esas paginas, asi que encaja pixel a pixel.

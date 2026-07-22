@@ -8,12 +8,20 @@ import Spinner from '../ui/Spinner.jsx';
 /**
  * Selector de imagen reutilizable: alterna entre URL y subir archivo.
  * Controlado: `value` (url) + `onChange(url)`.
+ *
+ * Este es el cuadro para elegir la foto de un articulo del inventario
+ * (aparece en el formulario de Nuevo Articulo / Editar Articulo). El usuario
+ * puede subir una foto desde su computadora, o pegar directamente el enlace
+ * (URL) de una imagen que ya este en internet. `value` es el enlace de la
+ * imagen actual y `onChange` avisa al formulario cuando esa imagen cambia.
  */
 export default function ImagePicker({ value, onChange }) {
-  const [mode, setMode] = useState('upload');
-  const [uploading, setUploading] = useState(false);
-  const [broken, setBroken] = useState(false);
+  const [mode, setMode] = useState('upload'); // 'upload' (subir archivo) o 'url' (pegar enlace)
+  const [uploading, setUploading] = useState(false); // true mientras la imagen se esta subiendo al servidor
+  const [broken, setBroken] = useState(false); // true si la imagen no se pudo mostrar (enlace invalido, etc.)
 
+  // Se ejecuta cuando el usuario elige un archivo de imagen de su computadora:
+  // lo envia al servidor y, si se sube bien, guarda el enlace resultante.
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';

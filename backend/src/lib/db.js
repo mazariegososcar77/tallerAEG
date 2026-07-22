@@ -1,3 +1,12 @@
+/**
+ * En palabras simples: este archivo abre la conexion hacia la base de
+ * datos MySQL (donde vive toda la informacion real del sistema: usuarios,
+ * clientes, ordenes, facturas, etc.) para que el resto del backend pueda
+ * consultarla y guardar datos ahi.
+ *
+ * Usa un "pool" (una bolsa de conexiones reutilizables) en vez de abrir una
+ * conexion nueva por cada peticion, lo cual es mas rapido y eficiente.
+ */
 import mysql from 'mysql2/promise';
 
 const pool = mysql.createPool({

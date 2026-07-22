@@ -2,6 +2,12 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
+ * Es el calendario para elegir una fecha (por ejemplo, la fecha de un
+ * mantenimiento). Al hacer clic se abre un mini-calendario donde se puede
+ * cambiar de mes, saltar directo a un año, elegir "Hoy" o limpiar la fecha.
+ * Se hizo a la medida en vez de usar el selector de fecha típico del
+ * navegador, para que se vea igual en todas las pantallas del sistema.
+ *
  * Selector de fecha propio (reemplaza el <input type="date"> nativo del navegador)
  * con el estilo de la app. `value`/`onChange` trabajan con cadenas 'YYYY-MM-DD'.
  * Soporta navegacion de mes, salto rapido de anio y cierre al hacer clic afuera.

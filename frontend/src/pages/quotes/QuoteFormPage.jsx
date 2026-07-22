@@ -1,3 +1,12 @@
+// PANTALLA: Alta / edición de una Cotización. Una cotización puede incluir
+// VARIOS EQUIPOS (máquinas) del mismo cliente en un solo documento — por
+// ejemplo, si el cliente trae 3 motores, se agrega un bloque "Equipo 1",
+// "Equipo 2", "Equipo 3", cada uno con su propia lista de mano de obra y su
+// propia lista de repuestos, con cantidad y precio. El total de la cotización
+// es la suma de todos los equipos, menos el descuento. Se usa tanto para crear
+// una cotización nueva como para editar una existente (según si la URL trae un
+// "id"). Desde la lista de Cotizaciones, una cotización aprobada se puede
+// convertir en una Orden de Trabajo (una orden por cada equipo).
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
@@ -38,6 +47,10 @@ const SaveIcon = () => (
   </svg>
 );
 
+// Tabla editable de lineas (se usa tanto para mano de obra como para repuestos).
+// Cada linea tiene descripcion, cantidad y precio unitario; el subtotal de la
+// linea se calcula solo (cantidad x precio). Se puede escoger un articulo ya
+// existente del inventario o escribir una descripcion libre.
 function ItemsTable({ items, onChange, onAdd, onRemove, color, articles, onOpenModal }) {
   return (
     <div>
@@ -95,6 +108,10 @@ export default function QuoteFormPage() {
   const [form, setForm] = useState({ client_id:'', date:new Date().toISOString().slice(0,10), valid_until:'', status:'borrador', work_type:'', observations:'', discount:0 });
   const [equipments, setEquipments] = useState([emptyEquipment()]);
 
+  // Al abrir la pantalla: carga clientes y catalogos, y si se esta editando una
+  // cotizacion existente, trae sus datos y reconstruye la lista de equipos con
+  // su mano de obra y repuestos (que en el servidor se guardan todos juntos,
+  // marcados con a que equipo pertenecen).
   useEffect(() => {
     clientsApi.list().then(setClients);
     articlesApi.listByType(4).then(setLaborArticles);
@@ -132,17 +149,24 @@ export default function QuoteFormPage() {
     setArticleModal(null);
   };
 
+  // Funciones para manejar la lista de equipos: agregar/quitar un equipo completo,
+  // y agregar/quitar/editar una linea de mano de obra o repuesto dentro de un equipo.
   const setEqField = (ei, k, v) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[k]:v} : eq));
   const addEquipment = () => setEquipments(prev => [...prev, emptyEquipment()]);
   const removeEquipment = (ei) => setEquipments(prev => prev.filter((_,i) => i!==ei));
   const setLineField = (ei, type, li, k, v) => setEquipments(prev => prev.map((eq,i) => i!==ei ? eq : {...eq,[type]:eq[type].map((line,j) => j===li ? {...line,[k]:v} : line)}));
   const addLine = (ei, type) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[type]:[...eq[type],{description:'',quantity:1,unit_price:0}]} : eq));
   const removeLine = (ei, type, li) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[type]:eq[type].filter((_,j) => j!==li)} : eq));
+  // Suma cantidad x precio de una lista de lineas (mano de obra o repuestos de un equipo).
   const calcSub = (lines) => lines.reduce((s,l) => s+(parseFloat(l.quantity)||0)*(parseFloat(l.unit_price)||0), 0);
+  // Suma el subtotal de TODOS los equipos (mano de obra + repuestos de cada uno).
   const grandSubtotal = equipments.reduce((s,eq) => s+calcSub(eq.labor)+calcSub(eq.parts), 0);
   const discount = parseFloat(form.discount)||0;
   const grandTotal = grandSubtotal - discount;
 
+  // Guarda la cotizacion. Junta las lineas de todos los equipos en una sola lista
+  // (cada linea marcada con a que equipo pertenece), exige cliente y fecha, y
+  // crea o actualiza segun si ya existia.
   const handleSubmit = async () => {
     if (!form.client_id) return alert('Selecciona un cliente');
     if (!form.date) return alert('Ingresa la fecha');
@@ -231,6 +255,7 @@ export default function QuoteFormPage() {
           </div>
         </div>
 
+        {/* Un bloque por cada equipo de la cotizacion, con su propia mano de obra y repuestos */}
         {equipments.map((eq, ei) => (
           <div key={ei} style={{ ...sec, border:'1px solid #E8551C44' }}>
             <div style={secHdr}>
@@ -282,10 +307,12 @@ export default function QuoteFormPage() {
           </div>
         ))}
 
+        {/* Boton para agregar otro equipo mas a esta misma cotizacion */}
         <button onClick={addEquipment} style={{ width:'100%', background:C.dark, border:'2px dashed '+C.border, color:C.muted, padding:'12px', borderRadius:10, cursor:'pointer', fontSize:13, fontWeight:600, marginBottom:12 }}>
           + Agregar otro equipo
         </button>
 
+        {/* Totales generales: suma de todos los equipos, menos el descuento */}
         <div style={{ ...sec }}>
           <div style={secBody}>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:10 }}>

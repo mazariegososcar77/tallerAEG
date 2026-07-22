@@ -1,3 +1,8 @@
+// PANTALLA: Catálogo de Máquinas. Aquí se llevan registradas las máquinas
+// (motores eléctricos) que tiene cada cliente, con sus datos técnicos (marca,
+// modelo, serie, voltaje, KW, RPM, etc.). Se puede buscar, filtrar por cliente,
+// crear una máquina nueva, editarla o eliminarla. Este catálogo es la base para
+// el calendario de mantenimientos (pantalla "Mantenimientos").
 import { useState, useEffect } from 'react';
 import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
@@ -19,18 +24,26 @@ export default function MachinesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ client_id:'', name:'', brand:'', model:'', serial:'', kw:'', voltage:'', amperage:'', rpm:'', hp:'', location:'', notes:'' });
+  // Al abrir la pantalla, carga la lista de clientes (para el filtro y el formulario)
+  // y la lista de maquinas.
   useEffect(() => {
     clientsApi.list().then(setClients);
     loadMachines();
   }, []);
+  // Trae del servidor las maquinas; si se le pasa un cliente, solo trae las de ese cliente.
   const loadMachines = (cid) => {
     setLoading(true);
     machinesApi.list(cid).then(setMachines).finally(() => setLoading(false));
   };
+  // Filtra la lista de maquinas segun lo que el usuario escribio en el buscador
+  // (busca en nombre, marca o cliente).
   const filtered = machines.filter(m => (!search || m.name?.toLowerCase().includes(search.toLowerCase()) || m.brand?.toLowerCase().includes(search.toLowerCase()) || m.client_name?.toLowerCase().includes(search.toLowerCase())));
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Abre el formulario vacio para registrar una maquina nueva.
   const openNew = () => { setEditing(null); setForm({ client_id:'', name:'', brand:'', model:'', serial:'', kw:'', voltage:'', amperage:'', rpm:'', hp:'', location:'', notes:'' }); setShowForm(true); };
+  // Abre el formulario ya lleno con los datos de la maquina que se quiere editar.
   const openEdit = (m) => { setEditing(m); setForm({ client_id:m.client_id, name:m.name||'', brand:m.brand||'', model:m.model||'', serial:m.serial||'', kw:m.kw||'', voltage:m.voltage||'', amperage:m.amperage||'', rpm:m.rpm||'', hp:m.hp||'', location:m.location||'', notes:m.notes||'' }); setShowForm(true); };
+  // Guarda la maquina (nueva o editada). Exige que tenga cliente y nombre como minimo.
   const handleSave = async () => {
     if (!form.client_id || !form.name) return alert('Cliente y nombre son obligatorios');
     try {
@@ -39,6 +52,7 @@ export default function MachinesPage() {
       setShowForm(false); loadMachines(clientFilter || undefined);
     } catch(e) { alert(e.response?.data?.message || 'Error al guardar'); }
   };
+  // Elimina una maquina, pidiendo confirmacion antes.
   const handleDelete = async (id) => {
     if (!confirm('Eliminar esta maquina?')) return;
     await machinesApi.remove(id); loadMachines(clientFilter || undefined);
@@ -96,6 +110,7 @@ export default function MachinesPage() {
           ))}
         </div>
       )}
+      {/* Ventana emergente con el formulario para crear o editar una maquina */}
       {showForm && (
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:16 }}>
           <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:24, width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto' }}>

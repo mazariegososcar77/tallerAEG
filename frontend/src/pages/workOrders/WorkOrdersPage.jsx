@@ -1,3 +1,8 @@
+// PANTALLA: Lista de Órdenes de Trabajo. Muestra todas las órdenes con su
+// número, cliente, equipo, estado y fechas de recibido/entrega (sin precios, a
+// propósito). Desde aquí se puede buscar, crear una orden nueva, ver el
+// detalle, descargar el PDF, editarla, eliminarla, o abrir/crear el Reporte de
+// Trabajo fotográfico de esa orden con el icono de cámara.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
@@ -27,6 +32,9 @@ export default function WorkOrdersPage() {
   const [creatingReportId, setCreatingReportId] = useState(null);
   const navigate = useNavigate();
 
+  // Abre el Reporte de Trabajo (fotos + notas) de esta orden. Si la orden todavia
+  // no tiene reporte, lo crea automaticamente (una orden solo puede tener un
+  // reporte, asi que si ya existe simplemente lo abre).
   const handleOpenReport = async (order) => {
     setCreatingReportId(order.id);
     try {
@@ -43,12 +51,14 @@ export default function WorkOrdersPage() {
     workOrdersApi.list().then(setOrders).finally(() => setLoading(false));
   }, []);
 
+  // Filtra la lista de ordenes segun lo que el usuario busco (por numero, cliente o equipo).
   const filtered = orders.filter(o =>
     o.number?.toLowerCase().includes(search.toLowerCase()) ||
     o.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     o.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Descarga el PDF de la orden.
   const handleDownloadPDF = async (order) => {
     try {
       const token = getToken();
@@ -65,6 +75,7 @@ export default function WorkOrdersPage() {
     } catch(e) { notify.error('Error al generar PDF'); }
   };
 
+  // Elimina la orden seleccionada, despues de confirmar en el dialogo.
   const handleDelete = async () => {
     if (!toDelete) return;
     try {

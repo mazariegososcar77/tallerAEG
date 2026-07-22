@@ -1,3 +1,9 @@
+// PANTALLA: Ventana emergente para crear o editar un Rol. Un rol es un "paquete
+// de permisos" (por ejemplo "Técnico" o "Administrador") que luego se le asigna
+// a los usuarios. Aquí se le pone nombre y descripción al rol, y se marcan con
+// checkboxes los permisos que va a tener, agrupados por módulo (Inventario,
+// Clientes, etc.) — hay un botón para marcar/desmarcar todos los de un módulo
+// de una vez.
 import { useState, useEffect, useMemo } from 'react';
 import { rolesApi } from '../../api/rolesApi.js';
 import { notify } from '../../lib/toast.js';
@@ -32,6 +38,7 @@ export default function RoleFormModal({ open, onClose, onSaved, role, permission
     setSelected(new Set(role?.permissions || []));
   }, [open, role]);
 
+  // Marca o desmarca un permiso individual.
   const togglePermission = (id) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -40,6 +47,8 @@ export default function RoleFormModal({ open, onClose, onSaved, role, permission
     });
   };
 
+  // Marca o desmarca TODOS los permisos de un modulo de un solo clic
+  // (si ya estaban todos marcados, los desmarca; si no, los marca todos).
   const toggleModule = (modulePerms) => {
     const ids = modulePerms.map((p) => p.id);
     const allSelected = ids.every((id) => selected.has(id));
@@ -50,6 +59,8 @@ export default function RoleFormModal({ open, onClose, onSaved, role, permission
     });
   };
 
+  // Guarda el rol: si ya existia, actualiza su nombre/descripcion y reemplaza
+  // su lista de permisos; si es nuevo, lo crea ya con los permisos elegidos.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);

@@ -14,6 +14,14 @@ const STORAGE_KEY = 'taller_aeg_sidebar_collapsed';
  * Estructura del menu. Un item suelto (Dashboard) y varios grupos colapsables.
  * Los grupos se expanden en un flyout a la derecha del sidebar (acordeon: solo
  * uno abierto a la vez). En movil se expanden en linea.
+ *
+ * Este es el menu lateral (a la izquierda de la pantalla) que aparece en todo
+ * el sistema una vez que el usuario inicia sesion, con los enlaces a cada
+ * modulo (Clientes, Cotizaciones, Ordenes, Inventario, etc.), agrupados por
+ * tema. Cada opcion tiene un `permission` (el "permiso" necesario para verla);
+ * mas abajo, el componente revisa los permisos del usuario que inicio sesion
+ * y solo muestra las opciones (y hasta grupos completos) para las que tiene
+ * acceso. Asi, dos usuarios distintos pueden ver un menu diferente segun su rol.
  */
 const NAV = [
   { type: 'item', to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
@@ -77,12 +85,16 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const location = useLocation();
   const asideRef = useRef(null);
   const flyoutRef = useRef(null);
+  // "collapsed" recuerda (guardandolo en el navegador) si el usuario prefiere
+  // el menu angosto (solo iconos) o completo; asi la preferencia se mantiene
+  // aunque cierre y vuelva a abrir el sistema.
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === '1');
   const [openGroup, setOpenGroup] = useState(null); // label del grupo abierto (acordeon)
   const [flyoutPos, setFlyoutPos] = useState(null); // { top, left } del flyout en escritorio
 
-  const slim = collapsed && !mobileOpen;
+  const slim = collapsed && !mobileOpen; // true = mostrar el menu angosto (solo iconos)
 
+  // Cambia entre menu angosto y menu completo, y guarda la preferencia.
   const toggleCollapsed = () => {
     setOpenGroup(null);
     setCollapsed((prev) => {
@@ -129,6 +141,12 @@ export default function Sidebar({ mobileOpen, onClose }) {
     </NavLink>
   );
 
+  // Arma el menu que realmente se va a mostrar, segun los permisos del
+  // usuario: para un item suelto (como "Dashboard"), lo deja pasar solo si
+  // tiene el permiso requerido. Para un grupo (como "Operaciones"), primero
+  // filtra sus opciones internas dejando solo las que el usuario puede ver;
+  // si al final el grupo se queda sin ninguna opcion visible, el grupo
+  // completo se oculta (no tiene sentido mostrar un titulo vacio).
   const groups = NAV
     .map((entry) => {
       if (entry.type === 'item') {

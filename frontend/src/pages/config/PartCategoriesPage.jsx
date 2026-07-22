@@ -1,3 +1,11 @@
+// ============================================================================
+// PANTALLA: Configuración → Categorías de Pieza
+// Administra el catálogo de categorías que se usa al agregar repuestos
+// rápidos desde una Cotización (por ejemplo: rodamientos, bobinados,
+// carbones, etc.). Permite crear, editar, activar/desactivar y eliminar
+// categorías. Usa el componente reutilizable "CatalogManager" (aquí sin
+// campo de descripción, solo nombre y prefijo).
+// ============================================================================
 import { ListChecks } from 'lucide-react';
 import { usePartCategories } from '../../hooks/usePartCategories.js';
 import { partCategoriesApi } from '../../api/partCategoriesApi.js';

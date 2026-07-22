@@ -1,8 +1,10 @@
+// Este archivo trae del servidor la lista completa de permisos que existen en
+// el sistema (usada, por ejemplo, al configurar qué puede hacer cada rol).
 import { useState, useEffect, useCallback } from 'react';
 import { permissionsApi } from '../api/permissionsApi.js';
 import { notify } from '../lib/toast.js';
 
-/** Carga el catalogo de permisos. */
+/** Trae del servidor el catálogo de permisos disponibles en el sistema. */
 export function usePermissions() {
   const [permissions, setPermissions] = useState([]);
   const [loading, setLoading] = useState(true);

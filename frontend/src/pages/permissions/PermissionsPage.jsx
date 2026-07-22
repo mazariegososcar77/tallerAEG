@@ -1,3 +1,8 @@
+// PANTALLA: Catálogo de Permisos. Es una lista de SOLO LECTURA (no se puede
+// crear, editar ni eliminar nada aquí) con todos los permisos que existen en el
+// sistema, agrupados por módulo (Inventario, Clientes, Usuarios, etc.). Sirve
+// como referencia para saber qué "llaves" (permisos) hay disponibles a la hora
+// de armar un Rol en la pantalla de Roles.
 import { KeyRound } from "lucide-react";
 import { useMemo } from 'react';
 import { usePermissions } from '../../hooks/usePermissions.js';
@@ -6,6 +11,8 @@ const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-
 
 export default function PermissionsPage() {
   const { permissions, loading } = usePermissions();
+  // Agrupa los permisos por modulo (ej. "Inventario", "Usuarios") para mostrarlos
+  // en tarjetas separadas en vez de una sola lista larga.
   const groups = useMemo(() => {
     const map = {};
     for (const p of permissions) { (map[p.module] ||= []).push(p); }

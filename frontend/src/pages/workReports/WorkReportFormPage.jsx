@@ -1,3 +1,18 @@
+// PANTALLA: Reporte de Trabajo de una orden. Aquí el técnico documenta con
+// fotos y notas cómo fue el trabajo, en 4 etapas fijas: antes de desarmar,
+// desarmado + piezas nuevas, piezas instaladas + piezas usadas, y armado final.
+// Cada etapa necesita al menos una foto y una nota. Al final se capturan dos
+// firmas (quien entrega el equipo y quien lo recibe) dibujándolas con el dedo
+// o el mouse. El reporte no nace vacío: se crea automáticamente al presionar
+// el botón de cámara en la orden de trabajo correspondiente.
+//
+// El botón "Finalizar Reporte" NO se puede usar si falta algo (foto, nota o
+// firma) — se deshabilita y se muestra abajo la lista de lo que falta. Esto es
+// a propósito: un reporte incompleto no debe poder cerrarse. Al finalizar, el
+// sistema genera automáticamente la factura correspondiente y lleva a la
+// pantalla de Facturación. Una vez finalizado, el reporte queda de solo
+// lectura para todos, salvo un administrador con permiso especial, que puede
+// seguir editando fotos y notas (pero ya no se genera otra factura).
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { workReportsApi } from '../../api/workReportsApi.js';
@@ -6,6 +21,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 import PhotoStageGallery from '../../components/reports/PhotoStageGallery.jsx';
 import SignaturePad from '../../components/reports/SignaturePad.jsx';
 
+// Las 4 etapas fijas del reporte, en orden. Cada una necesita fotos + una nota.
 const STAGES = [
   { key: 'antes',          title: 'Antes de Desarmar',                    hint: 'Estado del equipo antes de intervenirlo.' },
   { key: 'desarmado',      title: 'Desarmado + Piezas Nuevas',             hint: 'Equipo desarmado, junto a las piezas nuevas a colocar.' },
@@ -38,6 +54,9 @@ export default function WorkReportFormPage() {
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
 
+  // Trae el reporte completo del servidor (datos, fotos, notas y firmas) y lo
+  // pone en pantalla. Se llama de nuevo cada vez que se agrega una foto, se
+  // borra, o se guarda una firma, para que la pantalla siempre muestre lo ultimo.
   const load = useCallback(() => {
     workReportsApi.get(id).then(r => {
       setReport(r);
@@ -72,20 +91,24 @@ export default function WorkReportFormPage() {
     ...(!report.client_signature_url ? ['firma de quien recibe'] : []),
   ];
 
+  // Sube una foto a la etapa indicada.
   const handleAddPhoto = async (stage, file) => {
     await workReportsApi.addPhoto(id, file, { stage });
     load();
   };
+  // Quita una foto ya subida.
   const handleRemovePhoto = async (photoId) => {
     await workReportsApi.removePhoto(id, photoId);
     load();
   };
 
+  // Guarda la firma dibujada (del tecnico o de quien recibe) junto con el nombre de quien firma.
   const handleSaveSignature = async (role, file, name) => {
     await workReportsApi.setSignature(id, file, role, name);
     load();
   };
 
+  // Guarda las notas (generales y de cada etapa) sin finalizar el reporte todavia.
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
@@ -98,6 +121,10 @@ export default function WorkReportFormPage() {
     }
   };
 
+  // Finaliza el reporte: primero guarda las notas pendientes, luego le pide al
+  // servidor que lo cierre. El servidor genera la factura automaticamente y
+  // aqui se navega a Facturacion para certificarla. No deja finalizar si falta
+  // alguna foto, nota o firma (ver "missingRequirements" arriba).
   const handleFinalize = async () => {
     if (missingRequirements.length > 0) {
       notify.error('Completa los datos obligatorios antes de finalizar');
@@ -146,12 +173,14 @@ export default function WorkReportFormPage() {
       </div>
 
       <div style={{ padding:'16px 20px', maxWidth:980, margin:'0 auto' }}>
+        {/* Aviso cuando un administrador esta editando un reporte ya finalizado */}
         {isFinal && canForceEdit && (
           <div style={{ background:'#f59e0b18', border:'1px solid #f59e0b44', borderRadius:8, padding:'10px 14px', marginBottom:12, fontSize:12, color:C.text }}>
             Este reporte ya está <strong>finalizado</strong>. Como administrador puedes editar sus fotos y
             notas, pero la factura ya generada no se vuelve a crear ni a recalcular.
           </div>
         )}
+        {/* Lista de lo que falta para poder finalizar (fotos, notas o firmas pendientes) */}
         {!isFinal && !readOnly && missingRequirements.length > 0 && (
           <div style={{ background:'#f59e0b18', border:'1px solid #f59e0b44', borderRadius:8, padding:'10px 14px', marginBottom:12, fontSize:12, color:C.text }}>
             <strong>Faltan datos obligatorios para poder finalizar el reporte:</strong>
@@ -160,6 +189,7 @@ export default function WorkReportFormPage() {
             </ul>
           </div>
         )}
+        {/* Un bloque por cada una de las 4 etapas fijas, con sus fotos y su nota */}
         {STAGES.map(stage => (
           <div key={stage.key} style={sec}>
             <div style={secHdr}>
@@ -210,6 +240,8 @@ export default function WorkReportFormPage() {
           <div style={secHdr}>
             <span style={{ fontSize:11, fontWeight:800, color:C.orange, letterSpacing:'1px', textTransform:'uppercase' }}>Firmas</span>
           </div>
+          {/* Firma de quien entrega el equipo (tecnico) y de quien lo recibe (cliente),
+              dibujadas a mano en la pantalla */}
           <div style={{ ...secBody, display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
             <SignaturePad
               label="Tecnico que entrega"
