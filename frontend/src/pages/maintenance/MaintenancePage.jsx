@@ -76,7 +76,7 @@ export default function MaintenancePage() {
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {records.length === 0 ? (
             <div style={{ textAlign:'center', marginTop:60, color:C.muted }}>
-              <Calendar size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Calendar size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay mantenimientos programados</p>
             </div>
           ) : records.map(r => {

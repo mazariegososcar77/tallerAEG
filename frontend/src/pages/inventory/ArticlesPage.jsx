@@ -108,7 +108,7 @@ export default function ArticlesPage() {
             <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
-              <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Package size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
           ) : filtered.map(a => (
@@ -137,7 +137,7 @@ export default function ArticlesPage() {
             <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
-              <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Package size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
           ) : filtered.map(a => (
