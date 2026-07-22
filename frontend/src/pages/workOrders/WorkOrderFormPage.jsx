@@ -72,6 +72,7 @@ export default function WorkOrderFormPage() {
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState([]);
   const [showClientModal, setShowClientModal] = useState(false);
@@ -108,6 +109,7 @@ export default function WorkOrderFormPage() {
 
   useEffect(() => {
     clientsApi.list().then(setClients);
+    quotesApi.list().then(setQuotes);
     clientTypesApi.list().then(setClientTypes);
     loyaltyTiersApi.list().then(setLoyaltyTiers);
     if (isEdit) {
@@ -129,6 +131,22 @@ export default function WorkOrderFormPage() {
   }, [id, fromQuoteId]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Al elegir una cotizacion en "No. Cotizacion": trae la completa (el listado no
+  // incluye items) y prellena cliente + datos del equipo, igual que el flujo ?fromQuote.
+  const handleSelectQuote = (v) => {
+    if (!v) {
+      setSourceQuote(null);
+      setEquipIndex(0);
+      set('quote_id', null);
+      set('quotation_number', '');
+      return;
+    }
+    quotesApi.get(v).then(quote => {
+      setSourceQuote(quote);
+      setEquipIndex(0);
+      applyQuoteEquip(quote, 0);
+    }).catch(() => alert('No se pudo cargar la cotizacion seleccionada'));
+  };
   const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
   // Tras crear un cliente "rapido": recarga la lista y lo deja seleccionado.
   const handleClientSaved = (created) => {
@@ -262,7 +280,23 @@ export default function WorkOrderFormPage() {
             <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap:10, marginTop:10 }}>
               <div><label style={lbl}>Autorizado por</label><input value={form.authorized_by||''} onChange={withUppercase(e => set('authorized_by', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>Proyecto</label><input value={form.project||''} onChange={withUppercase(e => set('project', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>No. Cotizacion</label><input value={form.quotation_number||''} onChange={withUppercase(e => set('quotation_number', e.target.value))} style={inp} /></div>
+              <div>
+                <label style={lbl}>No. Cotizacion</label>
+                <Combobox
+                  value={form.quote_id ?? ''}
+                  onChange={handleSelectQuote}
+                  options={[
+                    { value:'', label:'No aplica' },
+                    ...quotes.map(q => ({
+                      value: q.id,
+                      label: `No. ${q.number}${q.client_name ? ' — ' + q.client_name : ''}`,
+                      keywords: `${q.number} ${q.client_name || ''} ${q.work_type || ''}`,
+                    })),
+                  ]}
+                  searchable
+                  placeholder="No aplica"
+                />
+              </div>
               <div>
                 <label style={lbl}>Estado</label>
                 <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
@@ -334,6 +368,13 @@ export default function WorkOrderFormPage() {
             </div>
           </div>
         </div>
+
+        <div style={{ display:'flex', justifyContent:'flex-end', marginTop:4 }}>
+          <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'11px 24px', borderRadius:6, fontWeight:700, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', gap:8, opacity:saving?0.7:1 }}>
+            <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Orden'}
+          </button>
+        </div>
+
         <div style={{ paddingBottom:32 }} />
       </div>
 

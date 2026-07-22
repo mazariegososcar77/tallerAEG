@@ -38,40 +38,47 @@ const SaveIcon = () => (
   </svg>
 );
 
-function ItemsTable({ items, onChange, onAdd, onRemove, color, articles, onOpenModal }) {
+const ITEM_COLS = '1fr 68px 104px 92px 34px';
+
+function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal }) {
   return (
     <div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 70px 100px 90px 30px', gap:6, marginBottom:4 }}>
+      <div style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:6 }}>
         <span style={{ ...lbl, marginBottom:0 }}>Descripcion</span>
-        <span style={{ ...lbl, marginBottom:0 }}>Cant.</span>
-        <span style={{ ...lbl, marginBottom:0 }}>Precio Unit.</span>
-        <span style={{ ...lbl, marginBottom:0 }}>Subtotal</span>
+        <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Cant.</span>
+        <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Precio Unit.</span>
+        <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Subtotal</span>
         <span></span>
       </div>
       {items.map((item, i) => {
         const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
         return (
-          <div key={i} style={{ display:'grid', gridTemplateColumns:'1fr 70px 100px 90px 30px', gap:6, marginBottom:5 }}>
-            <Combobox
-              value={''}
-              onChange={v => { if (v) onChange(i,'description', v); }}
-              options={(articles||[]).map(a => ({ value:a.name, label:`${a.name}${a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}${a.quantity===0 ? ' (sin stock)' : ''}`, keywords:a.name }))}
-              searchable
-              onCreateNew={onOpenModal}
-              createLabel="Agregar nuevo"
-              placeholder="Seleccionar o escribir..."
-              wrapperStyle={{ marginBottom: articles?.length ? 4 : 0 }}
-            />
-            <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="O escribir descripcion..." style={{ ...inp, fontSize:11 }} />
-            <input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} />
-            <input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} />
-            <input readOnly value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700 }} />
-            <button onClick={() => onRemove(i)} disabled={items.length===1}
-              style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#ef4444', borderRadius:6, cursor:'pointer', opacity:items.length===1?0.3:1 }}>x</button>
+          <div key={i} style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:10, alignItems:'start' }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
+              <Combobox
+                value={''}
+                onChange={v => {
+                  if (!v) return;
+                  const art = (articles||[]).find(a => String(a.id) === String(v));
+                  if (art) onPickArticle(i, art);
+                }}
+                options={(articles||[]).map(a => ({ value:a.id, label:`${a.name}${a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}${a.quantity===0 ? ' (sin stock)' : ''}`, keywords:a.name }))}
+                searchable
+                onCreateNew={onOpenModal}
+                createLabel="Crear y agregar nuevo"
+                placeholder="Buscar en catalogo..."
+              />
+              <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="Descripcion (se llena al elegir; editable)" style={{ ...inp, fontSize:11 }} />
+            </div>
+            <input type="number" min="0" step="1" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={{ ...inp, textAlign:'right' }} />
+            <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
+            <input readOnly tabIndex={-1} value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
+            <button onClick={() => onRemove(i)} disabled={items.length===1} type="button" title="Eliminar linea"
+              style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#ef4444', borderRadius:6, cursor:items.length===1?'not-allowed':'pointer', opacity:items.length===1?0.3:1, height:34, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, lineHeight:1 }}>×</button>
           </div>
         );
       })}
-      <button onClick={onAdd} style={{ marginTop:4, background:C.dark, border:'1px solid '+color+'44', color:color, padding:'5px 14px', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:600 }}>
+      <button onClick={onAdd} type="button" style={{ marginTop:2, background:C.dark, border:'1px solid '+color+'44', color:color, padding:'6px 14px', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:600 }}>
         + Agregar linea
       </button>
     </div>
@@ -136,6 +143,14 @@ export default function QuoteFormPage() {
   const addEquipment = () => setEquipments(prev => [...prev, emptyEquipment()]);
   const removeEquipment = (ei) => setEquipments(prev => prev.filter((_,i) => i!==ei));
   const setLineField = (ei, type, li, k, v) => setEquipments(prev => prev.map((eq,i) => i!==ei ? eq : {...eq,[type]:eq[type].map((line,j) => j===li ? {...line,[k]:v} : line)}));
+  // Al elegir un articulo del catalogo se rellena descripcion + precio unitario
+  // (el precio queda editable; si el articulo no tiene precio, se conserva el que ya habia).
+  const applyArticle = (ei, type, li, art) => setEquipments(prev => prev.map((eq,i) => i!==ei ? eq : {
+    ...eq,
+    [type]: eq[type].map((line,j) => j===li
+      ? { ...line, description: art.name, unit_price: Number(art.price) > 0 ? Number(art.price) : line.unit_price }
+      : line),
+  }));
   const addLine = (ei, type) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[type]:[...eq[type],{description:'',quantity:1,unit_price:0}]} : eq));
   const removeLine = (ei, type, li) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[type]:eq[type].filter((_,j) => j!==li)} : eq));
   const calcSub = (lines) => lines.reduce((s,l) => s+(parseFloat(l.quantity)||0)*(parseFloat(l.unit_price)||0), 0);
@@ -266,14 +281,14 @@ export default function QuoteFormPage() {
                   <span style={{ fontSize:13 }}>Mano de Obra</span>
                   <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>Q {calcSub(eq.labor).toFixed(2)}</span>
                 </div>
-                <ItemsTable items={eq.labor} onChange={(li,k,v) => setLineField(ei,'labor',li,k,v)} onAdd={() => addLine(ei,'labor')} onRemove={li => removeLine(ei,'labor',li)} color="#3b82f6" articles={laborArticles} onOpenModal={() => setArticleModal('labor')} />
+                <ItemsTable items={eq.labor} onChange={(li,k,v) => setLineField(ei,'labor',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'labor',li,art)} onAdd={() => addLine(ei,'labor')} onRemove={li => removeLine(ei,'labor',li)} color="#3b82f6" articles={laborArticles} onOpenModal={() => setArticleModal('labor')} />
               </div>
               <div style={{ marginTop:10, background:C.dark, borderRadius:8, padding:'12px 14px', border:'1px solid #10b98133' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
                   <span style={{ fontSize:13 }}>Repuestos</span>
                   <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>Q {calcSub(eq.parts).toFixed(2)}</span>
                 </div>
-                <ItemsTable items={eq.parts} onChange={(li,k,v) => setLineField(ei,'parts',li,k,v)} onAdd={() => addLine(ei,'parts')} onRemove={li => removeLine(ei,'parts',li)} color="#10b981" articles={partArticles} onOpenModal={() => setArticleModal('part')} />
+                <ItemsTable items={eq.parts} onChange={(li,k,v) => setLineField(ei,'parts',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'parts',li,art)} onAdd={() => addLine(ei,'parts')} onRemove={li => removeLine(ei,'parts',li)} color="#10b981" articles={partArticles} onOpenModal={() => setArticleModal('part')} />
               </div>
               <div style={{ marginTop:10, textAlign:'right', fontSize:12, color:C.muted }}>
                 Subtotal equipo: <strong style={{ color:C.text }}>Q {(calcSub(eq.labor)+calcSub(eq.parts)).toFixed(2)}</strong>
@@ -288,18 +303,23 @@ export default function QuoteFormPage() {
 
         <div style={{ ...sec }}>
           <div style={secBody}>
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:10 }}>
-              <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-                <span style={lbl}>Subtotal</span>
-                <span style={{ color:C.text, fontWeight:600, fontSize:14, minWidth:120, textAlign:'right' }}>Q {grandSubtotal.toFixed(2)}</span>
-              </div>
-              <div style={{ display:'flex', gap:16, alignItems:'center' }}>
-                <span style={lbl}>Descuento (Q)</span>
-                <input type="number" value={form.discount} onChange={e => set('discount',e.target.value)} style={{ ...inp, width:120, textAlign:'right' }} />
-              </div>
-              <div style={{ display:'flex', gap:16, alignItems:'center', borderTop:'2px solid '+C.orange+'44', paddingTop:10 }}>
-                <span style={{ fontSize:14, fontWeight:800, color:C.orange, textTransform:'uppercase', letterSpacing:1 }}>Total</span>
-                <span style={{ color:C.orange, fontWeight:800, fontSize:24, minWidth:120, textAlign:'right' }}>Q {grandTotal.toFixed(2)}</span>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:16, flexWrap:'wrap' }}>
+              <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'11px 24px', borderRadius:6, fontWeight:700, fontSize:14, cursor:'pointer', display:'flex', alignItems:'center', gap:8, opacity:saving?0.7:1 }}>
+                <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Cotizacion'}
+              </button>
+              <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:10 }}>
+                <div style={{ display:'flex', gap:16, alignItems:'center' }}>
+                  <span style={lbl}>Subtotal</span>
+                  <span style={{ color:C.text, fontWeight:600, fontSize:14, minWidth:120, textAlign:'right' }}>Q {grandSubtotal.toFixed(2)}</span>
+                </div>
+                <div style={{ display:'flex', gap:16, alignItems:'center' }}>
+                  <span style={lbl}>Descuento (Q)</span>
+                  <input type="number" value={form.discount} onChange={e => set('discount',e.target.value)} style={{ ...inp, width:120, textAlign:'right' }} />
+                </div>
+                <div style={{ display:'flex', gap:16, alignItems:'center', borderTop:'2px solid '+C.orange+'44', paddingTop:10 }}>
+                  <span style={{ fontSize:14, fontWeight:800, color:C.orange, textTransform:'uppercase', letterSpacing:1 }}>Total</span>
+                  <span style={{ color:C.orange, fontWeight:800, fontSize:24, minWidth:120, textAlign:'right' }}>Q {grandTotal.toFixed(2)}</span>
+                </div>
               </div>
             </div>
           </div>
