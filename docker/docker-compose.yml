@@ -19,6 +19,21 @@ services:
     # internamente. Tunel SSH ->  ssh -L 3306:localhost:3307 usuario@<IP_DE_LA_VM>
     ports:
       - "127.0.0.1:3307:3306"
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: talleraeg_phpmyadmin
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+    networks:
+      - talleraeg
+    # Solo accesible desde este equipo (localhost:8080). Inicia sesion con
+    # aeg_user / AEG2026$ (o root / AEGRoot2026$ para acceso total).
+    ports:
+      - "127.0.0.1:8080:80"
   backend:
     build:
       context: ../backend
