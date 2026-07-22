@@ -3,32 +3,31 @@
 @tailwind utilities;
 
 /*
- * Tokens de tema. El tema OSCURO replica exactamente el look original
- * (navy-900 fondo, navy-800 tarjetas, etc). El tema CLARO usa un celeste
- * super claro de fondo, tarjetas blancas y texto oscuro. El sidebar (navy)
- * y el acento naranja son fijos en ambos temas.
+ * Tokens de tema. El tema CLARO (por defecto) usa un verde super claro de
+ * fondo, tarjetas blancas y texto oscuro. El tema OSCURO usa verdes oscuros.
+ * El sidebar (verde) y el acento amarillo son fijos en ambos temas.
  */
 :root {
-  /* Tema claro (celeste super claro) */
-  --c-app: #E9F1FB;
+  /* Tema claro (verde super claro) — por defecto */
+  --c-app: #ECF5EF;
   --c-surface: #FFFFFF;
-  --c-surface-2: #F1F6FC;
-  --c-line: #D3DEEE;
-  --c-hover: #E6EFFA;
+  --c-surface-2: #F0F6F1;
+  --c-line: #D5E5DA;
+  --c-hover: #E4F0E8;
   --c-text: #1E293B;
-  --c-heading: #16285C;
+  --c-heading: #164B2C;
   --c-muted: #64748B;
 }
 .dark {
-  /* Tema oscuro = look original */
-  --c-app: #0C1733;
-  --c-surface: #112048;
-  --c-surface-2: #0C1733;
-  --c-line: #1F3470;
-  --c-hover: #16285C;
+  /* Tema oscuro (verdes oscuros) */
+  --c-app: #0B2A18;
+  --c-surface: #103A22;
+  --c-surface-2: #0B2A18;
+  --c-line: #1E5F39;
+  --c-hover: #164B2C;
   --c-text: #E2E8F0;
   --c-heading: #FFFFFF;
-  --c-muted: #5A7AA8;
+  --c-muted: #7FA98F;
 }
 
 @layer base {

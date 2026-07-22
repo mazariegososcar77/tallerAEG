@@ -21,7 +21,7 @@ const STATUS_OPTIONS = [
 ];
 const STATUS_COLORS = { borrador:'#94a3b8', enviada:'#3b82f6', aprobada:'#10b981', rechazada:'#ef4444', vencida:'#f59e0b' };
 const WORK_TYPES = ['Rebobinado','Mantenimiento','Reparacion','Cambio de conexion','Calculo de voltaje','Otros'];
-const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', green:'#10b981' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#10b981' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 const sec = { background:C.card, border:'1px solid '+C.border, borderRadius:10, marginBottom:12, overflow:'hidden' };
@@ -169,7 +169,7 @@ export default function QuoteFormPage() {
     <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <button onClick={() => navigate('/cotizaciones')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#93a8c8', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate('/cotizaciones')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             Volver
           </button>
           <span style={{ fontSize:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Cotizacion' : 'Nueva Cotizacion'}</span>
@@ -232,7 +232,7 @@ export default function QuoteFormPage() {
         </div>
 
         {equipments.map((eq, ei) => (
-          <div key={ei} style={{ ...sec, border:'1px solid #E8551C44' }}>
+          <div key={ei} style={{ ...sec, border:'1px solid #CA8A0444' }}>
             <div style={secHdr}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ width:6, height:6, background:C.orange, borderRadius:'50%', display:'inline-block' }}></span>

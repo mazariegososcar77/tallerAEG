@@ -62,7 +62,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
       onClose={onClose}
       title="Detalle del articulo"
       size="xl"
-      accentColor={article.warehouse_color || '#16285C'}
+      accentColor={article.warehouse_color || '#164B2C'}
       footer={
         <Button variant="outline" onClick={onClose}>
           Cerrar

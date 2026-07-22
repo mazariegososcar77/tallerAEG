@@ -90,7 +90,9 @@ Credenciales por defecto (creadas por `002_seed.sql`): **admin@talleraeg.com / A
 
 - **Idioma:** la interfaz visible está en español; los identificadores de código (variables,
   funciones, archivos) en inglés.
-- **Marca / colores:** azul marino `#16285C` (`navy`) y naranja `#E8551C` (`orange`), definidos como
-  escalas en `frontend/tailwind.config.js`. El logo es `Propuesta 2.png` (copiado a
-  `frontend/public/logo.png`).
+- **Marca / colores:** verde oscuro `#164B2C` y amarillo dorado `#CA8A04`, definidos como escalas en
+  `frontend/tailwind.config.js`. Por compatibilidad, los tokens **conservan los nombres** `navy`
+  (= verde) y `orange` (= amarillo), así que las clases Tailwind existentes no cambian. El tema por
+  defecto es **claro** (el oscuro sigue disponible con el botón sol/luna del topbar). El logo es
+  `Propuesta 2.png` (copiado a `frontend/public/logo.png`).
 - Cada subproyecto tiene su propio `CLAUDE.md` con los detalles de arquitectura y comandos.
