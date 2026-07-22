@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
+import { workReportsApi } from '../../api/workReportsApi.js';
 import { getToken } from '../../lib/authStorage.js';
 import { notify } from '../../lib/toast.js';
+import { useAuth } from '../../hooks/useAuth.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import WorkOrderViewModal from './WorkOrderViewModal.jsx';
-import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2 } from 'lucide-react';
+import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera } from 'lucide-react';
 
 const STATUS_LABELS = {
   recibido:   { label: 'Recibido',   color: '#3b82f6' },
@@ -16,12 +18,26 @@ const STATUS_LABELS = {
 };
 
 export default function WorkOrdersPage() {
+  const { hasPermission } = useAuth();
   const [orders, setOrders] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewId, setViewId] = useState(null);
   const [toDelete, setToDelete] = useState(null);
+  const [creatingReportId, setCreatingReportId] = useState(null);
   const navigate = useNavigate();
+
+  const handleOpenReport = async (order) => {
+    setCreatingReportId(order.id);
+    try {
+      const report = await workReportsApi.createForOrder(order.id);
+      navigate('/reportes/' + report.id + '/editar');
+    } catch (e) {
+      notify.error(e.message || 'No se pudo abrir el reporte');
+    } finally {
+      setCreatingReportId(null);
+    }
+  };
 
   useEffect(() => {
     workOrdersApi.list().then(setOrders).finally(() => setLoading(false));
@@ -118,8 +134,10 @@ export default function WorkOrdersPage() {
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--c-muted)' }}>Recibido: {order.received_at?.slice(0,10)} {order.delivery_at ? '· Entrega: ' + order.delivery_at.slice(0,10) : ''}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {order.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(order.total).toFixed(2)}</span>}
                     <button onClick={() => setViewId(order.id)} title="Ver detalle de la orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
+                    {hasPermission('work-reports.create') && (
+                      <button onClick={() => handleOpenReport(order)} disabled={creatingReportId === order.id} title="Reporte de trabajo" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#a855f7', opacity: creatingReportId === order.id ? 0.6 : 1 }}><Camera size={16} /></button>
+                    )}
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate('/ordenes/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
                     <button onClick={() => setToDelete(order)} title="Eliminar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>

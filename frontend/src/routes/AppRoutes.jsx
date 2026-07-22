@@ -22,6 +22,10 @@ import QuoteFormPage from '../pages/quotes/QuoteFormPage.jsx';
 import GeneralSettingsPage from '../pages/config/GeneralSettingsPage.jsx';
 import SystemParamsPage from '../pages/config/SystemParamsPage.jsx';
 import CatalogsPage from '../pages/config/CatalogsPage.jsx';
+import WorkReportsPage from '../pages/workReports/WorkReportsPage.jsx';
+import WorkReportFormPage from '../pages/workReports/WorkReportFormPage.jsx';
+import InvoicesPage from '../pages/billing/InvoicesPage.jsx';
+import PartCategoriesPage from '../pages/config/PartCategoriesPage.jsx';
 
 export default function AppRoutes() {
   return (
@@ -47,12 +51,16 @@ export default function AppRoutes() {
         <Route path="cotizaciones/:id/editar" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage /></ProtectedRoute>} />
         <Route path="ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
         <Route path="ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
+        <Route path="reportes" element={<ProtectedRoute permission="work-reports.view"><WorkReportsPage /></ProtectedRoute>} />
+        <Route path="reportes/:id/editar" element={<ProtectedRoute permission="work-reports.view"><WorkReportFormPage /></ProtectedRoute>} />
+        <Route path="facturacion" element={<ProtectedRoute permission="billing.view"><InvoicesPage /></ProtectedRoute>} />
         <Route path="maquinas" element={<ProtectedRoute permission="dashboard.view"><MachinesPage /></ProtectedRoute>} />
         <Route path="mantenimientos" element={<ProtectedRoute permission="dashboard.view"><MaintenancePage /></ProtectedRoute>} />
         <Route path="configuracion/tipos-cliente" element={<ProtectedRoute permission="client-types.view"><ClientTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/fidelizacion" element={<ProtectedRoute permission="loyalty.view"><LoyaltyTiersPage /></ProtectedRoute>} />
         <Route path="configuracion/tipos" element={<ProtectedRoute permission="article-types.view"><ArticleTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
+        <Route path="configuracion/categorias-pieza" element={<ProtectedRoute permission="part-categories.view"><PartCategoriesPage /></ProtectedRoute>} />
         <Route path="configuracion/general" element={<ProtectedRoute permission="dashboard.view"><GeneralSettingsPage /></ProtectedRoute>} />
         <Route path="configuracion/parametros" element={<ProtectedRoute permission="dashboard.view"><SystemParamsPage /></ProtectedRoute>} />
         <Route path="configuracion/catalogos" element={<ProtectedRoute permission="dashboard.view"><CatalogsPage /></ProtectedRoute>} />

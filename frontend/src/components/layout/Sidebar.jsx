@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Package, Tags, Warehouse, Users, ShieldCheck, KeyRound,
   Contact, UserCog, Award, ChevronsLeft, ChevronsRight, ChevronRight,
   ClipboardList, Wrench, Calendar, FileText, Settings, Briefcase, Boxes,
-  HeartHandshake, SlidersHorizontal, Cog, ListChecks,
+  HeartHandshake, SlidersHorizontal, Cog, ListChecks, Camera, Receipt,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth.js';
 
@@ -23,6 +23,8 @@ const NAV = [
       { to: '/clientes',      label: 'Clientes',           icon: Contact,       permission: 'clients.view' },
       { to: '/cotizaciones',  label: 'Cotizaciones',       icon: FileText,      permission: 'dashboard.view' },
       { to: '/ordenes',       label: 'Ordenes de Trabajo', icon: ClipboardList, permission: 'dashboard.view' },
+      { to: '/reportes',      label: 'Reportes de Trabajo', icon: Camera,       permission: 'work-reports.view' },
+      { to: '/facturacion',   label: 'Facturación',        icon: Receipt,       permission: 'billing.view' },
     ],
   },
   {
@@ -31,6 +33,7 @@ const NAV = [
       { to: '/inventario',            label: 'Inventario',        icon: Boxes,     permission: 'articles.view' },
       { to: '/configuracion/bodegas', label: 'Bodegas',           icon: Warehouse, permission: 'warehouses.view' },
       { to: '/configuracion/tipos',   label: 'Tipos de articulo', icon: Tags,      permission: 'article-types.view' },
+      { to: '/configuracion/categorias-pieza', label: 'Categorias de Pieza', icon: ListChecks, permission: 'part-categories.view' },
     ],
   },
   {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
-import { FileText, Plus, Search, Eye, Pencil, Trash2, Download } from 'lucide-react';
+import { FileText, Plus, Search, Eye, Pencil, Trash2, Download, ClipboardList } from 'lucide-react';
 import { getToken } from '../../lib/authStorage.js';
 
 const STATUS_LABELS = {
@@ -109,6 +109,11 @@ export default function QuotesPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
+                    {q.status === 'aprobada' && (
+                      <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
+                        <ClipboardList size={15} /> Crear Orden
+                      </button>
+                    )}
                     <button onClick={() => handleDownloadPDF(q)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Eye size={16} /></button>
                     <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>

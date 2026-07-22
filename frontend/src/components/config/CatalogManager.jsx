@@ -12,7 +12,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", input:"var(--c-surface-2)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#E8551C" };
 const DEFAULT_COLOR = "#16285C";
 
-export default function CatalogManager({ title, subtitle, emoji, entityLabel, items, loading, reload, api, permPrefix, withColor=false }) {
+export default function CatalogManager({ title, subtitle, emoji, entityLabel, items, loading, reload, api, permPrefix, withColor=false, withPrefix=false, withDescription=true }) {
   const { hasPermission } = useAuth();
   const canCreate = hasPermission(`${permPrefix}.create`);
   const canUpdate = hasPermission(`${permPrefix}.update`);
@@ -21,14 +21,16 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
-  const [form, setForm] = useState({ name:"", description:"", color:DEFAULT_COLOR, is_active:true });
+  const [form, setForm] = useState({ name:"", description:"", prefix:"", color:DEFAULT_COLOR, is_active:true });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!formOpen) return;
     setErrors({});
-    setForm(editing ? { name:editing.name, description:editing.description||"", color:editing.color||DEFAULT_COLOR, is_active:editing.is_active } : { name:"", description:"", color:DEFAULT_COLOR, is_active:true });
+    setForm(editing
+      ? { name:editing.name, description:editing.description||"", prefix:editing.prefix||"", color:editing.color||DEFAULT_COLOR, is_active:editing.is_active }
+      : { name:"", description:"", prefix:"", color:DEFAULT_COLOR, is_active:true });
   }, [formOpen, editing]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
@@ -38,8 +40,10 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
     e.preventDefault();
     setSaving(true);
     setErrors({});
-    const payload = { name:form.name, description:form.description, is_active:form.is_active };
+    const payload = { name:form.name, is_active:form.is_active };
+    if (withDescription) payload.description = form.description;
     if (withColor) payload.color = form.color;
+    if (withPrefix) payload.prefix = form.prefix.trim().toUpperCase();
     try {
       if (editing) { await api.update(editing.id, payload); notify.success(`${entityLabel} actualizado`); }
       else { await api.create(payload); notify.success(`${entityLabel} creado`); }
@@ -58,8 +62,9 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
     } catch(err) { notify.error(err.message); }
   };
 
-  const cols = isMobile ? "1fr 80px" : (withColor ? "40px 1fr 1fr 100px 100px" : "1fr 1fr 100px 100px");
-  const headers = isMobile ? ["Nombre","Acciones"] : [...(withColor?[""]:[]), "Nombre","Descripcion","Estado","Acciones"];
+  const middleCols = [...(withPrefix?["90px"]:[]), ...(withDescription?["1fr"]:[])];
+  const cols = isMobile ? "1fr 80px" : [...(withColor?["40px"]:[]), "1fr", ...middleCols, "100px 100px"].join(" ");
+  const headers = isMobile ? ["Nombre","Acciones"] : [...(withColor?[""]:[]), "Nombre", ...(withPrefix?["Prefijo"]:[]), ...(withDescription?["Descripcion"]:[]), "Estado","Acciones"];
 
   return (
     <div style={{ padding:"20px 16px", maxWidth:900, margin:"0 auto" }}>
@@ -92,9 +97,10 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
                 {withColor && <span style={{ width:14, height:14, borderRadius:"50%", background:item.color||DEFAULT_COLOR, display:"inline-block", border:"1px solid "+C.border, flexShrink:0 }} />}
                 <span style={{ fontWeight:600, color:C.text }}>{item.name}</span>
               </div>
-              {isMobile && <p style={{ margin:"3px 0 0", fontSize:12, color:C.muted }}>{item.description || "—"} · {item.is_active ? "Activo" : "Inactivo"}</p>}
+              {isMobile && <p style={{ margin:"3px 0 0", fontSize:12, color:C.muted }}>{withPrefix ? item.prefix : (item.description || "—")} · {item.is_active ? "Activo" : "Inactivo"}</p>}
             </div>
-            {!isMobile && <span style={{ fontSize:13, color:C.muted }}>{item.description || "—"}</span>}
+            {!isMobile && withPrefix && <span style={{ fontSize:13, color:C.muted, fontWeight:700 }}>{item.prefix}</span>}
+            {!isMobile && withDescription && <span style={{ fontSize:13, color:C.muted }}>{item.description || "—"}</span>}
             {!isMobile && <span style={{ background:item.is_active?"#10b98122":"#ef444422", color:item.is_active?"#10b981":"#ef4444", border:"1px solid "+(item.is_active?"#10b98144":"#ef444444"), borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:600, width:"fit-content" }}>
               {item.is_active ? "Activo" : "Inactivo"}
             </span>}
@@ -114,7 +120,8 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
         }>
         <form id="catalog-form" onSubmit={handleSubmit} className="space-y-4">
           <Input label="Nombre" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} error={errors.name} required />
-          <Input label="Descripcion" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} error={errors.description} />
+          {withPrefix && <Input label="Prefijo (para el codigo, ej. ROD)" value={form.prefix} onChange={e=>setForm(p=>({...p,prefix:e.target.value.toUpperCase()}))} error={errors.prefix} maxLength={10} required />}
+          {withDescription && <Input label="Descripcion" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} error={errors.description} />}
           {withColor && <ColorPicker label="Color" value={form.color} onChange={color=>setForm(p=>({...p,color}))} />}
           <Checkbox label="Activo" checked={form.is_active} onChange={checked=>setForm(p=>({...p,is_active:checked}))} />
         </form>

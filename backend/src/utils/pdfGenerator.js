@@ -1,6 +1,7 @@
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const AZUL = '#0C1733';
@@ -307,17 +308,6 @@ export function generarOrdenTrabajoPDF(order) {
     y += 6;
   }
 
-  if (order.total) {
-    y += 6;
-    doc.moveTo(L, y).lineTo(R, y).strokeColor('#e2e8f0').stroke();
-    y += 10;
-    doc.rect(R - 200, y, 200, 26).fill(NARANJA);
-    doc.fillColor(BLANCO).fontSize(11).font('Helvetica-Bold')
-       .text('TOTAL:', R - 200, y + 8, { width: 140, align: 'right' })
-       .text('Q ' + Number(order.total).toFixed(2), R - 55, y + 8, { width: 55, align: 'right' });
-    y += 36;
-  }
-
   if (y > 680) { doc.addPage({ margin: 0 }); y = 40; }
   y += 20;
   doc.moveTo(L, y + 30).lineTo(L + 150, y + 30).strokeColor('#94a3b8').lineWidth(0.5).stroke();
@@ -333,6 +323,270 @@ export function generarOrdenTrabajoPDF(order) {
      .text('Taller AEG - Guatemala', R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text('Gracias por su preferencia', L, pageH - 15, { width: CW, align: 'center' });
+
+  return doc;
+}
+
+export function generarFacturaPDF(invoice) {
+  const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
+  const W = doc.page.width;
+  const L = 40;
+  const R = W - 40;
+  const CW = R - L;
+
+  doc.rect(0, 0, W, 110).fill(AZUL);
+  try {
+    const logoPath = join(__dirname, '../assets/logo.png');
+    doc.image(logoPath, L, 15, { height: 75 });
+  } catch(e) {}
+
+  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
+  doc.fontSize(9).font('Helvetica')
+     .text('Taller de Embobinado Industrial', 160, 42)
+     .text('Guatemala, Guatemala', 160, 55)
+     .text('Tel: (+502) 0000-0000', 160, 68);
+
+  doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
+     .text('FACTURA', 350, 18, { width: 200, align: 'right' });
+  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
+     .text('No. ' + (invoice.number || '0001'), 350, 48, { width: 200, align: 'right' });
+
+  const fechaDoc = invoice.date ? new Date(invoice.date).toLocaleDateString('es-GT') : '-';
+  doc.fontSize(8).fillColor('#94a3b8')
+     .text('Fecha: ' + fechaDoc, 350, 68, { width: 200, align: 'right' })
+     .text('Orden No. ' + (invoice.work_order_number || '-'), 350, 80, { width: 200, align: 'right' });
+
+  let y = 122;
+
+  // ── DATOS DEL CLIENTE ────────────────────────────────────
+  doc.rect(L, y, CW, 20).fill(AZUL_MED);
+  doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold')
+     .text('DATOS DEL CLIENTE', L + 8, y + 6);
+  y += 26;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Cliente:', L, y);
+  doc.font('Helvetica').text(invoice.client_name || '-', L + 55, y);
+  y += 14;
+  if (invoice.client_email) {
+    doc.font('Helvetica-Bold').text('Correo:', L, y);
+    doc.font('Helvetica').text(invoice.client_email, L + 55, y);
+    y += 14;
+  }
+  y += 10;
+
+  // ── LINEAS ───────────────────────────────────────────────
+  const items = invoice.items || [];
+  doc.rect(L, y, CW, 17).fill('#1e3a5f');
+  doc.fillColor(BLANCO).fontSize(8).font('Helvetica-Bold')
+     .text('DESCRIPCION', L + 8, y + 5)
+     .text('CANT.', R - 175, y + 5, { width: 45, align: 'center' })
+     .text('PRECIO UNIT.', R - 125, y + 5, { width: 65, align: 'right' })
+     .text('SUBTOTAL', R - 55, y + 5, { width: 55, align: 'right' });
+  y += 19;
+  items.forEach((item, idx) => {
+    if (y > 680) { doc.addPage({ margin: 0 }); y = 40; }
+    doc.rect(L, y, CW, 15).fill(idx % 2 === 0 ? '#f1f5f9' : BLANCO);
+    doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
+       .text(item.description || '-', L + 8, y + 4, { width: CW - 220 })
+       .text(Number(item.quantity).toFixed(2), R - 175, y + 4, { width: 45, align: 'center' })
+       .text('Q ' + Number(item.unit_price).toFixed(2), R - 125, y + 4, { width: 65, align: 'right' })
+       .text('Q ' + Number(item.subtotal).toFixed(2), R - 55, y + 4, { width: 55, align: 'right' });
+    y += 16;
+  });
+
+  // ── TOTALES ──────────────────────────────────────────────
+  if (y > 680) { doc.addPage({ margin: 0 }); y = 40; }
+  y += 6;
+  doc.moveTo(L, y).lineTo(R, y).strokeColor('#e2e8f0').stroke();
+  y += 10;
+
+  const subtotal = Number(invoice.subtotal) || 0;
+  const discount = Number(invoice.discount) || 0;
+  const total = Number(invoice.total) || 0;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica')
+     .text('Subtotal:', R - 180, y, { width: 125, align: 'right' })
+     .text('Q ' + subtotal.toFixed(2), R - 50, y, { width: 50, align: 'right' });
+  y += 16;
+
+  if (discount > 0) {
+    doc.text('Descuento:', R - 180, y, { width: 125, align: 'right' })
+       .text('- Q ' + discount.toFixed(2), R - 50, y, { width: 50, align: 'right' });
+    y += 16;
+  }
+
+  doc.rect(R - 200, y, 200, 26).fill(NARANJA);
+  doc.fillColor(BLANCO).fontSize(11).font('Helvetica-Bold')
+     .text('TOTAL:', R - 200, y + 8, { width: 140, align: 'right' })
+     .text('Q ' + total.toFixed(2), R - 55, y + 8, { width: 55, align: 'right' });
+  y += 36;
+
+  // ── CERTIFICACION FEL ────────────────────────────────────
+  if (y > 700) { doc.addPage({ margin: 0 }); y = 40; }
+  if (invoice.fel_uuid) {
+    doc.fillColor(NEGRO).fontSize(8).font('Helvetica-Bold').text('Certificacion FEL', L, y);
+    y += 12;
+    doc.font('Helvetica').fontSize(7)
+       .text('UUID: ' + invoice.fel_uuid, L, y)
+       .text('Serie: ' + (invoice.fel_series || '-') + '   No.: ' + (invoice.fel_number || '-'), L, y + 10);
+    y += 24;
+  } else {
+    doc.rect(L, y, CW, 24).fill('#fef3c7');
+    doc.fillColor('#92400e').fontSize(8).font('Helvetica-Bold')
+       .text('Certificacion FEL pendiente de integrar — documento interno, no valido como factura fiscal.', L + 8, y + 8, { width: CW - 16 });
+    y += 30;
+  }
+
+  // ── PIE DE PÁGINA ─────────────────────────────────────────
+  const pageH2 = doc.page.height;
+  doc.rect(0, pageH2 - 38, W, 38).fill(AZUL);
+  doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
+     .text('Factura interna - Taller AEG', L, pageH2 - 28, { width: CW / 2 })
+     .text('Taller AEG — Guatemala', R - 150, pageH2 - 28, { width: 150, align: 'right' });
+  doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
+     .text('Gracias por su preferencia', L, pageH2 - 15, { width: CW, align: 'center' });
+
+  return doc;
+}
+
+const STAGE_LABELS = {
+  antes: 'Antes de Desarmar',
+  desarmado: 'Desarmado + Piezas Nuevas',
+  piezas_nuevas: 'Piezas Instaladas + Piezas Usadas',
+  armado_final: 'Armado Final',
+};
+
+export function generarReportePDF(report) {
+  const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
+  const W = doc.page.width;
+  const L = 40;
+  const R = W - 40;
+  const CW = R - L;
+
+  doc.rect(0, 0, W, 110).fill(AZUL);
+  try {
+    const logoPath = join(__dirname, '../assets/logo.png');
+    doc.image(logoPath, L, 15, { height: 75 });
+  } catch(e) {}
+
+  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
+  doc.fontSize(9).font('Helvetica')
+     .text('Taller de Embobinado Industrial', 160, 42)
+     .text('Guatemala, Guatemala', 160, 55)
+     .text('Tel: (+502) 0000-0000', 160, 68);
+
+  doc.fontSize(18).font('Helvetica-Bold').fillColor(NARANJA)
+     .text('REPORTE DE TRABAJO', 220, 20, { width: 330, align: 'right' });
+  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
+     .text('No. ' + (report.number || '0001'), 350, 48, { width: 200, align: 'right' });
+  doc.fontSize(8).fillColor('#94a3b8')
+     .text('Orden No. ' + (report.work_order_number || '-'), 350, 68, { width: 200, align: 'right' });
+
+  let y = 122;
+
+  // ── INFORMACION GENERAL ──────────────────────────────────
+  doc.rect(L, y, CW, 20).fill(AZUL_MED);
+  doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('INFORMACION GENERAL', L + 8, y + 6);
+  y += 26;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Cliente:', L, y);
+  doc.font('Helvetica').text(report.client_name || '-', L + 55, y);
+  doc.font('Helvetica-Bold').text('Equipo:', L + 280, y);
+  doc.font('Helvetica').text(report.equipment_name || '-', L + 330, y, { width: CW - 290 });
+  y += 16;
+
+  if (report.general_notes) {
+    doc.font('Helvetica-Bold').text('Notas generales:', L, y);
+    doc.font('Helvetica').text(report.general_notes, L + 100, y, { width: CW - 100 });
+    y += doc.heightOfString(report.general_notes, { width: CW - 100 }) + 6;
+  }
+  y += 8;
+
+  // ── ETAPAS: nota + fotos ──────────────────────────────────
+  const stageNotes = report.stage_notes || {};
+  const photosByStage = (stage) => (report.photos || []).filter((p) => p.stage === stage);
+  const THUMB = 100, GAP = 8;
+  const perRow = Math.max(1, Math.floor((CW + GAP) / (THUMB + GAP)));
+
+  Object.keys(STAGE_LABELS).forEach((stageKey) => {
+    if (y > 690) { doc.addPage({ margin: 0 }); y = 40; }
+
+    doc.rect(L, y, CW, 20).fill(NARANJA);
+    doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold')
+       .text(STAGE_LABELS[stageKey].toUpperCase(), L + 8, y + 6);
+    y += 26;
+
+    const note = stageNotes[stageKey];
+    if (note) {
+      doc.fillColor(NEGRO).fontSize(8).font('Helvetica').text(note, L, y, { width: CW });
+      y += doc.heightOfString(note, { width: CW }) + 8;
+    }
+
+    const photos = photosByStage(stageKey);
+    if (photos.length === 0) {
+      doc.fillColor(GRIS).fontSize(8).font('Helvetica-Oblique').text('Sin fotos en esta etapa.', L, y);
+      y += 18;
+    } else {
+      photos.forEach((p, idx) => {
+        const col = idx % perRow;
+        if (col === 0 && idx !== 0) y += THUMB + 22;
+        if (y > 650) { doc.addPage({ margin: 0 }); y = 40; }
+        const x = L + col * (THUMB + GAP);
+        try {
+          const filePath = join(UPLOADS_DIR, p.photo_url.replace('/uploads/', ''));
+          doc.rect(x, y, THUMB, THUMB).fill('#f1f5f9');
+          doc.image(filePath, x, y, { fit: [THUMB, THUMB], align: 'center', valign: 'center' });
+        } catch(e) {
+          doc.rect(x, y, THUMB, THUMB).fill('#f1f5f9');
+        }
+        if (p.caption) {
+          doc.fillColor(GRIS).fontSize(6).font('Helvetica')
+             .text(p.caption, x, y + THUMB + 2, { width: THUMB });
+        }
+      });
+      y += THUMB + 22;
+    }
+    y += 4;
+  });
+
+  // ── FIRMAS ─────────────────────────────────────────────────
+  if (y > 630) { doc.addPage({ margin: 0 }); y = 40; }
+  y += 6;
+  doc.moveTo(L, y).lineTo(R, y).strokeColor('#e2e8f0').stroke();
+  y += 14;
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('FIRMAS', L, y);
+  y += 20;
+
+  const sigW = (CW - 30) / 2;
+  const sigH = 70;
+  const sigX2 = L + sigW + 30;
+
+  const drawSignature = (x, url, name, label) => {
+    doc.rect(x, y, sigW, sigH).lineWidth(0.7).strokeColor('#cbd5e1').stroke();
+    if (url) {
+      try {
+        const filePath = join(UPLOADS_DIR, url.replace('/uploads/', ''));
+        doc.image(filePath, x + 5, y + 5, { fit: [sigW - 10, sigH - 10], align: 'center', valign: 'center' });
+      } catch(e) {}
+    }
+    doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
+       .text(name || '_______________________', x, y + sigH + 4, { width: sigW, align: 'center' });
+    doc.fillColor(GRIS).fontSize(7).font('Helvetica')
+       .text(label, x, y + sigH + 16, { width: sigW, align: 'center' });
+  };
+
+  drawSignature(L, report.tech_signature_url, report.tech_signature_name, 'Tecnico que entrega');
+  drawSignature(sigX2, report.client_signature_url, report.client_signature_name, 'Recibido por');
+  y += sigH + 30;
+
+  // ── PIE DE PÁGINA ─────────────────────────────────────────
+  const pageH3 = doc.page.height;
+  doc.rect(0, pageH3 - 38, W, 38).fill(AZUL);
+  doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
+     .text('Reporte de Trabajo - Taller AEG', L, pageH3 - 28, { width: CW / 2 })
+     .text('Taller AEG — Guatemala', R - 150, pageH3 - 28, { width: 150, align: 'right' });
+  doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
+     .text('Gracias por su preferencia', L, pageH3 - 15, { width: CW, align: 'center' });
 
   return doc;
 }

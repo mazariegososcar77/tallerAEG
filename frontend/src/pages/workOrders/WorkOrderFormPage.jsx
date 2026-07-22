@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
+import { quotesApi } from '../../api/quotesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { clientTypesApi } from '../../api/clientTypesApi.js';
 import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
@@ -65,6 +66,8 @@ const SectionHeader = ({ title }) => (
 export default function WorkOrderFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromQuoteId = searchParams.get('fromQuote');
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
@@ -74,6 +77,8 @@ export default function WorkOrderFormPage() {
   const [showClientModal, setShowClientModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [orderNumber, setOrderNumber] = useState('—');
+  const [sourceQuote, setSourceQuote] = useState(null);
+  const [equipIndex, setEquipIndex] = useState(0);
   const [form, setForm] = useState({
     client_id:'', received_at:new Date().toISOString().slice(0,10),
     delivery_at:'', authorized_by:'', project:'', status:'recibido',
@@ -81,9 +86,25 @@ export default function WorkOrderFormPage() {
     kw:'', voltage:'', amperage:'', rpm:'', hp:'', frame:'',
     work_type:'', observations:'', internal_notes:'',
     quotation_number:'', dte_number:'', oc_number:'',
-    tech_disarm:'', tech_assemble:'', total:'',
+    tech_disarm:'', tech_assemble:'', total:'', quote_id:null,
   });
   const [items, setItems] = useState(DEFAULT_ITEMS.map(n => ({ name:n, quantity:1, has_item:false })));
+
+  // Prellena el formulario con los datos de un equipo de la cotizacion de origen.
+  const applyQuoteEquip = (quote, ei) => {
+    const eq = quote.equipment_data?.[ei] || {};
+    const eqItems = (quote.items || []).filter(i => i.equipment_index === ei);
+    const eqTotal = eqItems.reduce((s, i) => s + Number(i.subtotal || 0), 0);
+    setForm(f => ({
+      ...f,
+      client_id: quote.client_id,
+      equipment_name: eq.name || '', brand: eq.brand || '', model: eq.model || '', serial: eq.serial || '',
+      work_type: quote.work_type || '',
+      quotation_number: quote.number || '',
+      total: eqTotal || quote.total || '',
+      quote_id: quote.id,
+    }));
+  };
 
   useEffect(() => {
     clientsApi.list().then(setClients);
@@ -99,8 +120,13 @@ export default function WorkOrderFormPage() {
         }));
         if (oi?.length) setItems(oi);
       });
+    } else if (fromQuoteId) {
+      quotesApi.get(fromQuoteId).then(quote => {
+        setSourceQuote(quote);
+        applyQuoteEquip(quote, 0);
+      });
     }
-  }, [id]);
+  }, [id, fromQuoteId]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
@@ -188,6 +214,25 @@ export default function WorkOrderFormPage() {
 
       <div style={{ padding: isMobile ? '12px' : '16px 20px', maxWidth:960, margin:'0 auto' }}>
 
+        {sourceQuote && (
+          <div style={{ background:C.orange+'14', border:'1px solid '+C.orange+'44', borderRadius:8, padding:'10px 14px', marginBottom:12, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <span style={{ fontSize:12, color:C.text }}>
+              Datos prellenados desde la cotización <strong>No. {sourceQuote.number}</strong>.
+            </span>
+            {sourceQuote.equipment_data?.length > 1 && (
+              <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                <span style={{ fontSize:11, color:C.muted }}>Equipo:</span>
+                <Combobox
+                  value={equipIndex}
+                  onChange={v => { setEquipIndex(Number(v)); applyQuoteEquip(sourceQuote, Number(v)); }}
+                  options={sourceQuote.equipment_data.map((eq, i) => ({ value:i, label: eq.name || ('Equipo ' + (i+1)) }))}
+                  style={{ minWidth:160 }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Info general */}
         <div style={sec}>
           <SectionHeader title="Informacion General" />
@@ -268,11 +313,6 @@ export default function WorkOrderFormPage() {
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div><label style={lbl}>Tecnico Desarma</label><input value={form.tech_disarm||''} onChange={withUppercase(e => set('tech_disarm', e.target.value))} style={inp} /></div>
                 <div><label style={lbl}>Tecnico Arma</label><input value={form.tech_assemble||''} onChange={withUppercase(e => set('tech_assemble', e.target.value))} style={inp} /></div>
-              </div>
-              <div style={{ background:C.input, border:'2px solid '+C.orange+'55', borderRadius:8, padding:'10px 14px', marginTop:10 }}>
-                <label style={{ ...lbl, color:C.orange }}>Total (Q)</label>
-                <input type='number' value={form.total||''} onChange={e => set('total', e.target.value)}
-                  style={{ background:'transparent', border:'none', color:C.orange, fontSize:22, fontWeight:700, width:'100%', outline:'none' }} />
               </div>
             </div>
           </div>

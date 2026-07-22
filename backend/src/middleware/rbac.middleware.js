@@ -1,7 +1,8 @@
 /**
  * Control de acceso por permiso. Usar despues de authenticate.
- * Los permisos viajan en el JWT (se calculan al iniciar sesion); si cambian los
- * permisos de un rol, el usuario debe volver a iniciar sesion para reflejarlo.
+ * req.user.permissions se consulta en la base de datos en cada peticion
+ * (ver auth.middleware.js), no viene de una copia congelada en el JWT: un
+ * cambio de permisos de un rol tiene efecto inmediato, sin re-login.
  */
 import { ApiError } from '../utils/ApiError.js';
 
