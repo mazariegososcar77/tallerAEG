@@ -109,9 +109,11 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
   // Calcula cuantas columnas tiene la tabla y sus titulos, segun que
   // opciones (withColor / withPrefix / withDescription) esten activas para
   // este catalogo en particular. Asi la misma tabla se adapta a cada caso.
+  // El punto de color va dentro de la celda del nombre (no es una columna
+  // propia), asi que las columnas de la grilla NO reservan hueco para el.
   const middleCols = [...(withPrefix?["90px"]:[]), ...(withDescription?["1fr"]:[])];
-  const cols = isMobile ? "1fr 80px" : [...(withColor?["40px"]:[]), "1fr", ...middleCols, "100px 100px"].join(" ");
-  const headers = isMobile ? ["Nombre","Acciones"] : [...(withColor?[""]:[]), "Nombre", ...(withPrefix?["Prefijo"]:[]), ...(withDescription?["Descripcion"]:[]), "Estado","Acciones"];
+  const cols = isMobile ? "1fr 80px" : ["1fr", ...middleCols, "100px 100px"].join(" ");
+  const headers = isMobile ? ["Nombre","Acciones"] : ["Nombre", ...(withPrefix?["Prefijo"]:[]), ...(withDescription?["Descripcion"]:[]), "Estado","Acciones"];
 
   return (
     <div style={{ padding:"20px 16px", maxWidth:900, margin:"0 auto" }}>

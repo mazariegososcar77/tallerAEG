@@ -231,6 +231,13 @@ export async function finalize(id) {
     const order = await workOrderRepository.findById(updated.work_order_id);
     invoice = order?.flow_type === 'post' ? null : await invoiceService.createFromWorkReport(updated);
   }
+  // Al finalizar el reporte, la orden de trabajo asociada pasa a "listo"
+  // (no se degrada si ya fue entregada o cancelada).
+  const order = await workOrderRepository.findById(report.work_order_id);
+  if (order && !['entregado', 'cancelado'].includes(order.status)) {
+    await workOrderRepository.update(report.work_order_id, { status: 'listo' });
+  }
+  const invoice = await invoiceService.createFromWorkReport(updated);
   return { report: updated, invoice };
 }
 

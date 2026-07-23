@@ -92,7 +92,7 @@ export default function WorkReportsPage() {
         <p style={{ color: 'var(--c-muted)', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', marginTop: 60, color: 'var(--c-muted)' }}>
-          <Camera size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <Camera size={48} style={{ opacity: 0.3, margin: '0 auto 12px' }} />
           <p>No hay reportes registrados</p>
           <p style={{ fontSize: 12 }}>Los reportes se crean desde una Orden de Trabajo.</p>
         </div>

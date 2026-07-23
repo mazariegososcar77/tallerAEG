@@ -163,7 +163,7 @@ export default function InvoicesPage() {
         <p style={{ color: 'var(--c-muted)', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', marginTop: 60, color: 'var(--c-muted)' }}>
-          <Receipt size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <Receipt size={48} style={{ opacity: 0.3, margin: '0 auto 12px' }} />
           <p>No hay facturas que coincidan con el filtro</p>
         </div>
       ) : (

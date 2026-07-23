@@ -7,14 +7,16 @@ import { useState, useEffect } from 'react';
 import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Wrench, Plus, Pencil, Trash2, Search } from 'lucide-react';
-import { withUppercase } from '../../lib/text.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import Modal from '../../components/ui/Modal.jsx';
+import Input from '../../components/ui/Input.jsx';
+import Textarea from '../../components/ui/Textarea.jsx';
+import Button from '../../components/ui/Button.jsx';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
-const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 
 export default function MachinesPage() {
   const isMobile = useIsMobile();
@@ -90,7 +92,7 @@ export default function MachinesPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', marginTop:60, color:C.muted }}>
-              <Wrench size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Wrench size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay maquinas registradas</p>
             </div>
           ) : filtered.map(m => (
@@ -134,9 +136,37 @@ export default function MachinesPage() {
               <button onClick={() => setShowForm(false)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'9px 18px', color:C.text, cursor:'pointer' }}>Cancelar</button>
               <button onClick={handleSave} style={{ background:C.orange, border:'none', borderRadius:7, padding:'9px 20px', color:'#fff', fontWeight:700, cursor:'pointer' }}>Guardar</button>
             </div>
+      <Modal
+        open={showForm}
+        onClose={() => setShowForm(false)}
+        title={editing ? 'Editar Maquina' : 'Nueva Maquina'}
+        size="lg"
+        accentColor={C.orange}
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={handleSave}>Guardar</Button>
+          </>
+        )}
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-muted">Cliente *</label>
+            <ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />
           </div>
+          <Input label="Nombre *" className="sm:col-span-2" value={form.name} onChange={e => set('name', e.target.value)} />
+          <Input label="Marca" value={form.brand} onChange={e => set('brand', e.target.value)} />
+          <Input label="Modelo" value={form.model} onChange={e => set('model', e.target.value)} />
+          <Input label="Serie" value={form.serial} onChange={e => set('serial', e.target.value)} />
+          <Input label="Ubicacion" value={form.location} onChange={e => set('location', e.target.value)} />
+          <Input label="Potencia (KW)" type="number" value={form.kw} onChange={e => set('kw', e.target.value)} />
+          <Input label="Potencia (HP)" type="number" value={form.hp} onChange={e => set('hp', e.target.value)} />
+          <Input label="Voltaje" value={form.voltage} onChange={e => set('voltage', e.target.value)} />
+          <Input label="Amperaje" value={form.amperage} onChange={e => set('amperage', e.target.value)} />
+          <Input label="RPM" type="number" value={form.rpm} onChange={e => set('rpm', e.target.value)} />
+          <Textarea label="Notas" className="sm:col-span-2" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
         </div>
-      )}
+      </Modal>
     </div>
   );
 }
