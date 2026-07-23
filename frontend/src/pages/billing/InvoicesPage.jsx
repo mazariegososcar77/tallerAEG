@@ -17,6 +17,7 @@ import { clientsApi } from '../../api/clientsApi.js';
 import { getToken } from '../../lib/authStorage.js';
 import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import CertifyInvoiceModal from './CertifyInvoiceModal.jsx';
@@ -29,6 +30,7 @@ const STATUS_LABELS = {
 };
 
 export default function InvoicesPage() {
+  const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [clients, setClients] = useState([]);
@@ -129,7 +131,7 @@ export default function InvoicesPage() {
 
       {/* Filtros: buscar por texto, por cliente, por rango de fechas, o
           mostrar solo las facturas que aún no se han certificado. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr auto', gap: 10, marginBottom: 16, alignItems: 'end' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr auto', gap: 10, marginBottom: 16, alignItems: 'end' }}>
         <div style={{ position: 'relative' }}>
           <Search size={16} style={{ position: 'absolute', left: 12, top: 34, color: 'var(--c-muted)' }} />
           <label style={{ display: 'block', fontSize: 10, fontWeight: 800, color: 'var(--c-muted)', textTransform: 'uppercase', marginBottom: 5 }}>Buscar</label>

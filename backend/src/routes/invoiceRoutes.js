@@ -47,6 +47,22 @@ router.get('/:id', requirePermission('billing.view'), invoiceController.getById)
 
 /**
  * @openapi
+ * /invoices/from-work-order/{workOrderId}:
+ *   post:
+ *     tags: [Facturacion]
+ *     summary: Generar la factura de una orden de trabajo (flujo Post, manual)
+ *     description: Requiere que la orden ya tenga una cotizacion aprobada (armada despues del reporte) y el reporte finalizado.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: workOrderId, required: true, schema: { type: integer } }]
+ *     responses:
+ *       201: { description: Factura generada (o la ya existente, es idempotente) }
+ *       400: { description: Falta la cotizacion aprobada o el reporte finalizado }
+ */
+// Generar la factura de una orden Post a mano (la cotizacion se arma despues del reporte, no hay factura automatica).
+router.post('/from-work-order/:workOrderId', requirePermission('billing.create'), invoiceController.createFromWorkOrder);
+
+/**
+ * @openapi
  * /invoices/{id}/certify:
  *   post:
  *     tags: [Facturacion]

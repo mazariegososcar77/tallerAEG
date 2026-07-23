@@ -5,6 +5,7 @@
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as quoteRepository from '../repositories/quoteRepository.js';
+import * as workReportRepository from '../repositories/workReportRepository.js';
 import * as felCertifier from './felCertifier.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -75,6 +76,25 @@ export async function createFromWorkReport(report) {
     total,
     status: 'pendiente_certificacion',
   }, items);
+}
+
+/**
+ * Genera la factura de una orden de trabajo del flujo "Post" (donde, a diferencia
+ * de Pre, la cotizacion se arma DESPUES del reporte, asi que no hay factura
+ * automatica al finalizarlo — ver workReportService.finalize). Se llama a mano,
+ * normalmente desde el boton "Generar Factura" de la orden, una vez que ya se
+ * aprobo la cotizacion con el diagnostico real. Reutiliza createFromWorkReport
+ * (misma logica de armar las lineas desde quote_items, mismo idempotente).
+ */
+export async function createFromWorkOrder(workOrderId) {
+  const order = await workOrderRepository.findById(workOrderId);
+  if (!order) throw new ApiError(404, 'Orden de trabajo no encontrada');
+  if (!order.quote_id) throw new ApiError(400, 'La orden todavia no tiene una cotizacion asociada');
+  const quote = await quoteRepository.findById(order.quote_id);
+  if (!quote || quote.status !== 'aprobada') throw new ApiError(400, 'La cotizacion debe estar aprobada antes de facturar');
+  const report = await workReportRepository.findByWorkOrderId(workOrderId);
+  if (!report || report.status !== 'finalizado') throw new ApiError(400, 'El reporte de trabajo debe estar finalizado antes de facturar');
+  return createFromWorkReport(report);
 }
 
 /**

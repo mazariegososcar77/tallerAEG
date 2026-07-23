@@ -26,8 +26,10 @@ export default function LoginPage() {
   }
 
   // Si ya hay un usuario con sesión iniciada, no tiene sentido ver el
-  // login otra vez: se le redirige directo al Panel Principal.
-  if (user) return <Navigate to="/dashboard" replace />;
+  // login otra vez: se le redirige a "/", que decide a donde mandarlo segun
+  // sus permisos (ver routes/HomeRedirect.jsx) — no siempre es el Dashboard,
+  // por ejemplo el rol Subcontrato aterriza directo en Orden de Servicio.
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <div className="flex h-screen">

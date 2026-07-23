@@ -19,6 +19,9 @@ import quoteRoutes from './quoteRoutes.js';
 import partCategoryRoutes from './partCategoryRoutes.js';
 import workReportRoutes from './workReportRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
+import subcontractorRoutes from './subcontractorRoutes.js';
+import serviceOrderRoutes from './serviceOrderRoutes.js';
+import publicRoutes from './publicRoutes.js';
 
 const router = Router();
 
@@ -58,5 +61,11 @@ router.use('/part-categories', partCategoryRoutes);
 router.use('/work-reports', workReportRoutes);
 // Administrar facturas.
 router.use('/invoices', invoiceRoutes);
+// Administrar subcontratistas (terceros externos a los que se les manda trabajo afuera).
+router.use('/subcontractors', subcontractorRoutes);
+// Administrar ordenes de servicio (trabajos subcontratados fuera del taller).
+router.use('/service-orders', serviceOrderRoutes);
+// Rutas PUBLICAS (sin sesion) -- hoy solo el enlace de firma remota del cliente.
+router.use('/public', publicRoutes);
 
 export default router;

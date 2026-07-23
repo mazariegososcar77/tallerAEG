@@ -5,8 +5,9 @@
  * "guardia" que exige tener sesion iniciada (y a veces un permiso especifico)
  * antes de dejar entrar — ver routes/ProtectedRoute.jsx.
  */
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute.jsx';
+import HomeRedirect from './HomeRedirect.jsx';
 import AppLayout from '../components/layout/AppLayout.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import DashboardPage from '../pages/DashboardPage.jsx';
@@ -33,11 +34,18 @@ import WorkReportsPage from '../pages/workReports/WorkReportsPage.jsx';
 import WorkReportFormPage from '../pages/workReports/WorkReportFormPage.jsx';
 import InvoicesPage from '../pages/billing/InvoicesPage.jsx';
 import PartCategoriesPage from '../pages/config/PartCategoriesPage.jsx';
+import ComingSoonPage from '../pages/config/ComingSoonPage.jsx';
+import SubcontractorsPage from '../pages/config/SubcontractorsPage.jsx';
+import ServiceOrdersPage from '../pages/serviceOrders/ServiceOrdersPage.jsx';
+import ServiceOrderFormPage from '../pages/serviceOrders/ServiceOrderFormPage.jsx';
+import PublicSignaturePage from '../pages/public/PublicSignaturePage.jsx';
 
 export default function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Enlace publico de firma remota (sin sesion) -- ver PublicSignaturePage.jsx */}
+      <Route path="/firmar/:token" element={<PublicSignaturePage />} />
       <Route
         path="/"
         element={
@@ -46,7 +54,7 @@ export default function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<HomeRedirect />} />
 
         {/* --- Pantalla principal --- */}
         <Route path="dashboard" element={<DashboardPage />} />
@@ -59,7 +67,7 @@ export default function AppRoutes() {
         {/* --- Rutas de Clientes --- */}
         <Route path="clientes" element={<ProtectedRoute permission="clients.view"><ClientsPage /></ProtectedRoute>} />
 
-        {/* --- Rutas de Ordenes de Trabajo --- */}
+        {/* --- Rutas de Ordenes de Trabajo (flujo Pre: cotizacion antes de la orden, sin cambios) --- */}
         <Route path="ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage /></ProtectedRoute>} />
         <Route path="ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
         <Route path="ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
@@ -76,6 +84,27 @@ export default function AppRoutes() {
         {/* --- Rutas de Facturacion --- */}
         <Route path="facturacion" element={<ProtectedRoute permission="billing.view"><InvoicesPage /></ProtectedRoute>} />
 
+        {/* --- Rutas del flujo Post (equipo se desarma sin cotizacion previa) ---
+             Reusan las mismas pantallas de Ordenes de Trabajo con flowType="post":
+             lista y formulario filtran/guardan por flujo, y el formulario muestra
+             los 3 campos de precio (torno/repuestos/mano de obra) que Pre no tiene.
+             Cotizaciones/Reportes/Facturacion de Post quedan "Proximamente": la
+             secuencia invertida (reporte antes que cotizacion) es una fase futura. --- */}
+        <Route path="post/ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/cotizaciones" element={<ProtectedRoute permission="dashboard.view"><ComingSoonPage title="Cotizaciones (Flujo Post)" description="La cotizacion posterior al reporte de desarme esta en construccion." /></ProtectedRoute>} />
+        <Route path="post/reportes" element={<ProtectedRoute permission="work-reports.view"><ComingSoonPage title="Reportes de Trabajo (Flujo Post)" description="Esta seccion esta en construccion. Por ahora, usa el icono de camara desde Ordenes de Trabajo (Post)." /></ProtectedRoute>} />
+        <Route path="post/facturacion" element={<ProtectedRoute permission="billing.view"><ComingSoonPage title="Facturación (Flujo Post)" description="La facturacion del flujo Post, generada despues de cotizar, esta en construccion." /></ProtectedRoute>} />
+
+        {/* --- Rutas de Ordenes de Servicio (subcontratos externos, ej. torneado) ---
+             Permisos granulares propios desde el inicio (service-orders.*) -- a
+             diferencia de Ordenes de Trabajo, esto es justo lo que permite que el
+             rol "Subcontrato" vea SOLO esto (y Reportes de Trabajo), nada mas. --- */}
+        <Route path="ordenes-servicio" element={<ProtectedRoute permission="service-orders.view"><ServiceOrdersPage /></ProtectedRoute>} />
+        <Route path="ordenes-servicio/nueva" element={<ProtectedRoute permission="service-orders.create"><ServiceOrderFormPage /></ProtectedRoute>} />
+        <Route path="ordenes-servicio/:id/editar" element={<ProtectedRoute permission="service-orders.update"><ServiceOrderFormPage /></ProtectedRoute>} />
+
         {/* --- Rutas de Maquinas y Mantenimiento --- */}
         <Route path="maquinas" element={<ProtectedRoute permission="dashboard.view"><MachinesPage /></ProtectedRoute>} />
         <Route path="mantenimientos" element={<ProtectedRoute permission="dashboard.view"><MaintenancePage /></ProtectedRoute>} />
@@ -86,6 +115,7 @@ export default function AppRoutes() {
         <Route path="configuracion/tipos" element={<ProtectedRoute permission="article-types.view"><ArticleTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
         <Route path="configuracion/categorias-pieza" element={<ProtectedRoute permission="part-categories.view"><PartCategoriesPage /></ProtectedRoute>} />
+        <Route path="configuracion/subcontratistas" element={<ProtectedRoute permission="subcontractors.view"><SubcontractorsPage /></ProtectedRoute>} />
         {/* Las siguientes tres son pantallas "Proximamente" (aun sin funcionalidad real) */}
         <Route path="configuracion/general" element={<ProtectedRoute permission="dashboard.view"><GeneralSettingsPage /></ProtectedRoute>} />
         <Route path="configuracion/parametros" element={<ProtectedRoute permission="dashboard.view"><SystemParamsPage /></ProtectedRoute>} />
@@ -96,7 +126,7 @@ export default function AppRoutes() {
         <Route path="roles" element={<ProtectedRoute permission="roles.view"><RolesPage /></ProtectedRoute>} />
         <Route path="permisos" element={<ProtectedRoute permission="permissions.view"><PermissionsPage /></ProtectedRoute>} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   );
 }

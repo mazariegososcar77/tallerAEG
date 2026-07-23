@@ -6,6 +6,8 @@ export const workReportsApi = {
   get:          (id)       => client.get(`/work-reports/${id}`).then(r => r.data),
   // Crea el reporte para una orden de trabajo (si ya existe uno para esa orden, no crea otro).
   createForOrder: (workOrderId) => client.post('/work-reports', { work_order_id: workOrderId }).then(r => r.data),
+  // Igual, pero para una orden de servicio (subcontrato).
+  createForServiceOrder: (serviceOrderId) => client.post('/work-reports', { service_order_id: serviceOrderId }).then(r => r.data),
   update:       (id, payload) => client.put(`/work-reports/${id}`, payload).then(r => r.data),
   // Cierra el reporte de forma definitiva y genera la factura correspondiente.
   finalize:     (id)       => client.post(`/work-reports/${id}/finalize`).then(r => r.data),
@@ -26,5 +28,22 @@ export const workReportsApi = {
     form.append('role', role);
     form.append('name', name);
     return client.post(`/work-reports/${id}/signature`, form).then(r => r.data);
+  },
+  // Genera (o recupera) el enlace publico de firma remota del cliente, para
+  // entregas con mensajero (el cliente no esta en el taller). Devuelve { token }.
+  getSigningLink: (id) => client.post(`/work-reports/${id}/signing-link`).then(r => r.data),
+};
+
+// Funciones PUBLICAS (sin sesion iniciada) para la pantalla de firma remota
+// (pages/public/PublicSignaturePage.jsx). Usan el mismo cliente Axios de
+// siempre: su interceptor de 401 solo actua si habia una sesion previa, asi
+// que es seguro llamarlas desde una pantalla sin login.
+export const publicWorkReportsApi = {
+  get: (token) => client.get(`/public/work-reports/${token}`).then(r => r.data),
+  setSignature: (token, file, name) => {
+    const form = new FormData();
+    form.append('photo', file);
+    form.append('name', name);
+    return client.post(`/public/work-reports/${token}/signature`, form).then(r => r.data);
   },
 };

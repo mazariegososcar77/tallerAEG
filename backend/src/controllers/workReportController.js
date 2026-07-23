@@ -15,10 +15,13 @@ export const getById = asyncHandler(async (req, res) => {
   res.json(await workReportService.getById(req.params.id));
 });
 
-// Cuando el usuario presiona el botón "Reporte" de una orden de trabajo, esto crea el
-// reporte para esa orden (si ya existía uno, simplemente lo devuelve, no crea otro).
-export const createForOrder = asyncHandler(async (req, res) => {
-  const report = await workReportService.createForOrder(req.body.work_order_id);
+// Cuando el usuario presiona el botón "Reporte" de una orden de trabajo o de servicio,
+// esto crea el reporte para esa orden (si ya existía uno, simplemente lo devuelve, no
+// crea otro). El schema de la ruta ya garantiza que viene exactamente uno de los dos ids.
+export const create = asyncHandler(async (req, res) => {
+  const report = req.body.work_order_id
+    ? await workReportService.createForOrder(req.body.work_order_id)
+    : await workReportService.createForServiceOrder(req.body.service_order_id);
   res.status(201).json(report);
 });
 
@@ -50,6 +53,13 @@ export const setSignature = asyncHandler(async (req, res) => {
     req.params.id, req.body.role, req.body.name, req.file, canForceEdit
   );
   res.json(report);
+});
+
+// Genera (o devuelve el ya existente) el enlace publico de firma remota, para
+// mandarlo al mensajero que entrega el equipo sin que el cliente este en el taller.
+export const getSigningLink = asyncHandler(async (req, res) => {
+  const token = await workReportService.getSigningLink(req.params.id);
+  res.json({ token });
 });
 
 // Cuando el usuario presiona "Finalizar Reporte", esto lo cierra (si le faltan fotos, notas

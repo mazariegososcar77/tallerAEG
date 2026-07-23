@@ -6,7 +6,8 @@ import Input from '../ui/Input.jsx';
 import Button from '../ui/Button.jsx';
 
 // Este es el formulario de inicio de sesion (pantalla de Login): pide correo
-// y contrasena, y si son correctos entra al sistema y lleva al Dashboard.
+// y contrasena, y si son correctos entra al sistema y lleva al Dashboard (o,
+// segun el rol, a su modulo principal -- ver routes/HomeRedirect.jsx).
 export default function LoginForm() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function LoginForm() {
       // Intenta iniciar sesion con el correo y la contrasena escritos.
       const profile = await login(email, password);
       notify.success(`Bienvenido, ${profile.name}`);
-      navigate('/dashboard'); // si todo sale bien, entra al panel principal
+      navigate('/'); // si todo sale bien, "/" decide a donde entrar segun sus permisos (HomeRedirect)
     } catch (err) {
       // Si el correo/contrasena estan mal, o hay un error, se muestra un aviso.
       notify.error(err.message);

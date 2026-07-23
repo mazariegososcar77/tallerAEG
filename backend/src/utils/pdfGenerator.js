@@ -359,6 +359,119 @@ export function generarOrdenTrabajoPDF(order) {
   return doc;
 }
 
+// Arma el PDF de una ORDEN DE SERVICIO: el trabajo que el taller manda a hacer
+// afuera con un subcontratista. A diferencia de la Orden de Trabajo, aqui SI se
+// muestran los costos (acordado/real) -- es informacion administrativa interna
+// para Abdias, no algo que vea un tecnico.
+export function generarOrdenServicioPDF(order) {
+  const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
+  const W = doc.page.width;
+  const L = 40;
+  const R = W - 40;
+  const CW = R - L;
+
+  // ── ENCABEZADO ───────────────────────────────────────────
+  doc.rect(0, 0, W, 110).fill(AZUL);
+  try {
+    const logoPath = join(__dirname, '../assets/logo.png');
+    doc.image(logoPath, L, 15, { height: 75 });
+  } catch(e) {}
+
+  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
+  doc.fontSize(9).font('Helvetica')
+     .text('Taller de Embobinado Industrial', 160, 42)
+     .text('Guatemala, Guatemala', 160, 55)
+     .text('Tel: (+502) 0000-0000', 160, 68);
+
+  doc.fontSize(20).font('Helvetica-Bold').fillColor(NARANJA)
+     .text('ORDEN DE SERVICIO', 250, 18, { width: 300, align: 'right' });
+  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
+     .text('No. ' + (order.number || '0001'), 350, 48, { width: 200, align: 'right' });
+
+  const fechaEnvio = order.sent_at ? new Date(order.sent_at).toLocaleDateString('es-GT') : '-';
+  const fechaRetorno = order.expected_return_at ? new Date(order.expected_return_at).toLocaleDateString('es-GT') : '-';
+  doc.fontSize(8).fillColor('#94a3b8')
+     .text('Enviado: ' + fechaEnvio, 350, 68, { width: 200, align: 'right' })
+     .text('Retorno esperado: ' + fechaRetorno, 350, 80, { width: 200, align: 'right' });
+
+  let y = 122;
+
+  const statusLabels = { enviada: 'Enviada', en_proceso: 'En Proceso', recibida: 'Recibida', cancelada: 'Cancelada' };
+  const statusLabel = statusLabels[order.status] || order.status || '-';
+  const col2 = L + CW / 2;
+
+  // ── INFORMACION GENERAL ──────────────────────────────────
+  doc.rect(L, y, CW, 20).fill(AZUL_MED);
+  doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('INFORMACION GENERAL', L + 8, y + 6);
+  y += 26;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Subcontratista:', L, y);
+  doc.font('Helvetica').text(order.subcontractor_name || '-', L + 90, y);
+  doc.font('Helvetica-Bold').text('Estado:', col2, y);
+  doc.font('Helvetica').text(statusLabel, col2 + 50, y);
+  y += 14;
+
+  if (order.client_name) {
+    doc.fillColor(NEGRO).font('Helvetica-Bold').text('Cliente relacionado:', L, y);
+    doc.font('Helvetica').text(order.client_name, L + 115, y);
+    y += 14;
+  }
+  y += 6;
+
+  // ── EQUIPO (opcional) ─────────────────────────────────────
+  if (order.equipment_name || order.brand || order.model || order.serial) {
+    doc.rect(L, y, CW, 20).fill(AZUL_MED);
+    doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('EQUIPO DE ORIGEN', L + 8, y + 6);
+    y += 26;
+    doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Equipo:', L, y);
+    doc.font('Helvetica').text(order.equipment_name || '-', L + 55, y);
+    doc.font('Helvetica-Bold').text('Marca:', col2, y);
+    doc.font('Helvetica').text(order.brand || '-', col2 + 45, y);
+    y += 14;
+    doc.font('Helvetica-Bold').text('Serie/Modelo:', L, y);
+    doc.font('Helvetica').text(order.serial || order.model || '-', L + 80, y);
+    y += 20;
+  }
+
+  // ── TRABAJO SUBCONTRATADO ─────────────────────────────────
+  doc.rect(L, y, CW, 20).fill(NARANJA);
+  doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('TRABAJO SUBCONTRATADO', L + 8, y + 6);
+  y += 26;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Descripcion:', L, y);
+  doc.font('Helvetica').text(order.description || '-', L + 85, y, { width: CW - 85 });
+  y += doc.heightOfString(order.description || '-', { width: CW - 85 }) + 10;
+
+  if (order.received_at) {
+    doc.font('Helvetica-Bold').text('Recibido:', L, y);
+    doc.font('Helvetica').text(new Date(order.received_at).toLocaleDateString('es-GT'), L + 65, y);
+    y += 14;
+  }
+
+  doc.font('Helvetica-Bold').text('Costo acordado:', L, y);
+  doc.font('Helvetica').text(order.agreed_cost ? 'Q ' + Number(order.agreed_cost).toFixed(2) : '-', L + 100, y);
+  doc.font('Helvetica-Bold').text('Costo real:', col2, y);
+  doc.font('Helvetica').text(order.actual_cost ? 'Q ' + Number(order.actual_cost).toFixed(2) : '-', col2 + 70, y);
+  y += 18;
+
+  if (order.notes) {
+    doc.font('Helvetica-Bold').text('Notas:', L, y);
+    doc.font('Helvetica').text(order.notes, L + 55, y, { width: CW - 55 });
+    y += doc.heightOfString(order.notes, { width: CW - 55 }) + 6;
+  }
+
+  // ── PIE DE PÁGINA ─────────────────────────────────────────
+  const pageH = doc.page.height;
+  doc.rect(0, pageH - 38, W, 38).fill(AZUL);
+  doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
+     .text('Orden de Servicio - Taller AEG', L, pageH - 28, { width: CW / 2 })
+     .text('Taller AEG - Guatemala', R - 150, pageH - 28, { width: 150, align: 'right' });
+  doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
+     .text('Documento interno - No se factura al cliente', L, pageH - 15, { width: CW, align: 'center' });
+
+  return doc;
+}
+
 // Arma el PDF de una FACTURA: los datos del cliente, el detalle de lo
 // facturado y los totales, mas la informacion de certificacion fiscal FEL
 // si ya fue certificada (o un aviso de que todavia esta pendiente — ver

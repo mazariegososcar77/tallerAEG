@@ -10,12 +10,14 @@ import { Wrench, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { withUppercase } from '../../lib/text.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 
 export default function MachinesPage() {
+  const isMobile = useIsMobile();
   const [machines, setMachines] = useState([]);
   const [clients, setClients] = useState([]);
   const [clientFilter, setClientFilter] = useState('');
@@ -71,7 +73,7 @@ export default function MachinesPage() {
           <Plus size={18} /> Nueva Maquina
         </button>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr auto', gap:10, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder='Buscar...' style={{ ...inp, paddingLeft:32 }} />
@@ -115,7 +117,7 @@ export default function MachinesPage() {
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:16 }}>
           <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:24, width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto' }}>
             <h2 style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:20 }}>{editing ? 'Editar Maquina' : 'Nueva Maquina'}</h2>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
               <div style={{ gridColumn:'span 2' }}><label style={lbl}>Cliente *</label><ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} /></div>
               <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre *</label><input value={form.name} onChange={withUppercase(e => set('name', e.target.value))} style={inp} /></div>
               <div><label style={lbl}>Marca</label><input value={form.brand} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>

@@ -1,80 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard, Package, Tags, Warehouse, Users, ShieldCheck, KeyRound,
-  Contact, UserCog, Award, ChevronsLeft, ChevronsRight, ChevronRight,
-  ClipboardList, Wrench, Calendar, FileText, Settings, Briefcase, Boxes,
-  HeartHandshake, SlidersHorizontal, Cog, ListChecks, Camera, Receipt,
-} from 'lucide-react';
+import { ChevronsLeft, ChevronsRight, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth.js';
+import { NAV } from '../../lib/nav.js';
 
 const STORAGE_KEY = 'taller_aeg_sidebar_collapsed';
-
-/**
- * Estructura del menu. Un item suelto (Dashboard) y varios grupos colapsables.
- * Los grupos se expanden en un flyout a la derecha del sidebar (acordeon: solo
- * uno abierto a la vez). En movil se expanden en linea.
- *
- * Este es el menu lateral (a la izquierda de la pantalla) que aparece en todo
- * el sistema una vez que el usuario inicia sesion, con los enlaces a cada
- * modulo (Clientes, Cotizaciones, Ordenes, Inventario, etc.), agrupados por
- * tema. Cada opcion tiene un `permission` (el "permiso" necesario para verla);
- * mas abajo, el componente revisa los permisos del usuario que inicio sesion
- * y solo muestra las opciones (y hasta grupos completos) para las que tiene
- * acceso. Asi, dos usuarios distintos pueden ver un menu diferente segun su rol.
- */
-const NAV = [
-  { type: 'item', to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'dashboard.view' },
-  {
-    type: 'group', label: 'Operaciones', icon: Briefcase,
-    items: [
-      { to: '/clientes',      label: 'Clientes',           icon: Contact,       permission: 'clients.view' },
-      { to: '/cotizaciones',  label: 'Cotizaciones',       icon: FileText,      permission: 'dashboard.view' },
-      { to: '/ordenes',       label: 'Ordenes de Trabajo', icon: ClipboardList, permission: 'dashboard.view' },
-      { to: '/reportes',      label: 'Reportes de Trabajo', icon: Camera,       permission: 'work-reports.view' },
-      { to: '/facturacion',   label: 'Facturación',        icon: Receipt,       permission: 'billing.view' },
-    ],
-  },
-  {
-    type: 'group', label: 'Inventario', icon: Package,
-    items: [
-      { to: '/inventario',            label: 'Inventario',        icon: Boxes,     permission: 'articles.view' },
-      { to: '/configuracion/bodegas', label: 'Bodegas',           icon: Warehouse, permission: 'warehouses.view' },
-      { to: '/configuracion/tipos',   label: 'Tipos de articulo', icon: Tags,      permission: 'article-types.view' },
-      { to: '/configuracion/categorias-pieza', label: 'Categorias de Pieza', icon: ListChecks, permission: 'part-categories.view' },
-    ],
-  },
-  {
-    type: 'group', label: 'Servicios', icon: Wrench,
-    items: [
-      { to: '/maquinas',        label: 'Maquinas',       icon: Cog,      permission: 'dashboard.view' },
-      { to: '/mantenimientos',  label: 'Mantenimientos', icon: Calendar, permission: 'dashboard.view' },
-    ],
-  },
-  {
-    type: 'group', label: 'CRM', icon: HeartHandshake,
-    items: [
-      { to: '/configuracion/tipos-cliente', label: 'Tipos de cliente', icon: UserCog, permission: 'client-types.view' },
-      { to: '/configuracion/fidelizacion',  label: 'Fidelizacion',     icon: Award,   permission: 'loyalty.view' },
-    ],
-  },
-  {
-    type: 'group', label: 'Administracion', icon: ShieldCheck,
-    items: [
-      { to: '/usuarios', label: 'Usuarios', icon: Users,      permission: 'users.view' },
-      { to: '/roles',    label: 'Roles',    icon: ShieldCheck, permission: 'roles.view' },
-      { to: '/permisos', label: 'Permisos', icon: KeyRound,   permission: 'permissions.view' },
-    ],
-  },
-  {
-    type: 'group', label: 'Configuracion', icon: Settings,
-    items: [
-      { to: '/configuracion/general',    label: 'Configuracion general', icon: SlidersHorizontal, permission: 'dashboard.view' },
-      { to: '/configuracion/parametros', label: 'Parametros del sistema', icon: Cog,              permission: 'dashboard.view' },
-      { to: '/configuracion/catalogos',  label: 'Catalogos',             icon: ListChecks,        permission: 'dashboard.view' },
-    ],
-  },
-];
 
 const childClass = ({ isActive }) =>
   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ' +
@@ -85,12 +15,15 @@ export default function Sidebar({ mobileOpen, onClose }) {
   const location = useLocation();
   const asideRef = useRef(null);
   const flyoutRef = useRef(null);
+  const subFlyoutRef = useRef(null);
   // "collapsed" recuerda (guardandolo en el navegador) si el usuario prefiere
   // el menu angosto (solo iconos) o completo; asi la preferencia se mantiene
   // aunque cierre y vuelva a abrir el sistema.
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(STORAGE_KEY) === '1');
   const [openGroup, setOpenGroup] = useState(null); // label del grupo abierto (acordeon)
   const [flyoutPos, setFlyoutPos] = useState(null); // { top, left } del flyout en escritorio
+  const [openSubgroup, setOpenSubgroup] = useState(null); // label del subgrupo abierto (2do nivel, ej. "Pre"/"Post")
+  const [subFlyoutPos, setSubFlyoutPos] = useState(null); // { top, left } del segundo flyout
 
   const slim = collapsed && !mobileOpen; // true = mostrar el menu angosto (solo iconos)
 
@@ -104,14 +37,19 @@ export default function Sidebar({ mobileOpen, onClose }) {
     });
   };
 
-  // Cierra el flyout al hacer clic fuera o al redimensionar (la posicion fija quedaria desfasada).
+  // Cierra los flyouts al hacer clic fuera o al redimensionar (la posicion fija quedaria desfasada).
   useEffect(() => {
     if (!openGroup) return undefined;
     const onDocClick = (e) => {
-      if (asideRef.current?.contains(e.target) || flyoutRef.current?.contains(e.target)) return;
+      if (
+        asideRef.current?.contains(e.target) ||
+        flyoutRef.current?.contains(e.target) ||
+        subFlyoutRef.current?.contains(e.target)
+      ) return;
       setOpenGroup(null);
+      setOpenSubgroup(null);
     };
-    const onResize = () => setOpenGroup(null);
+    const onResize = () => { setOpenGroup(null); setOpenSubgroup(null); };
     document.addEventListener('mousedown', onDocClick);
     window.addEventListener('resize', onResize);
     return () => {
@@ -121,11 +59,12 @@ export default function Sidebar({ mobileOpen, onClose }) {
   }, [openGroup]);
 
   // Cierra menus al cambiar de ruta.
-  useEffect(() => { setOpenGroup(null); }, [location.pathname]);
+  useEffect(() => { setOpenGroup(null); setOpenSubgroup(null); }, [location.pathname]);
 
-  const handleNavigate = () => { setOpenGroup(null); onClose?.(); };
+  const handleNavigate = () => { setOpenGroup(null); setOpenSubgroup(null); onClose?.(); };
 
   const handleGroupClick = (label, e) => {
+    setOpenSubgroup(null);
     if (openGroup === label) { setOpenGroup(null); return; }
     const asideRect = asideRef.current?.getBoundingClientRect();
     const btnRect = e.currentTarget.getBoundingClientRect();
@@ -134,30 +73,93 @@ export default function Sidebar({ mobileOpen, onClose }) {
     setOpenGroup(label);
   };
 
-  const renderChild = ({ to, label, icon: ItemIcon }) => (
-    <NavLink key={to} to={to} className={childClass} onClick={handleNavigate}>
-      <ItemIcon size={18} className="shrink-0" />
-      <span className="truncate">{label}</span>
-    </NavLink>
-  );
+  // Igual que handleGroupClick, pero para un subgrupo (2do nivel): el segundo
+  // flyout se ancla a la derecha del primer flyout, no del sidebar.
+  const handleSubgroupClick = (label, e) => {
+    if (openSubgroup === label) { setOpenSubgroup(null); return; }
+    const flyoutRect = flyoutRef.current?.getBoundingClientRect();
+    const btnRect = e.currentTarget.getBoundingClientRect();
+    const top = Math.max(8, Math.min(btnRect.top, window.innerHeight - 240));
+    setSubFlyoutPos({ top, left: (flyoutRect?.right ?? 0) + 4 });
+    setOpenSubgroup(label);
+  };
+
+  // ¿Alguno de los items de este (sub)grupo, entrando en los anidados, es la ruta activa?
+  const groupContainsPath = (items, path) =>
+    items.some((i) => (i.type === 'group' ? groupContainsPath(i.items, path) : path.startsWith(i.to)));
+
+  // Un item de la lista puede ser un enlace normal o, a un nivel mas, otro
+  // grupo (ej. "Pre"/"Post" dentro de "Operaciones"): en ese caso se dibuja
+  // como un boton que abre el segundo flyout en vez de un NavLink.
+  const renderChild = (item) => {
+    if (item.type === 'group') {
+      const isOpen = openSubgroup === item.label;
+      const containsActive = groupContainsPath(item.items, location.pathname);
+      const SubIcon = item.icon;
+      return (
+        <div key={item.label} className="relative">
+          <button
+            type="button"
+            onClick={(e) => handleSubgroupClick(item.label, e)}
+            aria-expanded={isOpen}
+            className={
+              'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors ' +
+              (isOpen || containsActive ? 'bg-navy-600 text-white' : 'text-navy-100 hover:bg-navy-600')
+            }
+          >
+            <SubIcon size={18} className="shrink-0" />
+            <span className="flex-1 truncate">{item.label}</span>
+            <ChevronRight size={14} className={'shrink-0 transition-transform ' + (isOpen ? 'rotate-90' : '')} />
+          </button>
+          {/* Movil: expansion en linea anidada (acordeon dentro de acordeon) */}
+          {isOpen && (
+            <div className="mt-1 space-y-1 pl-3 lg:hidden">
+              {item.items.map(renderChild)}
+            </div>
+          )}
+        </div>
+      );
+    }
+    const { to, label, icon: ItemIcon } = item;
+    return (
+      <NavLink key={to} to={to} className={childClass} onClick={handleNavigate}>
+        <ItemIcon size={18} className="shrink-0" />
+        <span className="truncate">{label}</span>
+      </NavLink>
+    );
+  };
 
   // Arma el menu que realmente se va a mostrar, segun los permisos del
   // usuario: para un item suelto (como "Dashboard"), lo deja pasar solo si
   // tiene el permiso requerido. Para un grupo (como "Operaciones"), primero
-  // filtra sus opciones internas dejando solo las que el usuario puede ver;
-  // si al final el grupo se queda sin ninguna opcion visible, el grupo
-  // completo se oculta (no tiene sentido mostrar un titulo vacio).
+  // filtra sus opciones internas dejando solo las que el usuario puede ver
+  // (un item puede ser, a su vez, otro grupo anidado -- se filtra igual,
+  // recursivamente); si al final el grupo se queda sin ninguna opcion
+  // visible, el grupo completo se oculta (no tiene sentido mostrar un
+  // titulo vacio).
+  const filterItems = (items) =>
+    items
+      .map((i) => {
+        if (i.type === 'group') {
+          const inner = filterItems(i.items);
+          return inner.length ? { ...i, items: inner } : null;
+        }
+        return hasPermission(i.permission) ? i : null;
+      })
+      .filter(Boolean);
+
   const groups = NAV
     .map((entry) => {
       if (entry.type === 'item') {
         return hasPermission(entry.permission) ? entry : null;
       }
-      const items = entry.items.filter((i) => hasPermission(i.permission));
+      const items = filterItems(entry.items);
       return items.length ? { ...entry, items } : null;
     })
     .filter(Boolean);
 
   const openGroupData = groups.find((g) => g.type === 'group' && g.label === openGroup);
+  const openSubgroupData = openGroupData?.items.find((i) => i.type === 'group' && i.label === openSubgroup);
 
   return (
     <>
@@ -202,7 +204,7 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
             const GIcon = entry.icon;
             const isOpen = openGroup === entry.label;
-            const containsActive = entry.items.some((i) => location.pathname.startsWith(i.to));
+            const containsActive = groupContainsPath(entry.items, location.pathname);
             return (
               <div key={entry.label} className="relative">
                 <button
@@ -256,6 +258,22 @@ export default function Sidebar({ mobileOpen, onClose }) {
           </p>
           <div className="space-y-1">
             {openGroupData.items.map(renderChild)}
+          </div>
+        </div>
+      )}
+
+      {/* Escritorio: segundo flyout anidado (ej. Pre/Post dentro de Operaciones) */}
+      {openSubgroupData && subFlyoutPos && (
+        <div
+          ref={subFlyoutRef}
+          style={{ top: subFlyoutPos.top, left: subFlyoutPos.left }}
+          className="fixed z-50 hidden max-h-[80vh] w-60 overflow-y-auto rounded-xl border border-navy-600 bg-navy-700 p-2 shadow-2xl animate-fade-in lg:block"
+        >
+          <p className="px-2 py-1.5 text-xs font-bold uppercase tracking-wide text-navy-200">
+            {openSubgroupData.label}
+          </p>
+          <div className="space-y-1">
+            {openSubgroupData.items.map(renderChild)}
           </div>
         </div>
       )}

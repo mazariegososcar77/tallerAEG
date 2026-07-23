@@ -3,6 +3,7 @@
 // calcula automaticamente el subtotal y el total de la cotizacion a partir de
 // las piezas/mano de obra que se agregan, con su cantidad, precio y descuento.
 import * as quoteRepository from '../repositories/quoteRepository.js';
+import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Limpia los datos de la cotizacion antes de guardarlos: los montos vacios se
@@ -42,7 +43,13 @@ export async function getById(id) {
 // Crea una cotizacion nueva: le asigna el siguiente numero correlativo y, si trae
 // items (piezas/mano de obra), recalcula el subtotal y el total antes de guardarla
 // (nunca confia en un total que venga ya calculado desde afuera).
-export async function create({ items, ...data }) {
+//
+// work_order_id (opcional, flujo Post): cuando la cotizacion se crea DESDE una
+// orden de trabajo (en vez de al reves, como en Pre), se usa solo para enlazar
+// de vuelta esa orden con la cotizacion recien creada (work_orders.quote_id) —
+// no es una columna de "quotes", asi que se separa del resto del payload antes
+// de guardar.
+export async function create({ items, work_order_id, ...data }) {
   const number = await quoteRepository.getNextNumber();
   normalize(data);
   if (items && items.length > 0) {
@@ -50,7 +57,11 @@ export async function create({ items, ...data }) {
     data.subtotal = subtotal;
     data.total = total;
   }
-  return quoteRepository.create({ ...data, number }, items || []);
+  const quote = await quoteRepository.create({ ...data, number }, items || []);
+  if (work_order_id) {
+    await workOrderRepository.update(work_order_id, { quote_id: quote.id });
+  }
+  return quote;
 }
 
 // Edita una cotizacion existente, recalculando subtotal/total igual que al crear.

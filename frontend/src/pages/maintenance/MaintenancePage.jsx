@@ -15,6 +15,7 @@ import Input from '../../components/ui/Input.jsx';
 import Textarea from '../../components/ui/Textarea.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import Button from '../../components/ui/Button.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#1D9E75', red:'#ef4444', amber:'#f59e0b' };
 const STATUS = { al_dia:{ label:'Al dia', color:'#1D9E75', Icon:CheckCircle }, proximo:{ label:'Proximo', color:'#f59e0b', Icon:Clock }, vencido:{ label:'Vencido', color:'#ef4444', Icon:AlertTriangle } };
@@ -28,6 +29,7 @@ const FREQ_OPTIONS = [
 ];
 
 export default function MaintenancePage() {
+  const isMobile = useIsMobile();
   const [records, setRecords] = useState([]);
   const [machines, setMachines] = useState([]);
   const [clients, setClients] = useState([]);
@@ -82,7 +84,7 @@ export default function MaintenancePage() {
       </div>
       {/* Avisos de cuantos mantenimientos estan vencidos o proximos a vencer */}
       {(vencidos > 0 || proximos > 0) && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:10, marginBottom:16 }}>
           {vencidos > 0 && <div style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}><AlertTriangle size={20} color='#ef4444' /><div><p style={{ margin:0, fontWeight:700, color:'#ef4444', fontSize:14 }}>{vencidos} vencido{vencidos>1?'s':''}</p><p style={{ margin:0, fontSize:12, color:C.muted }}>Requieren atencion inmediata</p></div></div>}
           {proximos > 0 && <div style={{ background:'#f59e0b15', border:'1px solid #f59e0b40', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}><Clock size={20} color='#f59e0b' /><div><p style={{ margin:0, fontWeight:700, color:'#f59e0b', fontSize:14 }}>{proximos} proximo{proximos>1?'s':''}</p><p style={{ margin:0, fontSize:12, color:C.muted }}>Proximos 30 dias</p></div></div>}
         </div>

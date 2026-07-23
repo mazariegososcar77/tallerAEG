@@ -4,8 +4,10 @@
 // firmas del tecnico y del cliente. Es el tercer paso del flujo del taller
 // (Cotizacion -> Orden de Trabajo -> Reporte de Trabajo -> Factura): al FINALIZAR
 // un reporte, el sistema genera automaticamente la factura correspondiente.
+import crypto from 'crypto';
 import * as workReportRepository from '../repositories/workReportRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
+import * as serviceOrderRepository from '../repositories/serviceOrderRepository.js';
 import * as invoiceService from './invoiceService.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -68,6 +70,20 @@ export async function createForOrder(workOrderId) {
   if (existing) return existing;
   const number = await workReportRepository.getNextNumber();
   return workReportRepository.create({ work_order_id: workOrderId, number, status: 'en_progreso' });
+}
+
+/**
+ * Igual que createForOrder, pero para una Orden de Servicio (subcontrato). Un reporte
+ * de Orden de Servicio nunca genera factura al finalizar (ver finalize) -- es
+ * documentacion de un costo interno, no algo que se le cobra a un cliente.
+ */
+export async function createForServiceOrder(serviceOrderId) {
+  const order = await serviceOrderRepository.findById(serviceOrderId);
+  if (!order) throw new ApiError(404, 'Orden de servicio no encontrada');
+  const existing = await workReportRepository.findByServiceOrderId(serviceOrderId);
+  if (existing) return existing;
+  const number = await workReportRepository.getNextNumber();
+  return workReportRepository.create({ service_order_id: serviceOrderId, number, status: 'en_progreso' });
 }
 
 // Guarda las notas generales y/o las notas por etapa de un reporte. Si el reporte
@@ -134,19 +150,73 @@ export async function setSignature(id, role, name, file, canForceEdit = false) {
 }
 
 /**
- * Cierra un reporte de trabajo y, con eso, genera automaticamente la factura del
- * trabajo (createFromWorkReport en invoiceService). No deja finalizar si falta
- * algun requisito (fotos, notas o firmas de las 4 etapas) — devuelve el detalle
- * de que falta para que el usuario lo complete. Si el reporte ya estaba
- * finalizado, no lo vuelve a procesar: simplemente devuelve el reporte y su
- * factura ya existente (evita generar una factura duplicada).
+ * Genera (o devuelve, si ya existia) el token del enlace publico de firma
+ * remota de este reporte -- lo usa el mensajero cuando entrega un equipo sin
+ * que el cliente este en el taller, para firmar "Recibido" desde su propio
+ * telefono sin iniciar sesion (ver rutas publicas en publicRoutes.js). Pedirlo
+ * dos veces no invalida el link ya enviado: siempre devuelve el mismo token.
+ */
+export async function getSigningLink(id) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.client_signature_token) return report.client_signature_token;
+  const token = crypto.randomBytes(24).toString('base64url');
+  await workReportRepository.update(id, { client_signature_token: token });
+  return token;
+}
+
+/**
+ * Version publica (sin sesion) de getById: para la pantalla que abre el
+ * mensajero/cliente desde el enlace de firma remota. Devuelve solo lo
+ * necesario para esa pantalla -- nada de notas internas ni otros datos.
+ */
+export async function getPublicByToken(token) {
+  const report = await workReportRepository.findByPublicToken(token);
+  if (!report) throw new ApiError(404, 'Enlace invalido o vencido');
+  return {
+    number: report.number,
+    order_number: report.order_number,
+    order_kind: report.order_kind,
+    client_name: report.client_name,
+    equipment_name: report.equipment_name,
+    already_signed: Boolean(report.client_signature_url),
+    client_signature_url: report.client_signature_url,
+    client_signature_name: report.client_signature_name,
+  };
+}
+
+// Guarda la firma del cliente desde el enlace publico (sin sesion): resuelve
+// el reporte a partir del token y reutiliza exactamente la misma funcion
+// setSignature de siempre (mismas reglas: si el reporte ya esta finalizado,
+// queda bloqueado igual que para un usuario con sesion sin permiso de forzar
+// edicion).
+export async function setPublicClientSignature(token, name, file) {
+  const report = await workReportRepository.findByPublicToken(token);
+  if (!report) throw new ApiError(404, 'Enlace invalido o vencido');
+  return setSignature(report.id, 'client', name, file, false);
+}
+
+/**
+ * Cierra un reporte de trabajo. Que pasa despues depende de que esta documentando:
+ * - Orden de Trabajo, flujo "Pre" (el de siempre): genera automaticamente la factura
+ *   (createFromWorkReport en invoiceService), porque la cotizacion ya existia de antes.
+ * - Orden de Trabajo, flujo "Post": todavia NO se factura aqui: la cotizacion se arma
+ *   DESPUES de este reporte (con el diagnostico ya conocido), asi que se devuelve
+ *   `invoice: null` y el frontend lleva al usuario a crear la cotizacion en su lugar
+ *   (ver QuoteFormPage ?fromWorkOrder=).
+ * - Orden de Servicio (subcontrato): NUNCA factura -- es un costo interno, no algo que
+ *   se le cobra a un cliente. Siempre devuelve `invoice: null`.
+ * No deja finalizar si falta algun requisito (fotos, notas o firmas de las 4
+ * etapas) — devuelve el detalle de que falta para que el usuario lo complete. Si
+ * el reporte ya estaba finalizado, no lo vuelve a procesar: simplemente devuelve
+ * el reporte y su factura ya existente si la hay (evita generar una duplicada).
  */
 export async function finalize(id) {
   const report = await workReportRepository.findById(id);
   if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
   if (report.status === 'finalizado') {
-    const invoice = await invoiceService.getByWorkOrderId(report.work_order_id);
-    return { report, invoice };
+    const invoice = report.work_order_id ? await invoiceService.getByWorkOrderId(report.work_order_id) : null;
+    return { report, invoice: invoice || null };
   }
   const missing = getMissingRequirements(report);
   if (missing.length > 0) {
@@ -156,7 +226,11 @@ export async function finalize(id) {
     status: 'finalizado',
     finalized_at: new Date(),
   });
-  const invoice = await invoiceService.createFromWorkReport(updated);
+  let invoice = null;
+  if (updated.work_order_id) {
+    const order = await workOrderRepository.findById(updated.work_order_id);
+    invoice = order?.flow_type === 'post' ? null : await invoiceService.createFromWorkReport(updated);
+  }
   return { report: updated, invoice };
 }
 

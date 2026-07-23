@@ -6,4 +6,6 @@ export const invoicesApi = {
   get:     (id)         => client.get(`/invoices/${id}`).then(r => r.data),
   // Marca la factura como certificada y envia el correo indicado (la certificacion fiscal real aun no esta integrada, ver felCertifier.js del backend).
   certify: (id, email)  => client.post(`/invoices/${id}/certify`, { email }).then(r => r.data),
+  // Flujo Post: genera a mano la factura de una orden ya cotizada y aprobada (no hay factura automatica como en Pre).
+  createFromWorkOrder: (workOrderId) => client.post(`/invoices/from-work-order/${workOrderId}`).then(r => r.data),
 };

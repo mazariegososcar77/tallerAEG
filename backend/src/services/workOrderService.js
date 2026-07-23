@@ -18,11 +18,23 @@ export async function getById(id) {
   return order;
 }
 
+// Convierte a "sin dato" los 4 campos nuevos del flujo Post (precio de torno,
+// precio estimado de repuestos, articulo de mano de obra elegido y su precio)
+// cuando llegan vacios -- igual que ya se hace con kw/rpm/hp, para que MySQL no
+// reciba texto vacio en columnas numericas.
+function normalizePostPricing(data) {
+  if (data.torno_price === '') data.torno_price = null;
+  if (data.parts_price === '') data.parts_price = null;
+  if (data.labor_article_id === '' || data.labor_article_id === undefined) data.labor_article_id = null;
+  if (data.labor_price === '') data.labor_price = null;
+}
+
 // Crea una orden de trabajo nueva: le asigna el siguiente numero correlativo y
 // convierte los campos opcionales que llegan vacios (total, datos electricos del
 // equipo, cotizacion de origen, fechas de recibido/entrega) en "sin dato", porque
 // la base de datos rechaza fechas vacias con un error confuso si se le manda texto
-// vacio en vez de "sin dato".
+// vacio en vez de "sin dato". Si no llega flow_type, MySQL lo deja en 'pre' solo
+// (es el default de la columna, ver 025_work_orders_flow_pricing.sql).
 export async function create({ items, ...data }) {
   const number = await workOrderRepository.getNextNumber();
   if (data.total === '' || data.total === null || data.total === undefined) data.total = 0;
@@ -32,19 +44,25 @@ export async function create({ items, ...data }) {
   if (data.quote_id === '' || data.quote_id === undefined) data.quote_id = null;
   if (data.received_at === '') data.received_at = null;
   if (data.delivery_at === '') data.delivery_at = null;
+  normalizePostPricing(data);
   return workOrderRepository.create({ ...data, number }, items);
 }
 
 // Edita una orden de trabajo existente, con la misma limpieza de fechas/cotizacion
-// vacias que al crear. Tambien se descartan client_name (no es una columna real) y
+// vacias que al crear. Tambien se descartan client_name (no es una columna real),
 // created_at/updated_at (fechas que MySQL controla solas; reenviarlas tal como las
-// mando el servidor rompe el guardado por el formato).
-export async function update(id, { items, client_name, created_at, updated_at, ...data }) {
+// mando el servidor rompe el guardado por el formato) y report_id/report_status/
+// quote_status/invoice_id/invoice_status (columnas derivadas que el repositorio
+// agrega por JOIN solo para lectura -- ver FLOW_STATUS_SELECT en workOrderRepository
+// -- reenviarlas rompe el UPDATE porque no existen en la tabla work_orders).
+export async function update(id, { items, client_name, created_at, updated_at,
+  report_id, report_status, quote_status, invoice_id, invoice_status, ...data }) {
   const existing = await workOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de trabajo no encontrada');
   if (data.quote_id === '') data.quote_id = null;
   if (data.received_at === '') data.received_at = null;
   if (data.delivery_at === '') data.delivery_at = null;
+  normalizePostPricing(data);
   return workOrderRepository.update(id, data, items);
 }
 

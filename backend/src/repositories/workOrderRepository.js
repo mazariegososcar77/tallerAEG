@@ -3,6 +3,22 @@
 // (recibido, en proceso, listo, entregado o cancelado).
 import pool from '../lib/db.js';
 
+// Piezas de SELECT/JOIN que se repiten en getAll y findById: ademas del nombre del
+// cliente, exponen en que va el flujo Post de esta orden (reporte finalizado?
+// cotizacion aprobada? ya tiene factura?) para que el frontend sepa que boton
+// mostrar (Cotizacion / Generar Factura) sin hacer consultas aparte. Para el
+// flujo Pre estas columnas tambien se llenan si aplican, no hacen daño.
+const FLOW_STATUS_SELECT = `
+  wr.id AS report_id, wr.status AS report_status,
+  q.status AS quote_status,
+  inv.id AS invoice_id, inv.status AS invoice_status
+`;
+const FLOW_STATUS_JOIN = `
+  LEFT JOIN work_reports wr ON wr.work_order_id = wo.id
+  LEFT JOIN quotes q ON q.id = wo.quote_id
+  LEFT JOIN invoices inv ON inv.work_order_id = wo.id
+`;
+
 // Trae todas las órdenes de trabajo, la más reciente primero, junto con el nombre del
 // cliente (armado a partir de nombre y apellido), para no tener que buscarlo aparte.
 export async function getAll() {
@@ -12,9 +28,11 @@ export async function getAll() {
         WHEN c.last_name IS NOT NULL AND c.last_name != ''
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
-      END as client_name
+      END as client_name,
+      ${FLOW_STATUS_SELECT}
     FROM work_orders wo
     LEFT JOIN clients c ON wo.client_id = c.id
+    ${FLOW_STATUS_JOIN}
     ORDER BY wo.created_at DESC
   `);
   return rows;
@@ -29,9 +47,11 @@ export async function findById(id) {
         WHEN c.last_name IS NOT NULL AND c.last_name != ''
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
-      END as client_name
+      END as client_name,
+      ${FLOW_STATUS_SELECT}
     FROM work_orders wo
     LEFT JOIN clients c ON wo.client_id = c.id
+    ${FLOW_STATUS_JOIN}
     WHERE wo.id = ?
   `, [id]);
   if (!order) return null;

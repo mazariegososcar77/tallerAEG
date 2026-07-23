@@ -14,6 +14,13 @@ export const getById = asyncHandler(async (req, res) => {
   res.json(await invoiceService.getById(req.params.id));
 });
 
+// Flujo Post: genera la factura de una orden de trabajo a mano (boton "Generar
+// Factura"), una vez que su cotizacion (armada despues del reporte) ya esta
+// aprobada. Ver invoiceService.createFromWorkOrder para las reglas exactas.
+export const createFromWorkOrder = asyncHandler(async (req, res) => {
+  res.status(201).json(await invoiceService.createFromWorkOrder(req.params.workOrderId));
+});
+
 // Cuando el usuario certifica una factura (captura el correo del cliente y confirma),
 // esto marca la factura como certificada. Nota: la certificación fiscal (FEL) real todavía
 // no está integrada, ver felCertifier.js.

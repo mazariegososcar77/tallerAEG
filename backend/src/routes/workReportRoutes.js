@@ -12,9 +12,13 @@ import { uploadReportPhoto } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
-// Para crear un reporte: exige el id de una orden de trabajo valida.
+// Para crear un reporte: exige el id de una orden de trabajo O de una orden de
+// servicio (nunca ambas) -- un reporte documenta exactamente una de las dos.
 const createSchema = z.object({
-  work_order_id: z.coerce.number().int().positive('Orden de trabajo invalida'),
+  work_order_id: z.coerce.number().int().positive('Orden de trabajo invalida').optional(),
+  service_order_id: z.coerce.number().int().positive('Orden de servicio invalida').optional(),
+}).refine((d) => Boolean(d.work_order_id) !== Boolean(d.service_order_id), {
+  message: 'Debe venir exactamente uno: work_order_id o service_order_id',
 });
 
 // Para editar un reporte: notas generales y/o notas por etapa, todo opcional.
@@ -44,8 +48,8 @@ router.use(authenticate);
  */
 // Ver la lista de reportes de trabajo.
 router.get('/', requirePermission('work-reports.view'), workReportController.list);
-// Crear el reporte de una orden de trabajo (si ya existe, simplemente lo devuelve).
-router.post('/', requirePermission('work-reports.create'), validate(createSchema), workReportController.createForOrder);
+// Crear el reporte de una orden de trabajo o de servicio (si ya existe, lo devuelve).
+router.post('/', requirePermission('work-reports.create'), validate(createSchema), workReportController.create);
 
 /**
  * @openapi
@@ -169,5 +173,20 @@ router.get('/:id/pdf', requirePermission('work-reports.view'), workReportControl
  */
 // Finalizar el reporte (exige que las 4 etapas tengan foto y nota, y ambas firmas) y generar la factura.
 router.post('/:id/finalize', requirePermission('work-reports.update'), workReportController.finalize);
+
+/**
+ * @openapi
+ * /work-reports/{id}/signing-link:
+ *   post:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Generar (o recuperar) el enlace publico de firma remota del cliente
+ *     description: Para cuando el equipo se entrega con mensajero y el cliente no esta en el taller -- ver rutas /public/work-reports.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: "{ token }" }
+ */
+// Generar/recuperar el token del enlace publico de firma remota.
+router.post('/:id/signing-link', requirePermission('work-reports.update'), workReportController.getSigningLink);
 
 export default router;
