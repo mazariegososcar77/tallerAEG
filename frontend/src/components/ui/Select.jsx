@@ -3,6 +3,11 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 
 /**
+ * Es el "menú desplegable" para elegir una sola opción de una lista (por
+ * ejemplo, elegir el tipo de cliente). Se usa en la mayoría de los
+ * formularios del sistema, en vez del selector feo que trae el navegador
+ * por defecto, para que todos se vean igual y con los colores de la marca.
+ *
  * Dropdown propio (reemplaza el <select> nativo del navegador) con el estilo de la app.
  * options: [{ value, label }]. onChange recibe directamente el value seleccionado.
  * Soporta teclado (flechas, Enter, Esc) y cierre al hacer clic afuera.

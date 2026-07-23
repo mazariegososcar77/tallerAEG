@@ -7,11 +7,20 @@ import Spinner from '../ui/Spinner.jsx';
  * Galeria de fotos de una etapa del reporte de trabajo. Controlado: `photos`
  * (array de {id, photo_url, caption}), `onAdd(file)` y `onRemove(photoId)`
  * (ambos async, llamados una vez por foto agregada/eliminada).
+ *
+ * Este componente muestra las fotos tomadas para una etapa del Reporte de
+ * Trabajo (por ejemplo "Antes de desarmar" o "Armado final"), en forma de
+ * cuadricula, y permite agregar fotos nuevas o borrar las que ya no sirven.
+ * Se usa dentro del formulario de Reporte de Trabajo, una vez por cada etapa.
+ * `disabled` bloquea agregar/quitar fotos (ej. cuando el reporte ya quedo
+ * finalizado y no se puede seguir editando).
  */
 export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled }) {
-  const [uploading, setUploading] = useState(false);
-  const [removingId, setRemovingId] = useState(null);
+  const [uploading, setUploading] = useState(false); // true mientras se estan subiendo fotos
+  const [removingId, setRemovingId] = useState(null); // id de la foto que se esta borrando en este momento
 
+  // Se ejecuta cuando el usuario elige una o varias fotos para agregar: las
+  // sube una por una (llamando a onAdd por cada archivo) y avisa si algo salio mal.
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
@@ -29,6 +38,7 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled })
     }
   };
 
+  // Borra una foto especifica de la galeria.
   const handleRemove = async (photoId) => {
     setRemovingId(photoId);
     try {

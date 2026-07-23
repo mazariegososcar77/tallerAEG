@@ -34,12 +34,18 @@ function DateBadge({ dateKey }) {
  * Resumen de lo que viene: próximos mantenimientos programados (por fecha de
  * próximo servicio) y entregas de órdenes de trabajo (por fecha de entrega),
  * combinados y ordenados por fecha ascendente desde hoy en adelante.
+ *
+ * Este componente es la lista "Proximas fechas" que se ve en el Dashboard,
+ * al lado del calendario. Al hacer clic en un elemento de la lista, lleva
+ * directo a esa orden de trabajo o a la pantalla de mantenimientos.
  */
 export default function UpcomingSummary() {
   const navigate = useNavigate();
-  const [records, setRecords] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [records, setRecords] = useState([]); // mantenimientos programados
+  const [orders, setOrders] = useState([]); // ordenes de trabajo
 
+  // Al abrir el componente, trae del servidor los mantenimientos y las
+  // ordenes de trabajo para poder armar la lista de proximas fechas.
   useEffect(() => {
     maintenanceApi.list().then(setRecords).catch(err => notify.error(err.message));
     workOrdersApi.list().then(setOrders).catch(err => notify.error(err.message));

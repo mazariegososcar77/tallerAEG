@@ -1,9 +1,25 @@
+/**
+ * En palabras simples: este archivo es el que "dibuja" y arma los
+ * documentos PDF que la gente descarga desde el sistema: la cotizacion, la
+ * orden de trabajo, la factura y el reporte de trabajo. Cada funcion
+ * `generar...PDF` recibe los datos de un registro (por ejemplo una
+ * cotizacion) y devuelve el documento PDF ya armado, con el logo, colores
+ * y formato de Taller AEG.
+ *
+ * El codigo de cada funcion tiene mucha repeticion porque va posicionando
+ * cajas y texto punto por punto (coordenadas x/y) para que el PDF se vea
+ * ordenado; no hace falta entender cada linea, solo las secciones grandes
+ * marcadas con comentarios (encabezado, datos del cliente, tabla de items,
+ * totales, pie de pagina, firmas).
+ */
 import PDFDocument from 'pdfkit';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+// Colores de marca de Taller AEG usados en todos los PDF (azul marino,
+// naranja) y algunos tonos neutros de apoyo (gris, negro, blanco).
 const AZUL = '#0C1733';
 const AZUL_MED = '#16285C';
 const NARANJA = '#E8551C';
@@ -11,6 +27,10 @@ const GRIS = '#64748b';
 const NEGRO = '#1e293b';
 const BLANCO = '#ffffff';
 
+// Arma el PDF de una COTIZACION: muestra los datos del cliente, la lista
+// de equipos con su mano de obra y repuestos cotizados, y los totales
+// (subtotal, descuento, total). Es el documento que se le entrega al
+// cliente antes de aceptar el trabajo.
 export function generarCotizacionPDF(quote) {
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -171,6 +191,11 @@ export function generarCotizacionPDF(quote) {
   return doc;
 }
 
+// Arma el PDF de una ORDEN DE TRABAJO: la ficha del equipo que el cliente
+// dejo en el taller (datos generales, especificaciones tecnicas, trabajo a
+// realizar, partes recibidas) y espacios de firma para el cliente y el
+// tecnico. A proposito NO muestra precios (eso es del modulo de
+// Cotizaciones/Facturacion) — ver nota en backend/CLAUDE.md.
 export function generarOrdenTrabajoPDF(order) {
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -178,6 +203,7 @@ export function generarOrdenTrabajoPDF(order) {
   const R = W - 40;
   const CW = R - L;
 
+  // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
     const logoPath = join(__dirname, '../assets/logo.png');
@@ -206,6 +232,7 @@ export function generarOrdenTrabajoPDF(order) {
   const statusLabels = { recibido: 'Recibido', en_proceso: 'En Proceso', listo: 'Listo', entregado: 'Entregado', cancelado: 'Cancelado' };
   const statusLabel = statusLabels[order.status] || order.status || '-';
 
+  // ── INFORMACION GENERAL ──────────────────────────────────
   doc.rect(L, y, CW, 20).fill(AZUL_MED);
   doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('INFORMACION GENERAL', L + 8, y + 6);
   y += 26;
@@ -232,6 +259,7 @@ export function generarOrdenTrabajoPDF(order) {
   }
   y += 6;
 
+  // ── DATOS DEL EQUIPO ──────────────────────────────────────
   doc.rect(L, y, CW, 20).fill(AZUL_MED);
   doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('DATOS DEL EQUIPO', L + 8, y + 6);
   y += 26;
@@ -261,6 +289,7 @@ export function generarOrdenTrabajoPDF(order) {
   }
   y += 6;
 
+  // ── TRABAJO A REALIZAR ────────────────────────────────────
   doc.rect(L, y, CW, 20).fill(NARANJA);
   doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('TRABAJO A REALIZAR', L + 8, y + 6);
   y += 26;
@@ -292,6 +321,7 @@ export function generarOrdenTrabajoPDF(order) {
   doc.font('Helvetica').text(order.tech_assemble || '-', col2 + 85, y);
   y += 20;
 
+  // ── PARTES DEL EQUIPO RECIBIDAS ───────────────────────────
   const partes = (order.items || []).filter(i => i.has_item);
   if (partes.length > 0) {
     if (y > 650) { doc.addPage({ margin: 0 }); y = 40; }
@@ -308,6 +338,7 @@ export function generarOrdenTrabajoPDF(order) {
     y += 6;
   }
 
+  // ── FIRMAS ─────────────────────────────────────────────────
   if (y > 680) { doc.addPage({ margin: 0 }); y = 40; }
   y += 20;
   doc.moveTo(L, y + 30).lineTo(L + 150, y + 30).strokeColor('#94a3b8').lineWidth(0.5).stroke();
@@ -316,6 +347,7 @@ export function generarOrdenTrabajoPDF(order) {
      .text('Firma Cliente', L, y + 34, { width: 150, align: 'center' })
      .text('Firma Tecnico', R - 150, y + 34, { width: 150, align: 'center' });
 
+  // ── PIE DE PÁGINA ─────────────────────────────────────────
   const pageH = doc.page.height;
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
@@ -327,6 +359,123 @@ export function generarOrdenTrabajoPDF(order) {
   return doc;
 }
 
+// Arma el PDF de una ORDEN DE SERVICIO: el trabajo que el taller manda a hacer
+// afuera con un subcontratista. A diferencia de la Orden de Trabajo, aqui SI se
+// muestran los costos (acordado/real) -- es informacion administrativa interna
+// para Abdias, no algo que vea un tecnico.
+export function generarOrdenServicioPDF(order) {
+  const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
+  const W = doc.page.width;
+  const L = 40;
+  const R = W - 40;
+  const CW = R - L;
+
+  // ── ENCABEZADO ───────────────────────────────────────────
+  doc.rect(0, 0, W, 110).fill(AZUL);
+  try {
+    const logoPath = join(__dirname, '../assets/logo.png');
+    doc.image(logoPath, L, 15, { height: 75 });
+  } catch(e) {}
+
+  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
+  doc.fontSize(9).font('Helvetica')
+     .text('Taller de Embobinado Industrial', 160, 42)
+     .text('Guatemala, Guatemala', 160, 55)
+     .text('Tel: (+502) 0000-0000', 160, 68);
+
+  doc.fontSize(20).font('Helvetica-Bold').fillColor(NARANJA)
+     .text('ORDEN DE SERVICIO', 250, 18, { width: 300, align: 'right' });
+  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
+     .text('No. ' + (order.number || '0001'), 350, 48, { width: 200, align: 'right' });
+
+  const fechaEnvio = order.sent_at ? new Date(order.sent_at).toLocaleDateString('es-GT') : '-';
+  const fechaRetorno = order.expected_return_at ? new Date(order.expected_return_at).toLocaleDateString('es-GT') : '-';
+  doc.fontSize(8).fillColor('#94a3b8')
+     .text('Enviado: ' + fechaEnvio, 350, 68, { width: 200, align: 'right' })
+     .text('Retorno esperado: ' + fechaRetorno, 350, 80, { width: 200, align: 'right' });
+
+  let y = 122;
+
+  const statusLabels = { enviada: 'Enviada', en_proceso: 'En Proceso', recibida: 'Recibida', cancelada: 'Cancelada' };
+  const statusLabel = statusLabels[order.status] || order.status || '-';
+  const col2 = L + CW / 2;
+
+  // ── INFORMACION GENERAL ──────────────────────────────────
+  doc.rect(L, y, CW, 20).fill(AZUL_MED);
+  doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('INFORMACION GENERAL', L + 8, y + 6);
+  y += 26;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Subcontratista:', L, y);
+  doc.font('Helvetica').text(order.subcontractor_name || '-', L + 90, y);
+  doc.font('Helvetica-Bold').text('Estado:', col2, y);
+  doc.font('Helvetica').text(statusLabel, col2 + 50, y);
+  y += 14;
+
+  if (order.client_name) {
+    doc.fillColor(NEGRO).font('Helvetica-Bold').text('Cliente relacionado:', L, y);
+    doc.font('Helvetica').text(order.client_name, L + 115, y);
+    y += 14;
+  }
+  y += 6;
+
+  // ── EQUIPO (opcional) ─────────────────────────────────────
+  if (order.equipment_name || order.brand || order.model || order.serial) {
+    doc.rect(L, y, CW, 20).fill(AZUL_MED);
+    doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('EQUIPO DE ORIGEN', L + 8, y + 6);
+    y += 26;
+    doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Equipo:', L, y);
+    doc.font('Helvetica').text(order.equipment_name || '-', L + 55, y);
+    doc.font('Helvetica-Bold').text('Marca:', col2, y);
+    doc.font('Helvetica').text(order.brand || '-', col2 + 45, y);
+    y += 14;
+    doc.font('Helvetica-Bold').text('Serie/Modelo:', L, y);
+    doc.font('Helvetica').text(order.serial || order.model || '-', L + 80, y);
+    y += 20;
+  }
+
+  // ── TRABAJO SUBCONTRATADO ─────────────────────────────────
+  doc.rect(L, y, CW, 20).fill(NARANJA);
+  doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text('TRABAJO SUBCONTRATADO', L + 8, y + 6);
+  y += 26;
+
+  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Descripcion:', L, y);
+  doc.font('Helvetica').text(order.description || '-', L + 85, y, { width: CW - 85 });
+  y += doc.heightOfString(order.description || '-', { width: CW - 85 }) + 10;
+
+  if (order.received_at) {
+    doc.font('Helvetica-Bold').text('Recibido:', L, y);
+    doc.font('Helvetica').text(new Date(order.received_at).toLocaleDateString('es-GT'), L + 65, y);
+    y += 14;
+  }
+
+  doc.font('Helvetica-Bold').text('Costo acordado:', L, y);
+  doc.font('Helvetica').text(order.agreed_cost ? 'Q ' + Number(order.agreed_cost).toFixed(2) : '-', L + 100, y);
+  doc.font('Helvetica-Bold').text('Costo real:', col2, y);
+  doc.font('Helvetica').text(order.actual_cost ? 'Q ' + Number(order.actual_cost).toFixed(2) : '-', col2 + 70, y);
+  y += 18;
+
+  if (order.notes) {
+    doc.font('Helvetica-Bold').text('Notas:', L, y);
+    doc.font('Helvetica').text(order.notes, L + 55, y, { width: CW - 55 });
+    y += doc.heightOfString(order.notes, { width: CW - 55 }) + 6;
+  }
+
+  // ── PIE DE PÁGINA ─────────────────────────────────────────
+  const pageH = doc.page.height;
+  doc.rect(0, pageH - 38, W, 38).fill(AZUL);
+  doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
+     .text('Orden de Servicio - Taller AEG', L, pageH - 28, { width: CW / 2 })
+     .text('Taller AEG - Guatemala', R - 150, pageH - 28, { width: 150, align: 'right' });
+  doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
+     .text('Documento interno - No se factura al cliente', L, pageH - 15, { width: CW, align: 'center' });
+
+  return doc;
+}
+
+// Arma el PDF de una FACTURA: los datos del cliente, el detalle de lo
+// facturado y los totales, mas la informacion de certificacion fiscal FEL
+// si ya fue certificada (o un aviso de que todavia esta pendiente — ver
+// src/services/felCertifier.js, que hoy no genera un UUID/serie real).
 export function generarFacturaPDF(invoice) {
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -334,6 +483,7 @@ export function generarFacturaPDF(invoice) {
   const R = W - 40;
   const CW = R - L;
 
+  // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
     const logoPath = join(__dirname, '../assets/logo.png');
@@ -374,7 +524,7 @@ export function generarFacturaPDF(invoice) {
   }
   y += 10;
 
-  // ── LINEAS ───────────────────────────────────────────────
+  // ── LINEAS (tabla de items facturados) ────────────────────
   const items = invoice.items || [];
   doc.rect(L, y, CW, 17).fill('#1e3a5f');
   doc.fillColor(BLANCO).fontSize(8).font('Helvetica-Bold')
@@ -449,6 +599,8 @@ export function generarFacturaPDF(invoice) {
   return doc;
 }
 
+// Nombres en español, para mostrar en el PDF, de las 4 etapas fijas en las
+// que se documenta un reporte de trabajo con fotos y notas.
 const STAGE_LABELS = {
   antes: 'Antes de Desarmar',
   desarmado: 'Desarmado + Piezas Nuevas',
@@ -456,6 +608,13 @@ const STAGE_LABELS = {
   armado_final: 'Armado Final',
 };
 
+// Arma el PDF de un REPORTE DE TRABAJO: la informacion general de la orden,
+// y para cada una de las 4 etapas del trabajo (antes de desarmar, desarmado
+// + piezas nuevas, piezas instaladas + usadas, armado final) su nota y las
+// fotos que se subieron, mas las firmas del tecnico y del cliente al final.
+// Las fotos y firmas se insertan leyendo el archivo real desde la carpeta
+// de "uploads" del servidor; si algun archivo ya no existe en disco, se
+// dibuja un recuadro gris en su lugar en vez de fallar.
 export function generarReportePDF(report) {
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -463,6 +622,7 @@ export function generarReportePDF(report) {
   const R = W - 40;
   const CW = R - L;
 
+  // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
     const logoPath = join(__dirname, '../assets/logo.png');

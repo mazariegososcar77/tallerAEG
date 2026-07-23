@@ -1,11 +1,28 @@
+// PANTALLA: Reporte de Trabajo de una orden. Aquí el técnico documenta con
+// fotos y notas cómo fue el trabajo, en 4 etapas fijas: antes de desarmar,
+// desarmado + piezas nuevas, piezas instaladas + piezas usadas, y armado final.
+// Cada etapa necesita al menos una foto y una nota. Al final se capturan dos
+// firmas (quien entrega el equipo y quien lo recibe) dibujándolas con el dedo
+// o el mouse. El reporte no nace vacío: se crea automáticamente al presionar
+// el botón de cámara en la orden de trabajo correspondiente.
+//
+// El botón "Finalizar Reporte" NO se puede usar si falta algo (foto, nota o
+// firma) — se deshabilita y se muestra abajo la lista de lo que falta. Esto es
+// a propósito: un reporte incompleto no debe poder cerrarse. Al finalizar, el
+// sistema genera automáticamente la factura correspondiente y lleva a la
+// pantalla de Facturación. Una vez finalizado, el reporte queda de solo
+// lectura para todos, salvo un administrador con permiso especial, que puede
+// seguir editando fotos y notas (pero ya no se genera otra factura).
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { workReportsApi } from '../../api/workReportsApi.js';
 import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import PhotoStageGallery from '../../components/reports/PhotoStageGallery.jsx';
 import SignaturePad from '../../components/reports/SignaturePad.jsx';
 
+// Las 4 etapas fijas del reporte, en orden. Cada una necesita fotos + una nota.
 const STAGES = [
   { key: 'antes',          title: 'Antes de Desarmar',                    hint: 'Estado del equipo antes de intervenirlo.' },
   { key: 'desarmado',      title: 'Desarmado + Piezas Nuevas',             hint: 'Equipo desarmado, junto a las piezas nuevas a colocar.' },
@@ -32,12 +49,18 @@ export default function WorkReportFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { hasPermission } = useAuth();
+  const isMobile = useIsMobile();
   const [report, setReport] = useState(null);
   const [generalNotes, setGeneralNotes] = useState('');
   const [stageNotes, setStageNotes] = useState({});
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [signingLink, setSigningLink] = useState(null);
+  const [loadingLink, setLoadingLink] = useState(false);
 
+  // Trae el reporte completo del servidor (datos, fotos, notas y firmas) y lo
+  // pone en pantalla. Se llama de nuevo cada vez que se agrega una foto, se
+  // borra, o se guarda una firma, para que la pantalla siempre muestre lo ultimo.
   const load = useCallback(() => {
     workReportsApi.get(id).then(r => {
       setReport(r);
@@ -72,20 +95,40 @@ export default function WorkReportFormPage() {
     ...(!report.client_signature_url ? ['firma de quien recibe'] : []),
   ];
 
+  // Sube una foto a la etapa indicada.
   const handleAddPhoto = async (stage, file) => {
     await workReportsApi.addPhoto(id, file, { stage });
     load();
   };
+  // Quita una foto ya subida.
   const handleRemovePhoto = async (photoId) => {
     await workReportsApi.removePhoto(id, photoId);
     load();
   };
 
+  // Guarda la firma dibujada (del tecnico o de quien recibe) junto con el nombre de quien firma.
   const handleSaveSignature = async (role, file, name) => {
     await workReportsApi.setSignature(id, file, role, name);
     load();
   };
 
+  // Genera (o recupera) el enlace publico para que el cliente firme "Recibido"
+  // desde su propio telefono cuando el equipo se manda con mensajero (sin
+  // sesion iniciada, ver PublicSignaturePage.jsx). Pedirlo varias veces no
+  // invalida el link ya enviado -- siempre es el mismo token.
+  const handleGenerateLink = async () => {
+    setLoadingLink(true);
+    try {
+      const { token } = await workReportsApi.getSigningLink(id);
+      setSigningLink(`${window.location.origin}/firmar/${token}`);
+    } catch (e) {
+      notify.error(e.message || 'No se pudo generar el enlace');
+    } finally {
+      setLoadingLink(false);
+    }
+  };
+
+  // Guarda las notas (generales y de cada etapa) sin finalizar el reporte todavia.
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
@@ -98,6 +141,21 @@ export default function WorkReportFormPage() {
     }
   };
 
+  // Finaliza el reporte: primero guarda las notas pendientes, luego le pide al
+  // servidor que lo cierre. No deja finalizar si falta alguna foto, nota o firma
+  // (ver "missingRequirements" arriba).
+  //
+  // Que pasa despues depende de que documenta el reporte (lo decide el servidor,
+  // ver workReportService.finalize):
+  // - Orden de Trabajo, Pre: ya genera la factura automatico, se navega a
+  //   Facturacion para certificarla.
+  // - Orden de Trabajo, Post: todavia no hay cotizacion (se arma DESPUES del
+  //   reporte, con el diagnostico ya conocido), el servidor devuelve
+  //   invoice: null y aqui se lleva al usuario a crear esa cotizacion,
+  //   prellenada con los estimados que se capturaron al abrir la orden.
+  // - Orden de Servicio (subcontrato): nunca factura (costo interno, no se le
+  //   cobra a un cliente) -- se queda en el reporte, ya finalizado y de solo
+  //   lectura.
   const handleFinalize = async () => {
     if (missingRequirements.length > 0) {
       notify.error('Completa los datos obligatorios antes de finalizar');
@@ -107,8 +165,16 @@ export default function WorkReportFormPage() {
     try {
       await handleSaveNotes();
       const { invoice } = await workReportsApi.finalize(id);
-      notify.success('Reporte finalizado, factura generada');
-      navigate(`/facturacion?invoice=${invoice.id}`);
+      if (invoice) {
+        notify.success('Reporte finalizado, factura generada');
+        navigate(`/facturacion?invoice=${invoice.id}`);
+      } else if (report.work_order_id) {
+        notify.success('Reporte finalizado. Arma la cotizacion con el diagnostico ya conocido.');
+        navigate(`/post/cotizaciones/nueva?fromWorkOrder=${report.work_order_id}`);
+      } else {
+        notify.success('Reporte finalizado.');
+        load();
+      }
     } catch (e) {
       notify.error(e.message || 'Error al finalizar el reporte');
     } finally {
@@ -146,12 +212,14 @@ export default function WorkReportFormPage() {
       </div>
 
       <div style={{ padding:'16px 20px', maxWidth:980, margin:'0 auto' }}>
+        {/* Aviso cuando un administrador esta editando un reporte ya finalizado */}
         {isFinal && canForceEdit && (
           <div style={{ background:'#f59e0b18', border:'1px solid #f59e0b44', borderRadius:8, padding:'10px 14px', marginBottom:12, fontSize:12, color:C.text }}>
             Este reporte ya está <strong>finalizado</strong>. Como administrador puedes editar sus fotos y
             notas, pero la factura ya generada no se vuelve a crear ni a recalcular.
           </div>
         )}
+        {/* Lista de lo que falta para poder finalizar (fotos, notas o firmas pendientes) */}
         {!isFinal && !readOnly && missingRequirements.length > 0 && (
           <div style={{ background:'#f59e0b18', border:'1px solid #f59e0b44', borderRadius:8, padding:'10px 14px', marginBottom:12, fontSize:12, color:C.text }}>
             <strong>Faltan datos obligatorios para poder finalizar el reporte:</strong>
@@ -160,6 +228,7 @@ export default function WorkReportFormPage() {
             </ul>
           </div>
         )}
+        {/* Un bloque por cada una de las 4 etapas fijas, con sus fotos y su nota */}
         {STAGES.map(stage => (
           <div key={stage.key} style={sec}>
             <div style={secHdr}>
@@ -210,7 +279,9 @@ export default function WorkReportFormPage() {
           <div style={secHdr}>
             <span style={{ fontSize:11, fontWeight:800, color:C.orange, letterSpacing:'1px', textTransform:'uppercase' }}>Firmas</span>
           </div>
-          <div style={{ ...secBody, display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
+          {/* Firma de quien entrega el equipo (tecnico) y de quien lo recibe (cliente),
+              dibujadas a mano en la pantalla */}
+          <div style={{ ...secBody, display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:20 }}>
             <SignaturePad
               label="Tecnico que entrega"
               signatureUrl={report.tech_signature_url}
@@ -218,13 +289,46 @@ export default function WorkReportFormPage() {
               onSave={(file, name) => handleSaveSignature('tech', file, name)}
               disabled={readOnly}
             />
-            <SignaturePad
-              label="Recibido por"
-              signatureUrl={report.client_signature_url}
-              signatureName={report.client_signature_name}
-              onSave={(file, name) => handleSaveSignature('client', file, name)}
-              disabled={readOnly}
-            />
+            <div>
+              <SignaturePad
+                label="Recibido por"
+                signatureUrl={report.client_signature_url}
+                signatureName={report.client_signature_name}
+                onSave={(file, name) => handleSaveSignature('client', file, name)}
+                disabled={readOnly}
+              />
+              {/* Enlace publico de firma remota: para cuando el equipo se manda con
+                  mensajero y el cliente firma "Recibido" desde su propio telefono,
+                  sin iniciar sesion (ver PublicSignaturePage.jsx). */}
+              {!readOnly && !report.client_signature_url && (
+                <div style={{ marginTop: 10 }}>
+                  {!signingLink ? (
+                    <button type="button" onClick={handleGenerateLink} disabled={loadingLink}
+                      style={{ background: C.dark, border: '1px solid ' + C.border, color: C.orange, padding: '7px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, opacity: loadingLink ? 0.7 : 1 }}>
+                      {loadingLink ? 'Generando...' : 'Generar enlace para firma remota (mensajero)'}
+                    </button>
+                  ) : (
+                    <div style={{ background: C.dark, border: '1px solid ' + C.border, borderRadius: 8, padding: '10px 12px' }}>
+                      <p style={{ margin: '0 0 6px', fontSize: 11, color: C.muted }}>
+                        Comparte este enlace con el mensajero: el cliente lo abre en su celular, firma y escribe su nombre — sin necesitar cuenta en el sistema.
+                      </p>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <input readOnly value={signingLink} onFocus={e => e.target.select()}
+                          style={{ ...inp, flex: 1, minWidth: 180, fontSize: 11 }} />
+                        <button type="button" onClick={() => { navigator.clipboard.writeText(signingLink); notify.success('Enlace copiado'); }}
+                          style={{ background: C.card, border: '1px solid ' + C.border, color: C.text, padding: '0 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                          Copiar
+                        </button>
+                        <a href={`https://wa.me/?text=${encodeURIComponent('Por favor firma de recibido aquí: ' + signingLink)}`} target="_blank" rel="noreferrer"
+                          style={{ background: '#25D366', border: 'none', color: '#fff', padding: '0 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+                          Enviar por WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div style={{ paddingBottom:32 }} />

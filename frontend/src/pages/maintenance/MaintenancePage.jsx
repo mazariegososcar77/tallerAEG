@@ -1,3 +1,9 @@
+// PANTALLA: Calendario de Mantenimientos. Muestra los mantenimientos programados
+// para las máquinas de los clientes: cada cuánto toca (frecuencia), cuándo fue el
+// último servicio y cuándo toca el próximo. El sistema calcula solo si un
+// mantenimiento está "al día", "próximo" (se acerca la fecha) o "vencido" (ya se
+// pasó), y arriba muestra avisos con cuántos están vencidos o próximos. Desde aquí
+// se puede crear, editar o eliminar un mantenimiento programado.
 import { useState, useEffect } from 'react';
 import { maintenanceApi } from '../../api/maintenanceApi.js';
 import { machinesApi } from '../../api/machinesApi.js';
@@ -9,6 +15,7 @@ import Input from '../../components/ui/Input.jsx';
 import Textarea from '../../components/ui/Textarea.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import Button from '../../components/ui/Button.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#1D9E75', red:'#ef4444', amber:'#f59e0b' };
 const STATUS = { al_dia:{ label:'Al dia', color:'#1D9E75', Icon:CheckCircle }, proximo:{ label:'Proximo', color:'#f59e0b', Icon:Clock }, vencido:{ label:'Vencido', color:'#ef4444', Icon:AlertTriangle } };
@@ -22,6 +29,7 @@ const FREQ_OPTIONS = [
 ];
 
 export default function MaintenancePage() {
+  const isMobile = useIsMobile();
   const [records, setRecords] = useState([]);
   const [machines, setMachines] = useState([]);
   const [clients, setClients] = useState([]);
@@ -29,15 +37,21 @@ export default function MaintenancePage() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ client_id:'', machine_id:'', frequency:'semestral', frequency_days:'', last_service:'', description:'' });
+  // Al abrir la pantalla, carga clientes, maquinas y los mantenimientos ya programados.
   useEffect(() => {
     clientsApi.list().then(setClients);
     machinesApi.list().then(setMachines);
     maintenanceApi.list().then(setRecords).finally(() => setLoading(false));
   }, []);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Cuando se elige un cliente en el formulario, esta lista deja ver solo sus maquinas.
   const clientMachines = machines.filter(m => String(m.client_id) === String(form.client_id));
+  // Abre el formulario vacio para programar un mantenimiento nuevo.
   const openNew = () => { setEditing(null); setForm({ client_id:'', machine_id:'', frequency:'semestral', frequency_days:'', last_service:'', description:'' }); setShowForm(true); };
+  // Abre el formulario ya lleno para editar un mantenimiento existente.
   const openEdit = (r) => { setEditing(r); setForm({ client_id:r.client_id, machine_id:r.machine_id, frequency:r.frequency, frequency_days:r.frequency_days||'', last_service:r.last_service?.slice(0,10)||'', description:r.description||'' }); setShowForm(true); };
+  // Guarda el mantenimiento (nuevo o editado). Exige cliente y maquina como minimo;
+  // el proximo servicio y el estado (al dia/proximo/vencido) los calcula el servidor.
   const handleSave = async () => {
     if (!form.client_id || !form.machine_id) return alert('Cliente y maquina son obligatorios');
     try {
@@ -46,10 +60,12 @@ export default function MaintenancePage() {
       setShowForm(false); maintenanceApi.list().then(setRecords);
     } catch(e) { alert(e.response?.data?.message || 'Error al guardar'); }
   };
+  // Elimina un mantenimiento programado, pidiendo confirmacion antes.
   const handleDelete = async (id) => {
     if (!confirm('Eliminar este mantenimiento?')) return;
     await maintenanceApi.remove(id); maintenanceApi.list().then(setRecords);
   };
+  // Cuenta cuantos mantenimientos estan vencidos y cuantos proximos, para los avisos de arriba.
   const vencidos = records.filter(r => r.status === 'vencido').length;
   const proximos = records.filter(r => r.status === 'proximo').length;
   return (
@@ -66,8 +82,9 @@ export default function MaintenancePage() {
           <Plus size={18} /> Nuevo Mantenimiento
         </button>
       </div>
+      {/* Avisos de cuantos mantenimientos estan vencidos o proximos a vencer */}
       {(vencidos > 0 || proximos > 0) && (
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:10, marginBottom:16 }}>
           {vencidos > 0 && <div style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}><AlertTriangle size={20} color='#ef4444' /><div><p style={{ margin:0, fontWeight:700, color:'#ef4444', fontSize:14 }}>{vencidos} vencido{vencidos>1?'s':''}</p><p style={{ margin:0, fontSize:12, color:C.muted }}>Requieren atencion inmediata</p></div></div>}
           {proximos > 0 && <div style={{ background:'#f59e0b15', border:'1px solid #f59e0b40', borderRadius:10, padding:'12px 16px', display:'flex', alignItems:'center', gap:10 }}><Clock size={20} color='#f59e0b' /><div><p style={{ margin:0, fontWeight:700, color:'#f59e0b', fontSize:14 }}>{proximos} proximo{proximos>1?'s':''}</p><p style={{ margin:0, fontSize:12, color:C.muted }}>Proximos 30 dias</p></div></div>}
         </div>
@@ -103,6 +120,7 @@ export default function MaintenancePage() {
           })}
         </div>
       )}
+      {/* Ventana emergente con el formulario para crear o editar un mantenimiento */}
       <Modal
         open={showForm}
         onClose={() => setShowForm(false)}

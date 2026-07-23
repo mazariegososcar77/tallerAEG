@@ -1,4 +1,9 @@
 /**
+ * En palabras simples: cuando la base de datos rechaza algo (por ejemplo,
+ * un correo duplicado, o falta un dato obligatorio), este archivo traduce
+ * ese error tecnico de MySQL a una frase que cualquier persona entiende,
+ * en español, sin mostrar codigo ni nombres tecnicos de columnas.
+ *
  * Traduce los errores crudos del driver de MySQL (mysql2) a mensajes claros en
  * español para el usuario final. Evita filtrar SQL o nombres técnicos.
  *
@@ -46,6 +51,8 @@ const CONNECTION_CODES = new Set([
 
 const labelFor = (col) => FIELD_LABELS[col] || (col ? `«${col}»` : 'un campo obligatorio');
 
+// Revisa si un error viene de la base de datos MySQL (para saber si hay
+// que traducirlo con translateDbError) o si es un error de otro tipo.
 /** ¿El error proviene del driver de MySQL? */
 export function isDbError(err) {
   if (!err) return false;
@@ -53,6 +60,9 @@ export function isDbError(err) {
   return typeof err.code === 'string' && (err.code.startsWith('ER_') || CONNECTION_CODES.has(err.code));
 }
 
+// Toma el error tecnico que devolvio MySQL (por ejemplo "dato duplicado" o
+// "falta un campo") y arma un mensaje en español facil de leer, adivinando
+// a que campo del formulario corresponde (usando la lista FIELD_LABELS).
 /** Convierte un error de MySQL en un ApiError con mensaje en español. */
 export function translateDbError(err) {
   const code = err.code;

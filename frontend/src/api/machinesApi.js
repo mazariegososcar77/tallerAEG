@@ -1,4 +1,7 @@
+// Este archivo maneja las "maquinas" (equipos/motores) que pertenecen a cada cliente.
 import { client } from './client.js';
+
+// Funciones para consultar y modificar maquinas. `list` puede filtrar por cliente si se le pasa su id.
 export const machinesApi = {
   list: (clientId) => client.get('/machines', { params: clientId ? { client_id: clientId } : {} }).then(r => r.data),
   get: (id) => client.get(`/machines/${id}`).then(r => r.data),

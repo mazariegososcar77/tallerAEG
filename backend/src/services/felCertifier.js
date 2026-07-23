@@ -1,15 +1,25 @@
 /**
- * Adaptador de certificacion fiscal FEL (Factura Electronica en Linea, Guatemala).
+ * ESTE ARCHIVO ES UN "SIMULADOR" TEMPORAL DE LA CERTIFICACION FISCAL (FEL).
  *
- * Taller AEG aun no tiene contratado un certificador autorizado por la SAT
- * (ej. Digifact, Infile, Megaprint). Mientras tanto esta funcion NO debe
- * inventar un UUID/serie/numero FEL — eso equivaldria a fabricar un
- * documento fiscal falso. Devuelve todo en null y deja la factura marcada
- * como certificada solo a nivel interno (invoiceService.certify).
+ * En Guatemala, para que una factura sea valida ante la SAT, debe pasar por un
+ * "certificador FEL" (una empresa autorizada, ej. Digifact, Infile, Megaprint)
+ * que le asigna un numero unico oficial (UUID) y una serie/numero fiscal.
  *
- * Cuando se contrate un certificador: reemplazar el cuerpo de esta funcion
- * por la llamada real a su API (enviar el XML/DTE del `invoice`, recibir
- * uuid/serie/numero de vuelta) sin tocar invoiceService ni las rutas.
+ * Taller AEG TODAVIA NO HA CONTRATADO ningun certificador de estos. Por eso,
+ * esta funcion no hace ninguna llamada real a la SAT ni a ningun proveedor:
+ * simplemente devuelve todos los datos fiscales vacios (null) a proposito.
+ * NO se inventan numeros falsos, porque eso seria como fabricar una factura
+ * fiscal invalida/fraudulenta.
+ *
+ * Lo que SI pasa cuando se "certifica" una factura en el sistema hoy: el estado
+ * interno de la factura cambia a "certificada" (sirve para uso administrativo del
+ * taller, para saber que ya se reviso), pero esa factura NO es valida ante la SAT
+ * todavia. En la pantalla/PDF de la factura se muestra un aviso cuando falta el
+ * numero fiscal real.
+ *
+ * Cuando el taller contrate un certificador FEL de verdad: aqui es donde se debe
+ * conectar (enviar los datos de la factura a su sistema y recibir el UUID/serie/
+ * numero oficiales de vuelta). No hay que tocar ningun otro archivo para eso.
  */
 export async function certify(_invoice) {
   return {

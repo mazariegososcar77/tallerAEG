@@ -1,3 +1,8 @@
+// PANTALLA: Lista de Cotizaciones. Muestra todas las cotizaciones hechas, con su
+// número, cliente, equipo, estado (borrador/enviada/aprobada/rechazada/vencida) y
+// total. Desde aquí se puede buscar, crear una cotización nueva, verla o
+// editarla, descargar su PDF, eliminarla y — si ya está "aprobada" — convertirla
+// en una Orden de Trabajo con el botón "Crear Orden".
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
@@ -18,6 +23,7 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Descarga el PDF de la cotizacion (lo pide al servidor y lo baja como archivo).
   const handleDownloadPDF = async (q) => {
     try {
       const token = getToken();
@@ -38,12 +44,14 @@ export default function QuotesPage() {
     quotesApi.list().then(setQuotes).finally(() => setLoading(false));
   }, []);
 
+  // Filtra la lista de cotizaciones segun lo que el usuario busco (por numero, cliente o equipo).
   const filtered = quotes.filter(q =>
     q.number?.toLowerCase().includes(search.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     q.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Elimina la cotizacion, pidiendo confirmacion antes.
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar esta cotización?')) return;
     await quotesApi.remove(id);
@@ -109,6 +117,8 @@ export default function QuotesPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
+                    {/* Solo aparece si la cotizacion ya esta "aprobada": abre el formulario de
+                        Orden de Trabajo prellenado con los datos de este equipo/cotizacion. */}
                     {q.status === 'aprobada' && (
                       <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
                         <ClipboardList size={15} /> Crear Orden

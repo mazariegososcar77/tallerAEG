@@ -1,6 +1,14 @@
 import Spinner from './Spinner.jsx';
 
 /**
+ * Es la tabla que se usa en casi todas las pantallas de listado (Clientes,
+ * Inventario, Órdenes, Facturación, etc.). A este componente solo se le
+ * dice qué columnas mostrar y qué datos poner en cada fila, y él se encarga
+ * de dibujar la tabla, mostrar "Cargando..." mientras trae la información,
+ * y mostrar un mensaje cuando no hay ningún registro que mostrar.
+ * `renderActions` es opcional: si se usa, agrega una última columna con los
+ * botones de acción (ver, editar, eliminar, etc.) de cada fila.
+ *
  * Tabla reutilizable basada en configuracion.
  * columns: [{ key, header, render?(row), className? }]
  * renderActions?(row): celda de acciones al final

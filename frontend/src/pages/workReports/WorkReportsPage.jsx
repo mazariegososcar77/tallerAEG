@@ -1,3 +1,9 @@
+// PANTALLA: Lista de Reportes de Trabajo. Muestra todos los reportes fotográficos
+// hechos, con su número, cliente, la orden de trabajo a la que pertenecen y su
+// estado ("En Progreso" o "Finalizado"). No hay botón para crear un reporte
+// nuevo aquí — los reportes se crean desde el botón de cámara en la pantalla de
+// Órdenes de Trabajo. Desde aquí se puede buscar, ver una vista previa del PDF,
+// descargarlo o abrir el reporte para verlo/seguir editándolo.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workReportsApi } from '../../api/workReportsApi.js';
@@ -20,12 +26,14 @@ export default function WorkReportsPage() {
     workReportsApi.list().then(setReports).finally(() => setLoading(false));
   }, []);
 
+  // Filtra la lista segun lo que el usuario busco (por numero de reporte, orden o cliente).
   const filtered = reports.filter(r =>
     r.number?.toLowerCase().includes(search.toLowerCase()) ||
     r.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     r.work_order_number?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Pide al servidor el PDF del reporte (usado tanto para verlo como para descargarlo).
   const fetchPdfBlob = async (report) => {
     const token = getToken();
     const res = await fetch(`/api/work-reports/${report.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
@@ -33,6 +41,7 @@ export default function WorkReportsPage() {
     return res.blob();
   };
 
+  // Abre el PDF del reporte en una pestaña nueva, para verlo sin descargarlo.
   const handlePreviewPDF = async (report) => {
     try {
       const blob = await fetchPdfBlob(report);
@@ -41,6 +50,7 @@ export default function WorkReportsPage() {
     } catch (e) { notify.error('Error al generar la vista previa'); }
   };
 
+  // Descarga el PDF del reporte al dispositivo.
   const handleDownloadPDF = async (report) => {
     try {
       const blob = await fetchPdfBlob(report);

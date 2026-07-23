@@ -1,4 +1,11 @@
-/** Subida de una imagen de articulo con multer (a disco). Valida tipo y tamano. */
+/**
+ * En palabras simples: este archivo se encarga de recibir archivos que el
+ * usuario sube desde el navegador (fotos de articulos, fotos de reportes
+ * de trabajo, firmas), revisa que sean del tipo y tamano permitido, y los
+ * guarda en la carpeta "uploads" del servidor con un nombre unico.
+ *
+ * Subida de una imagen de articulo con multer (a disco). Valida tipo y tamano.
+ */
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
@@ -33,7 +40,9 @@ const single = multer({
   fileFilter,
 }).single('image');
 
-/** Envuelve multer para devolver errores como ApiError uniformes. */
+// Recibe la foto de un articulo que el usuario sube desde el formulario
+// (campo "image"), la guarda en disco, y si algo sale mal (archivo muy
+// grande, tipo no permitido) devuelve un mensaje de error entendible.
 export function uploadImage(req, res, next) {
   single(req, res, (err) => {
     if (!err) return next();
@@ -54,6 +63,9 @@ const singlePhoto = multer({
   fileFilter,
 }).single('photo');
 
+// Igual que uploadImage, pero para las fotos que se agregan a un reporte
+// de trabajo (campo "photo"). El usuario sube una foto a la vez, asi que
+// esta funcion se llama una vez por cada foto agregada.
 export function uploadReportPhoto(req, res, next) {
   singlePhoto(req, res, (err) => {
     if (!err) return next();

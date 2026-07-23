@@ -1,3 +1,13 @@
+// ============================================================================
+// PANTALLA: Configuración → Fidelización
+// Administra los niveles de fidelización de clientes (por ejemplo: Bronce,
+// Plata, Oro), cada uno con un porcentaje de descuento, una lista de
+// beneficios, un color y un ícono para identificarlo visualmente. Estos
+// niveles luego se asignan a los clientes desde el formulario de Clientes.
+// Permite crear, editar y eliminar niveles. Es una pantalla propia (no usa
+// el componente genérico CatalogManager) porque necesita los selectores
+// extra de color e ícono y la vista previa de la etiqueta.
+// ============================================================================
 import { useState, useEffect } from "react";
 import { Plus, Pencil, Trash2, Award } from "lucide-react";
 import { useLoyaltyTiers } from "../../hooks/useLoyaltyTiers.js";
@@ -14,6 +24,7 @@ import LoyaltyTierTag from "../../components/clients/LoyaltyTierTag.jsx";
 import { LOYALTY_COLORS, LOYALTY_ICONS, DEFAULT_LOYALTY_COLOR, DEFAULT_LOYALTY_ICON } from "../../lib/loyalty.js";
 
 const C = { card:"var(--c-surface)", dark:"var(--c-surface-2)", border:"var(--c-line)", text:"var(--c-text)", muted:"var(--c-muted)", orange:"#CA8A04" };
+// Formulario vacío: valores iniciales al crear un nivel nuevo.
 const emptyForm = { name:"", discount:0, benefits:"", color:DEFAULT_LOYALTY_COLOR, icon:DEFAULT_LOYALTY_ICON, is_active:true };
 
 export default function LoyaltyTiersPage() {
@@ -26,11 +37,16 @@ export default function LoyaltyTiersPage() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
 
+  // Cada vez que se abre la ventana de formulario, la rellena: si se está
+  // editando un nivel, copia sus datos; si es uno nuevo, deja el
+  // formulario vacío.
   useEffect(() => {
     if (!formOpen) return;
     setForm(editing ? { name:editing.name, discount:editing.discount??0, benefits:editing.benefits||"", color:editing.color||DEFAULT_LOYALTY_COLOR, icon:editing.icon||DEFAULT_LOYALTY_ICON, is_active:editing.is_active } : emptyForm);
   }, [formOpen, editing]);
 
+  // Se ejecuta al guardar el formulario: crea un nivel nuevo o actualiza
+  // uno existente, según corresponda.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -43,6 +59,7 @@ export default function LoyaltyTiersPage() {
     finally { setSaving(false); }
   };
 
+  // Elimina definitivamente el nivel que se confirmó borrar.
   const handleDelete = async () => {
     try {
       await loyaltyTiersApi.remove(deleting.id);

@@ -3,6 +3,17 @@
  * - Request: adjunta el token Bearer si existe.
  * - Response: ante un 401 con sesion previa, cierra sesion y va a /login;
  *   normaliza el error a un Error con .message (texto del backend) y .details.
+ *
+ * En palabras simples: este archivo es la "linea telefonica" unica entre la
+ * pantalla (frontend) y el servidor (backend). Todos los demas archivos de
+ * esta carpeta "api/" usan este telefono para pedir o enviar datos. Aqui se
+ * hacen dos cosas automaticamente en cada llamada:
+ *   1) Se adjunta la "credencial" (token) de quien inicio sesion, para que el
+ *      servidor sepa quien esta pidiendo la informacion.
+ *   2) Si el servidor responde que la sesion ya no es valida (por ejemplo,
+ *      expiro), se cierra la sesion sola y se manda al usuario a la pantalla
+ *      de inicio de sesion. Tambien se traducen los errores tecnicos a
+ *      mensajes en español faciles de entender.
  */
 import axios from 'axios';
 import { getToken, clearAuth } from '../lib/authStorage.js';

@@ -1,3 +1,12 @@
+// ============================================================================
+// VENTANA: Certificar Factura
+// Se abre desde la pantalla de Facturación al hacer clic en el botón
+// "Certificar" de una factura pendiente. Muestra los datos básicos de la
+// factura (cliente, orden, total) y pide el correo del cliente para
+// "certificarla". OJO: hoy esto solo cambia el estado interno de la factura
+// a "certificada" — todavía NO se conecta con la certificación fiscal (FEL)
+// real ni se envía un correo automático; eso está pendiente de implementar.
+// ============================================================================
 import { useState, useEffect } from 'react';
 import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -8,12 +17,17 @@ export default function CertifyInvoiceModal({ open, invoice, onClose, onCertifie
   const [email, setEmail] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Cada vez que se abre la ventana con una factura distinta, se rellena el
+  // campo de correo con el que el cliente ya tiene registrado (si existe).
   useEffect(() => {
     if (invoice) setEmail(invoice.client_email || invoice.client_default_email || '');
   }, [invoice]);
 
   if (!invoice) return null;
 
+  // Se ejecuta al presionar el botón "Certificar": valida que haya un
+  // correo escrito y luego avisa a la pantalla de Facturación para que
+  // marque la factura como certificada.
   const handleCertify = async () => {
     if (!email.trim()) return notify.error('Ingresa el correo del cliente');
     setSaving(true);

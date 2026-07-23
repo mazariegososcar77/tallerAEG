@@ -1,3 +1,16 @@
+// ============================================================================
+// PANTALLA: Clientes
+// Se accede desde el menú "Clientes" (/clientes). Muestra la lista completa
+// de clientes del taller con búsqueda y filtros (por tipo de cliente y por
+// estado de validación). Desde aquí se puede:
+//   - Crear un cliente nuevo (ventana ClientFormModal).
+//   - Ver el detalle completo de un cliente (ventana ClientViewModal).
+//   - Editar un cliente existente.
+//   - Eliminarlo (pide confirmación antes de borrar).
+//   - Marcar como "Validado" a un cliente que quedó pendiente (por ejemplo,
+//     los que se dieron de alta rápida desde otra pantalla).
+// En pantallas angostas (celular) se muestra como tarjetas en vez de tabla.
+// ============================================================================
 import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search, Eye, Contact, Check, Clock } from 'lucide-react';
 import { useClients } from '../../hooks/useClients.js';
@@ -29,8 +42,12 @@ export default function ClientsPage() {
   const [viewing, setViewing] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
+  // Cuenta cuántos clientes están pendientes de validación (se muestra en
+  // el encabezado de la pantalla).
   const pendingCount = useMemo(() => clients.filter(c => c.is_validated === 0).length, [clients]);
 
+  // Aplica el texto de búsqueda y los filtros de tipo/validación sobre la
+  // lista completa de clientes, para decidir cuáles se muestran.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return clients.filter(c => {
@@ -42,9 +59,15 @@ export default function ClientsPage() {
     });
   }, [clients, search, typeFilter, validationFilter]);
 
+  // Abre la ventana de formulario en modo "crear" (sin cliente precargado).
   const openCreate = () => { setEditing(null); setFormOpen(true); };
+  // Abre la ventana de formulario en modo "editar", con los datos del
+  // cliente seleccionado ya cargados.
   const openEdit = (c) => { setEditing(c); setFormOpen(true); };
+  // Se llama cuando el formulario terminó de guardar: cierra la ventana y
+  // vuelve a cargar la lista para reflejar el cambio.
   const handleSaved = () => { setFormOpen(false); reload(); };
+  // Elimina definitivamente al cliente que se confirmó borrar.
   const handleDelete = async () => {
     try {
       await clientsApi.remove(deleting.id);
@@ -53,6 +76,8 @@ export default function ClientsPage() {
       reload();
     } catch(err) { notify.error(err.message); }
   };
+  // Marca a un cliente pendiente como "validado" (un administrador confirma
+  // que sus datos son correctos).
   const handleValidate = async (c) => {
     try {
       await clientsApi.validate(c.id);

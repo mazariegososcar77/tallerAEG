@@ -1,3 +1,24 @@
+// PANTALLA: Alta / edición de una Orden de Trabajo. Aquí se registra el equipo
+// que el cliente trajo al taller (datos técnicos), quién lo recibió, qué trabajo
+// se le va a hacer, qué piezas trae el equipo, los técnicos que lo desarman y lo
+// arman, y el estado (recibido → en_proceso → listo → entregado, o cancelado).
+// Se puede prellenar automáticamente trayendo los datos desde una cotización ya
+// aprobada (llega por el link "Crear Orden" de Cotizaciones); si esa cotización
+// tenía varios equipos, se puede elegir cuál de ellos usar.
+//
+// IMPORTANTE (decisión del negocio, a propósito): esta pantalla NUNCA muestra
+// precios ni el total para el flujo "Pre" (el de siempre: se cotiza antes de
+// abrir la orden, el precio ya vive en esa cotización). La orden de trabajo la
+// usan los técnicos del taller, y ellos no necesitan ver cuánto cuesta nada —
+// el precio es cosa de Cotizaciones y Facturación (administración). El campo
+// "total" se guarda internamente (heredado de la cotización de origen) pero no
+// hay ningún campo en pantalla para verlo ni editarlo.
+//
+// EXCEPCIÓN a propósito, flujo "Post" (prop flowType="post"): aquí el equipo
+// se desarma sin cotización previa, así que la orden es el único lugar donde
+// existe un precio todavía cuando se abre. Por eso, solo para Post, se muestra
+// una sección con 3 campos de precio (torno, repuestos, mano de obra) — la
+// cotización real se arma después, cuando ya se sabe qué se encontró.
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
@@ -5,6 +26,9 @@ import { quotesApi } from '../../api/quotesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { clientTypesApi } from '../../api/clientTypesApi.js';
 import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
+import { articlesApi } from '../../api/articlesApi.js';
+import { workReportsApi } from '../../api/workReportsApi.js';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import { getToken } from '../../lib/authStorage.js';
 import { withUppercase } from '../../lib/text.js';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -22,6 +46,7 @@ const STATUS_OPTIONS = [
 ];
 const STATUS_COLORS = { recibido:'#1D9E75', en_proceso:'#CA8A04', listo:'#3b82f6', entregado:'#6366f1', cancelado:'#ef4444' };
 const DEFAULT_ITEMS = ['Polea','Caja de conexion','Tapa de conexion','Bornera','Argolla','Ventilador','Lazo','Tolva','Placa de datos','Impulsor','Difusor','Housing de impulsor','Caja reductora','Cadena','Tapa capacitor','Base quebrada de motor','Tapas quebradas','Capacitores','Cuña','Retenedor'];
+const LABOR_ARTICLE_TYPE_ID = 4; // catalogo "Mano de Obra" (ver 023_labor_catalog_seed.sql), el mismo que usa ArticleQuickModal en Cotizaciones
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
@@ -63,7 +88,7 @@ const SectionHeader = ({ title }) => (
   </div>
 );
 
-export default function WorkOrderFormPage() {
+export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -75,7 +100,11 @@ export default function WorkOrderFormPage() {
   const [quotes, setQuotes] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState([]);
+  const [laborArticles, setLaborArticles] = useState([]);
   const [showClientModal, setShowClientModal] = useState(false);
+  const [showReportPrompt, setShowReportPrompt] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState(null);
+  const [openingReport, setOpeningReport] = useState(false);
   const [saving, setSaving] = useState(false);
   const [orderNumber, setOrderNumber] = useState('—');
   const [sourceQuote, setSourceQuote] = useState(null);
@@ -88,8 +117,13 @@ export default function WorkOrderFormPage() {
     work_type:'', observations:'', internal_notes:'',
     quotation_number:'', dte_number:'', oc_number:'',
     tech_disarm:'', tech_assemble:'', total:'', quote_id:null,
+    flow_type: flowType, torno_price:'', parts_price:'', labor_article_id:null, labor_price:'',
   });
   const [items, setItems] = useState(DEFAULT_ITEMS.map(n => ({ name:n, quantity:1, has_item:false })));
+  // La ruta ya manda al flujo correcto (/ordenes vs /post/ordenes), pero en
+  // modo edicion se respeta el flow_type real de la orden cargada, no el de
+  // la ruta con la que se llego -- por si alguna vez difieren.
+  const ordersBasePath = (form.flow_type === 'post') ? '/post/ordenes' : '/ordenes';
 
   // Prellena el formulario con los datos de un equipo de la cotizacion de origen.
   const applyQuoteEquip = (quote, ei) => {
@@ -112,6 +146,7 @@ export default function WorkOrderFormPage() {
     quotesApi.list().then(setQuotes);
     clientTypesApi.list().then(setClientTypes);
     loyaltyTiersApi.list().then(setLoyaltyTiers);
+    articlesApi.listByType(LABOR_ARTICLE_TYPE_ID).then(setLaborArticles);
     if (isEdit) {
       workOrdersApi.get(id).then(order => {
         const { items:oi, ...rest } = order;
@@ -131,6 +166,7 @@ export default function WorkOrderFormPage() {
   }, [id, fromQuoteId]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Marca o desmarca una pieza de la lista de "Partes del Equipo" (que piezas trae el equipo al llegar).
   // Al elegir una cotizacion en "No. Cotizacion": trae la completa (el listado no
   // incluye items) y prellena cliente + datos del equipo, igual que el flujo ?fromQuote.
   const handleSelectQuote = (v) => {
@@ -155,17 +191,46 @@ export default function WorkOrderFormPage() {
     setShowClientModal(false);
   };
 
+  // Guarda la orden de trabajo (nueva o editada). Exige que tenga un cliente seleccionado.
+  // Al CREAR una orden Post, en vez de ir directo a la lista, se le pregunta al
+  // usuario si quiere abrir de una vez el Reporte de Trabajo (asi arranca el
+  // flujo Orden -> Reporte -> Cotizacion -> Factura). Para Pre, o al editar,
+  // sigue navegando directo como siempre.
   const handleSubmit = async () => {
     if (!form.client_id) return alert('Selecciona un cliente');
     setSaving(true);
     try {
-      if (isEdit) await workOrdersApi.update(id, { ...form, items });
-      else await workOrdersApi.create({ ...form, items });
-      navigate('/ordenes');
+      if (isEdit) {
+        await workOrdersApi.update(id, { ...form, items });
+        navigate(ordersBasePath);
+      } else {
+        const created = await workOrdersApi.create({ ...form, items });
+        if (form.flow_type === 'post') {
+          setCreatedOrderId(created.id);
+          setShowReportPrompt(true);
+        } else {
+          navigate(ordersBasePath);
+        }
+      }
     } catch(e) { alert(e.response?.data?.message || e.response?.data?.error || e.message || 'Error al guardar'); }
     finally { setSaving(false); }
   };
 
+  // El usuario acepto abrir el reporte: lo crea (idempotente) y navega ahi.
+  const handleOpenReport = async () => {
+    setOpeningReport(true);
+    try {
+      const report = await workReportsApi.createForOrder(createdOrderId);
+      navigate('/reportes/' + report.id + '/editar');
+    } catch (e) {
+      alert(e.message || 'No se pudo abrir el reporte');
+      navigate(ordersBasePath);
+    } finally {
+      setOpeningReport(false);
+    }
+  };
+
+  // Descarga el PDF de la orden ya guardada (por eso pide guardar primero si es nueva).
   const handleDownloadPDF = async () => {
     if (!id) return alert('Guarda la orden primero');
     try {
@@ -192,7 +257,7 @@ export default function WorkOrderFormPage() {
       {/* Topbar */}
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => navigate('/ordenes')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate(ordersBasePath)} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             ← Volver
           </button>
           <span style={{ fontSize:isMobile?13:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Orden' : 'Nueva Orden de Trabajo'}</span>
@@ -251,7 +316,7 @@ export default function WorkOrderFormPage() {
           </div>
         )}
 
-        {/* Info general */}
+        {/* Info general: cliente, fechas de recibido/entrega, quien autorizo, estado de la orden */}
         <div style={sec}>
           <SectionHeader title="Informacion General" />
           <div style={secBody}>
@@ -305,7 +370,7 @@ export default function WorkOrderFormPage() {
           </div>
         </div>
 
-        {/* Datos del equipo */}
+        {/* Datos tecnicos del equipo (motor) que se esta reparando */}
         <div style={sec}>
           <SectionHeader title="Datos del Equipo" />
           <div style={secBody}>
@@ -325,7 +390,45 @@ export default function WorkOrderFormPage() {
           </div>
         </div>
 
-        {/* Trabajo + Partes */}
+        {/* Precios estimados (SOLO flujo Post): aqui todavia no existe cotizacion,
+            asi que la orden es donde se capturan los estimados de torno, repuestos
+            y mano de obra -- para Pre esta seccion no aparece (ver comentario del
+            encabezado del archivo). */}
+        {form.flow_type === 'post' && (
+          <div style={sec}>
+            <SectionHeader title="Precios Estimados (Flujo Post)" />
+            <div style={secBody}>
+              <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap:10 }}>
+                <div>
+                  <label style={lbl}>Precio de Torno</label>
+                  <input type='number' step='0.01' value={form.torno_price||''} onChange={e => set('torno_price', e.target.value)} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Precio Estimado de Repuestos</label>
+                  <input type='number' step='0.01' value={form.parts_price||''} onChange={e => set('parts_price', e.target.value)} style={inp} />
+                </div>
+                <div>
+                  <label style={lbl}>Mano de Obra (catalogo)</label>
+                  <Combobox
+                    value={form.labor_article_id||''}
+                    onChange={v => {
+                      const art = laborArticles.find(a => String(a.id) === String(v));
+                      setForm(f => ({ ...f, labor_article_id: v, labor_price: art ? art.price : f.labor_price }));
+                    }}
+                    options={laborArticles.map(a => ({ value:a.id, label:a.name + ' (Q' + Number(a.price).toFixed(2) + ')' }))}
+                    placeholder="Seleccionar..."
+                  />
+                </div>
+                <div>
+                  <label style={lbl}>Precio de Mano de Obra</label>
+                  <input type='number' step='0.01' value={form.labor_price||''} onChange={e => set('labor_price', e.target.value)} style={inp} />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Trabajo a realizar (sin precios) + lista de piezas que trae el equipo */}
         <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
           <div style={sec}>
             <SectionHeader title="Trabajo a Realizar" />
@@ -386,6 +489,16 @@ export default function WorkOrderFormPage() {
         quick
         clientTypes={clientTypes}
         loyaltyTiers={loyaltyTiers}
+      />
+
+      <ConfirmDialog
+        open={showReportPrompt}
+        onClose={() => { setShowReportPrompt(false); navigate(ordersBasePath); }}
+        onConfirm={handleOpenReport}
+        title="Orden creada"
+        message="La orden se guardo correctamente. ¿Deseas abrir el Reporte de Trabajo ahora?"
+        confirmText={openingReport ? 'Abriendo...' : 'Abrir Reporte'}
+        variant="primary"
       />
     </div>
   );

@@ -1,8 +1,10 @@
+// Este archivo trae del servidor el catálogo de "categorías de pieza" (usado
+// al armar cotizaciones) para usarlo en los formularios.
 import { useState, useEffect, useCallback } from 'react';
 import { partCategoriesApi } from '../api/partCategoriesApi.js';
 import { notify } from '../lib/toast.js';
 
-/** Carga el catalogo de categorias de pieza y expone una funcion para recargar. */
+/** Trae el catálogo de categorías de pieza del servidor y permite volver a cargarlo. */
 export function usePartCategories() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -1,3 +1,5 @@
+// Este archivo define las direcciones web (rutas) para INICIAR SESION, ver el usuario conectado
+// y CERRAR SESION en el sistema.
 import { Router } from 'express';
 import { z } from 'zod';
 import * as authController from '../controllers/authController.js';
@@ -6,6 +8,7 @@ import { validate } from '../middleware/validate.middleware.js';
 
 const router = Router();
 
+// Para iniciar sesion: exige correo con formato valido y una contrasena (no puede venir vacia).
 const loginSchema = z.object({
   email: z.string().email('Correo invalido'),
   password: z.string().min(1, 'La contrasena es obligatoria'),
@@ -39,6 +42,7 @@ const loginSchema = z.object({
  *                 user: { $ref: '#/components/schemas/UserProfile' }
  *       401: { description: Credenciales invalidas }
  */
+// Iniciar sesion con correo y contrasena. Cualquiera puede intentarlo (aun no ha iniciado sesion).
 router.post('/login', validate(loginSchema), authController.login);
 
 /**
@@ -56,6 +60,7 @@ router.post('/login', validate(loginSchema), authController.login);
  *             schema: { $ref: '#/components/schemas/UserProfile' }
  *       401: { description: No autenticado }
  */
+// Ver los datos del usuario que tiene la sesion abierta actualmente.
 router.get('/me', authenticate, authController.me);
 
 /**
@@ -68,6 +73,7 @@ router.get('/me', authenticate, authController.me);
  *     responses:
  *       200: { description: Sesion cerrada }
  */
+// Cerrar la sesion actual.
 router.post('/logout', authenticate, authController.logout);
 
 export default router;

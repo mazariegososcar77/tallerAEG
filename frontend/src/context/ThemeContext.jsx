@@ -1,3 +1,8 @@
+/**
+ * Este archivo maneja el "tema" visual de la aplicacion: modo oscuro u modo claro.
+ * Recuerda la preferencia del usuario (guardada en el navegador) y agrega/quita
+ * la clase que activa los colores oscuros en toda la pantalla.
+ */
 import { createContext, useCallback, useEffect, useState } from 'react';
 
 export const ThemeContext = createContext(null);

@@ -1,9 +1,19 @@
+// ============================================================================
+// VENTANA: Detalle del Cliente (solo lectura)
+// Se abre desde la pantalla de Clientes al presionar el ícono del "ojo".
+// Muestra toda la información del cliente (NIT, DPI, teléfono, correo,
+// dirección, estado activo/inactivo, si está validado o pendiente, y su
+// nivel de fidelización con el descuento y beneficios correspondientes).
+// No permite editar nada, solo consultar.
+// ============================================================================
 import { Award } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import LoyaltyTierTag from '../../components/clients/LoyaltyTierTag.jsx';
 
+// Pequeño bloque de "etiqueta + valor" que se repite varias veces abajo
+// (por ejemplo: "NIT" arriba y el número de NIT abajo).
 function Field({ label, children }) {
   return (
     <div>

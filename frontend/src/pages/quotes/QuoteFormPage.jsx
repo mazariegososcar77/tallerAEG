@@ -1,6 +1,16 @@
+// PANTALLA: Alta / edición de una Cotización. Una cotización puede incluir
+// VARIOS EQUIPOS (máquinas) del mismo cliente en un solo documento — por
+// ejemplo, si el cliente trae 3 motores, se agrega un bloque "Equipo 1",
+// "Equipo 2", "Equipo 3", cada uno con su propia lista de mano de obra y su
+// propia lista de repuestos, con cantidad y precio. El total de la cotización
+// es la suma de todos los equipos, menos el descuento. Se usa tanto para crear
+// una cotización nueva como para editar una existente (según si la URL trae un
+// "id"). Desde la lista de Cotizaciones, una cotización aprobada se puede
+// convertir en una Orden de Trabajo (una orden por cada equipo).
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
+import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { clientTypesApi } from '../../api/clientTypesApi.js';
@@ -10,6 +20,7 @@ import ArticleQuickModal from '../../components/quotes/ArticleQuickModal.jsx';
 import Combobox from '../../components/ui/Combobox.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { withUppercase } from '../../lib/text.js';
 
 const STATUS_OPTIONS = [
@@ -38,6 +49,68 @@ const SaveIcon = () => (
   </svg>
 );
 
+// Tabla editable de lineas (se usa tanto para mano de obra como para repuestos).
+// Cada linea tiene descripcion, cantidad y precio unitario; el subtotal de la
+// linea se calcula solo (cantidad x precio). Se puede escoger un articulo ya
+// existente del inventario o escribir una descripcion libre (el Combobox y el
+// input de texto libre van dentro de UN SOLO wrapper para que cuenten como una
+// sola celda del grid -- si van sueltos, el grid de 5 columnas se desalinea:
+// el input de texto ocupa la columna de "Cant.", "Cant." la de "Precio", etc.
+// hasta que "Subtotal" termina apachurrado en la columna de 30px del boton
+// de eliminar).
+// En movil (isMobile) cada linea se apila en una tarjeta: descripcion arriba
+// a todo el ancho, y cantidad/precio/subtotal/eliminar en una fila compacta
+// abajo -- las columnas fijas en pixeles (70/100/90) no alcanzan a caber
+// junto a la descripcion en una pantalla angosta.
+function ItemsTable({ items, onChange, onAdd, onRemove, color, articles, onOpenModal, isMobile }) {
+  const cols = '1fr 70px 100px 90px 30px';
+  const descriptionCell = (item, i) => (
+    <div>
+      <Combobox
+        value={''}
+        onChange={v => { if (v) onChange(i,'description', v); }}
+        options={(articles||[]).map(a => ({ value:a.name, label:`${a.name}${a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}${a.quantity===0 ? ' (sin stock)' : ''}`, keywords:a.name }))}
+        searchable
+        onCreateNew={onOpenModal}
+        createLabel="Agregar nuevo"
+        placeholder="Seleccionar o escribir..."
+        wrapperStyle={{ marginBottom: articles?.length ? 4 : 0 }}
+      />
+      <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="O escribir descripcion..." style={{ ...inp, fontSize:11 }} />
+    </div>
+  );
+  const removeBtn = (i) => (
+    <button onClick={() => onRemove(i)} disabled={items.length===1}
+      style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#ef4444', borderRadius:6, cursor:'pointer', opacity:items.length===1?0.3:1 }}>x</button>
+  );
+
+  if (isMobile) {
+    return (
+      <div>
+        {items.map((item, i) => {
+          const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
+          return (
+            <div key={i} style={{ border:'1px solid '+color+'33', borderRadius:8, padding:8, marginBottom:8 }}>
+              {descriptionCell(item, i)}
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 30px', gap:6, marginTop:6, alignItems:'end' }}>
+                <div><span style={{ ...lbl, marginBottom:2 }}>Cant.</span><input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} /></div>
+                <div><span style={{ ...lbl, marginBottom:2 }}>Precio</span><input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} /></div>
+                <div><span style={{ ...lbl, marginBottom:2 }}>Subtotal</span><input readOnly value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700 }} /></div>
+                {removeBtn(i)}
+              </div>
+            </div>
+          );
+        })}
+        <button onClick={onAdd} style={{ marginTop:4, background:C.dark, border:'1px solid '+color+'44', color:color, padding:'5px 14px', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:600 }}>
+          + Agregar linea
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{ display:'grid', gridTemplateColumns:cols, gap:6, marginBottom:4 }}>
 const ITEM_COLS = '1fr 68px 104px 92px 34px';
 
 function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal }) {
@@ -53,6 +126,12 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
       {items.map((item, i) => {
         const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
         return (
+          <div key={i} style={{ display:'grid', gridTemplateColumns:cols, gap:6, marginBottom:5 }}>
+            {descriptionCell(item, i)}
+            <input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} />
+            <input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} />
+            <input readOnly value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700 }} />
+            {removeBtn(i)}
           <div key={i} style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:10, alignItems:'start' }}>
             <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
               <Combobox
@@ -88,7 +167,10 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
 export default function QuoteFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromWorkOrderId = searchParams.get('fromWorkOrder');
   const isEdit = Boolean(id);
+  const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
@@ -101,7 +183,17 @@ export default function QuoteFormPage() {
   const [quoteNumber, setQuoteNumber] = useState('_');
   const [form, setForm] = useState({ client_id:'', date:new Date().toISOString().slice(0,10), valid_until:'', status:'borrador', work_type:'', observations:'', discount:0 });
   const [equipments, setEquipments] = useState([emptyEquipment()]);
+  const [sourceWorkOrder, setSourceWorkOrder] = useState(null);
 
+  // Al abrir la pantalla: carga clientes y catalogos. Si se esta editando una
+  // cotizacion existente, trae sus datos y reconstruye la lista de equipos con
+  // su mano de obra y repuestos (que en el servidor se guardan todos juntos,
+  // marcados con a que equipo pertenecen). Si en cambio llega "?fromWorkOrder="
+  // (flujo Post: la cotizacion se arma DESPUES del reporte, con el diagnostico ya
+  // conocido), prellena el cliente y un equipo con los datos de esa orden, y usa
+  // los 3 precios estimados que se capturaron al abrirla (torno/repuestos/mano de
+  // obra) como punto de partida editable -- no se guarda nada automatico, el
+  // usuario los ajusta con lo que realmente encontro.
   useEffect(() => {
     clientsApi.list().then(setClients);
     articlesApi.listByType(4).then(setLaborArticles);
@@ -124,8 +216,23 @@ export default function QuoteFormPage() {
           setEquipments(rebuilt);
         }
       });
+    } else if (fromWorkOrderId) {
+      workOrdersApi.get(fromWorkOrderId).then(order => {
+        setSourceWorkOrder(order);
+        setForm(f => ({ ...f, client_id: order.client_id, work_type: order.work_type || '' }));
+        const labor = [];
+        if (order.labor_price) labor.push({ description:'Mano de obra (estimado, ajustar segun diagnostico)', quantity:1, unit_price:order.labor_price });
+        if (order.torno_price) labor.push({ description:'Torno', quantity:1, unit_price:order.torno_price });
+        const parts = [];
+        if (order.parts_price) parts.push({ description:'Repuestos (estimado, ajustar segun diagnostico)', quantity:1, unit_price:order.parts_price });
+        setEquipments([{
+          name: order.equipment_name || '', brand: order.brand || '', model: order.model || '', serial: order.serial || '',
+          labor: labor.length ? labor : [{ description:'', quantity:1, unit_price:0 }],
+          parts: parts.length ? parts : [{ description:'', quantity:1, unit_price:0 }],
+        }]);
+      });
     }
-  }, [id]);
+  }, [id, fromWorkOrderId]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]:v }));
   const handleClientSaved = (created) => {
@@ -139,6 +246,8 @@ export default function QuoteFormPage() {
     setArticleModal(null);
   };
 
+  // Funciones para manejar la lista de equipos: agregar/quitar un equipo completo,
+  // y agregar/quitar/editar una linea de mano de obra o repuesto dentro de un equipo.
   const setEqField = (ei, k, v) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[k]:v} : eq));
   const addEquipment = () => setEquipments(prev => [...prev, emptyEquipment()]);
   const removeEquipment = (ei) => setEquipments(prev => prev.filter((_,i) => i!==ei));
@@ -153,11 +262,16 @@ export default function QuoteFormPage() {
   }));
   const addLine = (ei, type) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[type]:[...eq[type],{description:'',quantity:1,unit_price:0}]} : eq));
   const removeLine = (ei, type, li) => setEquipments(prev => prev.map((eq,i) => i===ei ? {...eq,[type]:eq[type].filter((_,j) => j!==li)} : eq));
+  // Suma cantidad x precio de una lista de lineas (mano de obra o repuestos de un equipo).
   const calcSub = (lines) => lines.reduce((s,l) => s+(parseFloat(l.quantity)||0)*(parseFloat(l.unit_price)||0), 0);
+  // Suma el subtotal de TODOS los equipos (mano de obra + repuestos de cada uno).
   const grandSubtotal = equipments.reduce((s,eq) => s+calcSub(eq.labor)+calcSub(eq.parts), 0);
   const discount = parseFloat(form.discount)||0;
   const grandTotal = grandSubtotal - discount;
 
+  // Guarda la cotizacion. Junta las lineas de todos los equipos en una sola lista
+  // (cada linea marcada con a que equipo pertenece), exige cliente y fecha, y
+  // crea o actualiza segun si ya existia.
   const handleSubmit = async () => {
     if (!form.client_id) return alert('Selecciona un cliente');
     if (!form.date) return alert('Ingresa la fecha');
@@ -170,6 +284,7 @@ export default function QuoteFormPage() {
         return { name:eq.name, brand:eq.brand, model:eq.model, serial:eq.serial };
       });
       const payload = { ...form, items, equipment_data, subtotal:grandSubtotal, total:grandTotal };
+      if (!isEdit && fromWorkOrderId) payload.work_order_id = fromWorkOrderId;
       if (isEdit) await quotesApi.update(id, payload);
       else await quotesApi.create(payload);
       navigate('/cotizaciones');
@@ -200,6 +315,12 @@ export default function QuoteFormPage() {
       </div>
 
       <div style={{ padding:'16px 20px', maxWidth:980, margin:'0 auto' }}>
+        {sourceWorkOrder && (
+          <div style={{ background:C.orange+'14', border:'1px solid '+C.orange+'44', borderRadius:8, padding:'10px 14px', marginBottom:12, fontSize:12, color:C.text }}>
+            Datos prellenados desde la orden de trabajo <strong>No. {sourceWorkOrder.number}</strong> (flujo Post):
+            revisa/ajusta las lineas de mano de obra y repuestos con el diagnostico real antes de guardar.
+          </div>
+        )}
         <div style={sec}>
           <div style={secHdr}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -208,7 +329,7 @@ export default function QuoteFormPage() {
             </div>
           </div>
           <div style={secBody}>
-            <div style={g('1fr 1fr 1fr 1fr')}>
+            <div style={g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr')}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Cliente *</label>
                 <ClientPicker
@@ -228,7 +349,7 @@ export default function QuoteFormPage() {
                 <input type="date" value={form.valid_until||''} onChange={e => set('valid_until',e.target.value)} style={inp} onClick={e => e.target.showPicker&&e.target.showPicker()} />
               </div>
             </div>
-            <div style={{ ...g('1fr 1fr 1fr 1fr'), marginTop:10 }}>
+            <div style={{ ...g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr'), marginTop:10 }}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Tipo de Trabajo</label>
                 <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
@@ -246,6 +367,7 @@ export default function QuoteFormPage() {
           </div>
         </div>
 
+        {/* Un bloque por cada equipo de la cotizacion, con su propia mano de obra y repuestos */}
         {equipments.map((eq, ei) => (
           <div key={ei} style={{ ...sec, border:'1px solid #CA8A0444' }}>
             <div style={secHdr}>
@@ -262,7 +384,7 @@ export default function QuoteFormPage() {
               )}
             </div>
             <div style={secBody}>
-              <div style={g('1fr 1fr 1fr 1fr')}>
+              <div style={g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr')}>
                 <div style={{ gridColumn:'span 2' }}>
                   <label style={lbl}>Nombre del Equipo / Maquina</label>
                   <input value={eq.name} onChange={withUppercase(e => setEqField(ei,'name',e.target.value))} placeholder="Ej: Motor trifasico" style={inp} />
@@ -297,10 +419,12 @@ export default function QuoteFormPage() {
           </div>
         ))}
 
+        {/* Boton para agregar otro equipo mas a esta misma cotizacion */}
         <button onClick={addEquipment} style={{ width:'100%', background:C.dark, border:'2px dashed '+C.border, color:C.muted, padding:'12px', borderRadius:10, cursor:'pointer', fontSize:13, fontWeight:600, marginBottom:12 }}>
           + Agregar otro equipo
         </button>
 
+        {/* Totales generales: suma de todos los equipos, menos el descuento */}
         <div style={{ ...sec }}>
           <div style={secBody}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-end', gap:16, flexWrap:'wrap' }}>

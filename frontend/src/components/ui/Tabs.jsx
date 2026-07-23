@@ -1,4 +1,11 @@
 /**
+ * Es la barra de "pestañas" (como las de un cuaderno) para cambiar entre
+ * distintas secciones dentro de una misma pantalla, sin recargar la página.
+ * Este componente solo dibuja la barra y avisa cuál pestaña se presionó; la
+ * pantalla que lo usa es la que decide qué contenido mostrar para cada una.
+ * Cada pestaña puede traer opcionalmente un ícono o un número (`count`),
+ * por ejemplo para mostrar cuántos elementos hay en esa pestaña.
+ *
  * Barra de pestañas controlada. El consumidor renderiza el contenido según `active`.
  * tabs: [{ key, label, icon?, count? }]
  */

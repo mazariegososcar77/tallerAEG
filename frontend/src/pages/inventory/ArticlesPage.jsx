@@ -1,3 +1,8 @@
+// PANTALLA: Lista de Inventario. Muestra todos los artículos registrados con su
+// foto, código, nombre, tipo, bodega, cantidad y precio. Desde aquí se puede
+// buscar, filtrar por tipo o bodega, ver el detalle de un artículo, editarlo,
+// eliminarlo, crear uno nuevo o subir varios de una vez con un archivo de Excel
+// (carga masiva).
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Upload, Package, Search, Eye } from 'lucide-react';
@@ -16,6 +21,7 @@ import ArticleViewModal from './ArticleViewModal.jsx';
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 const inp = { background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:13, outline:'none' };
 
+// Muestra la fotito del articulo; si no tiene imagen o no carga, pone un icono de caja.
 function Thumb({ url, name }) {
   const [broken, setBroken] = useState(false);
   if (!url || broken) return (
@@ -40,6 +46,8 @@ export default function ArticlesPage() {
   const [deleting, setDeleting] = useState(null);
   const [viewing, setViewing] = useState(null);
 
+  // Filtra la lista de articulos segun lo que el usuario busco y los filtros
+  // de tipo/bodega que haya elegido. Se recalcula solo cuando cambia algo de eso.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return articles.filter(a => {
@@ -50,6 +58,7 @@ export default function ArticlesPage() {
     });
   }, [articles, search, typeFilter, warehouseFilter]);
 
+  // Elimina el articulo seleccionado (despues de confirmar en el dialogo) y recarga la lista.
   const handleDelete = async () => {
     try {
       await articlesApi.remove(deleting.id);
@@ -84,7 +93,7 @@ export default function ArticlesPage() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros: buscar por texto, o filtrar por tipo y por bodega */}
       <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
@@ -96,7 +105,7 @@ export default function ArticlesPage() {
           options={[{ value:'', label:'Todas las bodegas' }, ...warehouses.map(w => ({ value:w.id, label:w.name }))]} />
       </div>
 
-      {/* Tabla Desktop */}
+      {/* Tabla para pantallas grandes (computadora) */}
       {!isMobile && (
         <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
           <div style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
@@ -130,7 +139,7 @@ export default function ArticlesPage() {
         </div>
       )}
 
-      {/* Cards Mobile */}
+      {/* Version en tarjetas para pantallas de celular (misma informacion, otro formato) */}
       {isMobile && (
         <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
           {loading ? (

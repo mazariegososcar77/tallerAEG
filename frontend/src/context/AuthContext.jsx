@@ -1,6 +1,18 @@
 /**
  * Estado global de sesion. Expone: user, loading, login, logout y hasPermission.
  * Al montar, si hay token, valida la sesion contra /auth/me.
+ *
+ * Explicacion sencilla: este archivo es la "memoria" de quien inicio sesion en
+ * el sistema, disponible en cualquier pantalla de la aplicacion. Guarda los
+ * datos del usuario que entro y la lista de permisos que tiene (que pantallas
+ * puede ver, que botones puede usar). Cuando alguien inicia sesion, aqui se
+ * guarda su credencial (token) y su perfil; cuando cierra sesion, se borra
+ * todo. Importante: si un administrador le cambia los permisos a un usuario
+ * mientras esa persona ya tiene la sesion abierta, el cambio NO se nota al
+ * instante — los permisos solo se vuelven a pedir al servidor cuando se
+ * recarga la pagina o se vuelve a iniciar sesion. Por eso a veces hay que
+ * pedirle al usuario que cierre sesion y entre de nuevo para que un permiso
+ * nuevo tenga efecto.
  */
 import { createContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/authApi.js';

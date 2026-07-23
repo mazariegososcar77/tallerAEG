@@ -1,4 +1,12 @@
-/** Configuracion de la aplicacion Express: middleware global, rutas, Swagger y errores. */
+/**
+ * En palabras simples: este archivo arma la aplicacion web del backend
+ * (el servidor que atiende todas las peticiones del sistema): activa las
+ * piezas necesarias (seguridad basica, lectura de datos enviados, registro
+ * de actividad, documentacion, las rutas de cada modulo, y el manejo de
+ * errores) y las conecta en el orden correcto.
+ *
+ * Configuracion de la aplicacion Express: middleware global, rutas, Swagger y errores.
+ */
 import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
@@ -9,6 +17,11 @@ import apiRoutes from './routes/index.js';
 import { UPLOADS_DIR } from './middleware/upload.middleware.js';
 import { notFound, errorHandler } from './middleware/error.middleware.js';
 
+// Construye y devuelve la aplicacion Express ya lista, con todas sus
+// piezas conectadas: seguridad, lectura del cuerpo de las peticiones,
+// registro en consola, documentacion Swagger, las imagenes subidas, todas
+// las rutas de la API, y al final el manejo de "ruta no encontrada" y de
+// errores.
 export function createApp() {
   const app = express();
 

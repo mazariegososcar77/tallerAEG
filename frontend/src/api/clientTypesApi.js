@@ -1,5 +1,7 @@
+// Este archivo maneja el catalogo de "tipos de cliente" (configurable en Configuracion).
 import { client } from './client.js';
 
+// Funciones basicas para listar, crear, editar y eliminar tipos de cliente.
 export const clientTypesApi = {
   list: () => client.get('/client-types').then((r) => r.data),
   create: (payload) => client.post('/client-types', payload).then((r) => r.data),
