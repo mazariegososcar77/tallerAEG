@@ -237,7 +237,6 @@ export async function finalize(id) {
   if (order && !['entregado', 'cancelado'].includes(order.status)) {
     await workOrderRepository.update(report.work_order_id, { status: 'listo' });
   }
-  const invoice = await invoiceService.createFromWorkReport(updated);
   return { report: updated, invoice };
 }
 
