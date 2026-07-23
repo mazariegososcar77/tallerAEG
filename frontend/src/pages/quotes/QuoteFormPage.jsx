@@ -50,67 +50,10 @@ const SaveIcon = () => (
 );
 
 // Tabla editable de lineas (se usa tanto para mano de obra como para repuestos).
-// Cada linea tiene descripcion, cantidad y precio unitario; el subtotal de la
-// linea se calcula solo (cantidad x precio). Se puede escoger un articulo ya
-// existente del inventario o escribir una descripcion libre (el Combobox y el
-// input de texto libre van dentro de UN SOLO wrapper para que cuenten como una
-// sola celda del grid -- si van sueltos, el grid de 5 columnas se desalinea:
-// el input de texto ocupa la columna de "Cant.", "Cant." la de "Precio", etc.
-// hasta que "Subtotal" termina apachurrado en la columna de 30px del boton
-// de eliminar).
-// En movil (isMobile) cada linea se apila en una tarjeta: descripcion arriba
-// a todo el ancho, y cantidad/precio/subtotal/eliminar en una fila compacta
-// abajo -- las columnas fijas en pixeles (70/100/90) no alcanzan a caber
-// junto a la descripcion en una pantalla angosta.
-function ItemsTable({ items, onChange, onAdd, onRemove, color, articles, onOpenModal, isMobile }) {
-  const cols = '1fr 70px 100px 90px 30px';
-  const descriptionCell = (item, i) => (
-    <div>
-      <Combobox
-        value={''}
-        onChange={v => { if (v) onChange(i,'description', v); }}
-        options={(articles||[]).map(a => ({ value:a.name, label:`${a.name}${a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}${a.quantity===0 ? ' (sin stock)' : ''}`, keywords:a.name }))}
-        searchable
-        onCreateNew={onOpenModal}
-        createLabel="Agregar nuevo"
-        placeholder="Seleccionar o escribir..."
-        wrapperStyle={{ marginBottom: articles?.length ? 4 : 0 }}
-      />
-      <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="O escribir descripcion..." style={{ ...inp, fontSize:11 }} />
-    </div>
-  );
-  const removeBtn = (i) => (
-    <button onClick={() => onRemove(i)} disabled={items.length===1}
-      style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#ef4444', borderRadius:6, cursor:'pointer', opacity:items.length===1?0.3:1 }}>x</button>
-  );
-
-  if (isMobile) {
-    return (
-      <div>
-        {items.map((item, i) => {
-          const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
-          return (
-            <div key={i} style={{ border:'1px solid '+color+'33', borderRadius:8, padding:8, marginBottom:8 }}>
-              {descriptionCell(item, i)}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 30px', gap:6, marginTop:6, alignItems:'end' }}>
-                <div><span style={{ ...lbl, marginBottom:2 }}>Cant.</span><input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} /></div>
-                <div><span style={{ ...lbl, marginBottom:2 }}>Precio</span><input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} /></div>
-                <div><span style={{ ...lbl, marginBottom:2 }}>Subtotal</span><input readOnly value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700 }} /></div>
-                {removeBtn(i)}
-              </div>
-            </div>
-          );
-        })}
-        <button onClick={onAdd} style={{ marginTop:4, background:C.dark, border:'1px solid '+color+'44', color:color, padding:'5px 14px', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:600 }}>
-          + Agregar linea
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div style={{ display:'grid', gridTemplateColumns:cols, gap:6, marginBottom:4 }}>
+// Cada linea permite elegir un articulo del catalogo (Combobox por id ->
+// onPickArticle rellena descripcion y precio unitario, editable) o escribir una
+// descripcion libre. Cantidad, precio y subtotal (calculado solo: cantidad x
+// precio) van en columnas fijas, con un boton para eliminar la linea.
 const ITEM_COLS = '1fr 68px 104px 92px 34px';
 
 function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal }) {
@@ -126,12 +69,6 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
       {items.map((item, i) => {
         const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
         return (
-          <div key={i} style={{ display:'grid', gridTemplateColumns:cols, gap:6, marginBottom:5 }}>
-            {descriptionCell(item, i)}
-            <input type="number" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={inp} />
-            <input type="number" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={inp} />
-            <input readOnly value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700 }} />
-            {removeBtn(i)}
           <div key={i} style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:10, alignItems:'start' }}>
             <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
               <Combobox

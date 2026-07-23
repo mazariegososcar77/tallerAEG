@@ -115,27 +115,6 @@ export default function MachinesPage() {
         </div>
       )}
       {/* Ventana emergente con el formulario para crear o editar una maquina */}
-      {showForm && (
-        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:50, padding:16 }}>
-          <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:24, width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto' }}>
-            <h2 style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:20 }}>{editing ? 'Editar Maquina' : 'Nueva Maquina'}</h2>
-            <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Cliente *</label><ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} /></div>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Nombre *</label><input value={form.name} onChange={withUppercase(e => set('name', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Marca</label><input value={form.brand} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Modelo</label><input value={form.model} onChange={withUppercase(e => set('model', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Serie</label><input value={form.serial} onChange={withUppercase(e => set('serial', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Ubicacion</label><input value={form.location} onChange={withUppercase(e => set('location', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>KW</label><input type='number' value={form.kw} onChange={e => set('kw', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Voltaje</label><input value={form.voltage} onChange={withUppercase(e => set('voltage', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Amperaje</label><input value={form.amperage} onChange={withUppercase(e => set('amperage', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>RPM</label><input type='number' value={form.rpm} onChange={e => set('rpm', e.target.value)} style={inp} /></div>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Notas</label><textarea value={form.notes} onChange={withUppercase(e => set('notes', e.target.value))} rows={2} style={{ ...inp, resize:'vertical' }} /></div>
-            </div>
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end', marginTop:16 }}>
-              <button onClick={() => setShowForm(false)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'9px 18px', color:C.text, cursor:'pointer' }}>Cancelar</button>
-              <button onClick={handleSave} style={{ background:C.orange, border:'none', borderRadius:7, padding:'9px 20px', color:'#fff', fontWeight:700, cursor:'pointer' }}>Guardar</button>
-            </div>
       <Modal
         open={showForm}
         onClose={() => setShowForm(false)}
