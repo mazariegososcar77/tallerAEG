@@ -3,8 +3,8 @@
 // piezas instaladas, armado final), con sus fotos (work_report_photos) y notas por etapa.
 //
 // Un reporte documenta EXACTAMENTE una de dos cosas (nunca ambas): una Orden de Trabajo
-// (work_order_id, flujo interno Pre/Post) o una Orden de Servicio (service_order_id, flujo
-// de subcontratos). Para no repetir logica condicional en cada consumidor, las consultas
+// (work_order_id, flujo interno Pre/Post) o una Orden de Servicio (service_order_id, visita
+// tecnica de campo). Para no repetir logica condicional en cada consumidor, las consultas
 // de aqui devuelven campos ya unificados (order_number/order_kind/client_name/
 // equipment_name/brand/model) resueltos con COALESCE segun cual de los dos aplique.
 import pool from '../lib/db.js';
@@ -20,14 +20,14 @@ const UNIFIED_SELECT = `
   COALESCE(wo.model, so.model) as model,
   COALESCE(
     CASE WHEN c.last_name IS NOT NULL AND c.last_name != '' THEN CONCAT(c.first_name, ' ', c.last_name) ELSE c.first_name END,
-    s.name
+    CASE WHEN sc.last_name IS NOT NULL AND sc.last_name != '' THEN CONCAT(sc.first_name, ' ', sc.last_name) ELSE sc.first_name END
   ) as client_name
 `;
 const UNIFIED_JOIN = `
   LEFT JOIN work_orders wo ON wr.work_order_id = wo.id
   LEFT JOIN clients c ON wo.client_id = c.id
   LEFT JOIN service_orders so ON wr.service_order_id = so.id
-  LEFT JOIN subcontractors s ON so.subcontractor_id = s.id
+  LEFT JOIN clients sc ON so.client_id = sc.id
 `;
 
 // Trae todos los reportes de trabajo, el más reciente primero, con el numero de su orden

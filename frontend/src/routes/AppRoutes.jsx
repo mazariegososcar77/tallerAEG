@@ -21,6 +21,7 @@ import WarehousesPage from '../pages/config/WarehousesPage.jsx';
 import ClientTypesPage from '../pages/config/ClientTypesPage.jsx';
 import LoyaltyTiersPage from '../pages/config/LoyaltyTiersPage.jsx';
 import ClientsPage from '../pages/clients/ClientsPage.jsx';
+import ClientHistoryPage from '../pages/clients/ClientHistoryPage.jsx';
 import WorkOrdersPage from '../pages/workOrders/WorkOrdersPage.jsx';
 import MachinesPage from '../pages/machines/MachinesPage.jsx';
 import MaintenancePage from '../pages/maintenance/MaintenancePage.jsx';
@@ -35,7 +36,6 @@ import WorkReportFormPage from '../pages/workReports/WorkReportFormPage.jsx';
 import InvoicesPage from '../pages/billing/InvoicesPage.jsx';
 import PartCategoriesPage from '../pages/config/PartCategoriesPage.jsx';
 import ComingSoonPage from '../pages/config/ComingSoonPage.jsx';
-import SubcontractorsPage from '../pages/config/SubcontractorsPage.jsx';
 import ServiceOrdersPage from '../pages/serviceOrders/ServiceOrdersPage.jsx';
 import ServiceOrderFormPage from '../pages/serviceOrders/ServiceOrderFormPage.jsx';
 import PublicSignaturePage from '../pages/public/PublicSignaturePage.jsx';
@@ -66,6 +66,7 @@ export default function AppRoutes() {
 
         {/* --- Rutas de Clientes --- */}
         <Route path="clientes" element={<ProtectedRoute permission="clients.view"><ClientsPage /></ProtectedRoute>} />
+        <Route path="clientes/:id/historial" element={<ProtectedRoute permission="clients.view"><ClientHistoryPage /></ProtectedRoute>} />
 
         {/* --- Rutas de Ordenes de Trabajo (flujo Pre: cotizacion antes de la orden, sin cambios) --- */}
         <Route path="ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage /></ProtectedRoute>} />
@@ -115,7 +116,6 @@ export default function AppRoutes() {
         <Route path="configuracion/tipos" element={<ProtectedRoute permission="article-types.view"><ArticleTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
         <Route path="configuracion/categorias-pieza" element={<ProtectedRoute permission="part-categories.view"><PartCategoriesPage /></ProtectedRoute>} />
-        <Route path="configuracion/subcontratistas" element={<ProtectedRoute permission="subcontractors.view"><SubcontractorsPage /></ProtectedRoute>} />
         {/* Las siguientes tres son pantallas "Proximamente" (aun sin funcionalidad real) */}
         <Route path="configuracion/general" element={<ProtectedRoute permission="dashboard.view"><GeneralSettingsPage /></ProtectedRoute>} />
         <Route path="configuracion/parametros" element={<ProtectedRoute permission="dashboard.view"><SystemParamsPage /></ProtectedRoute>} />

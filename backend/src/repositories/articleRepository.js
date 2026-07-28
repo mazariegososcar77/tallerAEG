@@ -2,6 +2,8 @@
 // obra y demás productos que se pueden usar en cotizaciones y órdenes de trabajo. Cada
 // artículo pertenece a un tipo (article_types) y a una bodega (warehouses).
 import pool from '../lib/db.js';
+import * as articlePieceRepository from './articlePieceRepository.js';
+import * as articleLaborRepository from './articleLaborRepository.js';
 
 // Trae la lista de artículos activos, opcionalmente filtrada por tipo de artículo (typeId).
 // Junto con cada artículo trae también el nombre de su tipo y el nombre de su bodega,
@@ -19,10 +21,14 @@ export async function getAll(typeId = null) {
   );
   return rows;
 }
-// Busca un artículo por su id. Si no existe, devuelve null.
+// Busca un artículo por su id, junto con su lista de piezas y mano de obra. Si no existe, devuelve null.
 export async function findById(id) {
   const [rows] = await pool.query('SELECT * FROM articles WHERE id = ?', [id]);
-  return rows[0] || null;
+  const article = rows[0];
+  if (!article) return null;
+  article.pieces = await articlePieceRepository.findByArticleId(id);
+  article.labor = await articleLaborRepository.findByArticleId(id);
+  return article;
 }
 // Guarda un nuevo artículo en la base de datos y devuelve el registro ya creado.
 export async function create(data) {

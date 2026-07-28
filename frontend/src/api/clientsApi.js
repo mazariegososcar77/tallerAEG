@@ -11,5 +11,8 @@ export const clientsApi = {
   update: (id, payload) => client.put(`/clients/${id}`, payload).then((r) => r.data), // edita un cliente existente
   // Marca un cliente como validado (revision del administrador).
   validate: (id) => client.patch(`/clients/${id}/validate`).then((r) => r.data),
+  // Historial de equipo del cliente: sus maquinas, cotizaciones/ordenes/visitas de cada
+  // una, y el total facturado historicamente.
+  getHistory: (id) => client.get(`/clients/${id}/history`).then((r) => r.data),
   remove: (id) => client.delete(`/clients/${id}`).then((r) => r.data), // elimina un cliente
 };

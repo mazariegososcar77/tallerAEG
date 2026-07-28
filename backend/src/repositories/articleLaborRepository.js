@@ -33,3 +33,19 @@ export async function remove(id) {
   const [result] = await pool.query('DELETE FROM article_labor WHERE id = ?', [id]);
   return result.affectedRows > 0;
 }
+// Trae la mano de obra de un articulo especifico.
+export async function findByArticleId(articleId) {
+  const [rows] = await pool.query('SELECT * FROM article_labor WHERE article_id = ?', [articleId]);
+  return rows;
+}
+// Reemplaza por completo la lista de mano de obra de un articulo: borra la que
+// tenia y guarda los nombres nuevos (asi no hay que calcular cuales
+// agregar/quitar uno por uno cada vez que se edita el articulo).
+export async function replaceForArticle(articleId, names = []) {
+  await pool.query('DELETE FROM article_labor WHERE article_id = ?', [articleId]);
+  const clean = names.map(n => (n || '').trim()).filter(Boolean);
+  if (clean.length > 0) {
+    const values = clean.map(name => [articleId, name]);
+    await pool.query('INSERT INTO article_labor (article_id, name) VALUES ?', [values]);
+  }
+}

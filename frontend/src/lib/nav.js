@@ -25,13 +25,12 @@ export const NAV = [
     // abajo) recorre NAV en orden y se queda con el primer permiso que
     // encuentra -- como "Reportes de Trabajo" tambien aparece dentro de
     // Operaciones > Pre/Post (mismo permiso work-reports.view, reusado ahi
-    // por conveniencia), si este grupo fuera despues, el rol "Subcontrato"
-    // aterrizaria en /reportes en vez de en /ordenes-servicio.
-    type: 'group', label: 'Subcontratos', icon: Truck,
+    // por conveniencia), si este grupo fuera despues, un rol restringido solo
+    // a estos dos permisos aterrizaria en /reportes en vez de en /ordenes-servicio.
+    type: 'group', label: 'Servicio Técnico', icon: Truck,
     items: [
-      { to: '/ordenes-servicio',              label: 'Orden de Servicio',   icon: Truck,   permission: 'service-orders.view' },
-      { to: '/reportes',                      label: 'Reportes de Trabajo', icon: Camera,  permission: 'work-reports.view' },
-      { to: '/configuracion/subcontratistas', label: 'Subcontratistas',     icon: UserCog, permission: 'subcontractors.view' },
+      { to: '/ordenes-servicio', label: 'Orden de Servicio',   icon: Truck,  permission: 'service-orders.view' },
+      { to: '/reportes',         label: 'Reportes de Trabajo', icon: Camera, permission: 'work-reports.view' },
     ],
   },
   {

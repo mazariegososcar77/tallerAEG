@@ -51,4 +51,38 @@ router.get('/work-reports/:token', publicController.getWorkReportByToken);
  */
 router.post('/work-reports/:token/signature', uploadReportPhoto, validate(signatureSchema), publicController.setWorkReportSignature);
 
+/**
+ * @openapi
+ * /public/service-orders/{token}:
+ *   get:
+ *     tags: [Enlace publico de firma]
+ *     summary: Datos minimos de una orden de servicio por su token de firma remota (sin sesion)
+ *     parameters: [{ in: path, name: token, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: Datos de la orden (numero, equipo, cliente, si ya esta firmada) }
+ *       404: { description: Enlace invalido o vencido }
+ */
+router.get('/service-orders/:token', publicController.getServiceOrderByToken);
+
+/**
+ * @openapi
+ * /public/service-orders/{token}/signature:
+ *   post:
+ *     tags: [Enlace publico de firma]
+ *     summary: Guardar la firma del cliente en una orden de servicio (sin sesion)
+ *     parameters: [{ in: path, name: token, required: true, schema: { type: string } }]
+ *     requestBody:
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               photo: { type: string, format: binary }
+ *               name: { type: string }
+ *     responses:
+ *       200: { description: Firma guardada }
+ *       404: { description: Enlace invalido o vencido }
+ */
+router.post('/service-orders/:token/signature', uploadReportPhoto, validate(signatureSchema), publicController.setServiceOrderSignature);
+
 export default router;

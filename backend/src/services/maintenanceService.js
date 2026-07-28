@@ -18,11 +18,17 @@ export async function getById(id) {
 export async function create(data) {
   if (data.frequency_days === '' || data.frequency_days === undefined) data.frequency_days = null;
   if (data.description === '') data.description = null;
+  // last_service es DATE: MySQL rechaza '' con un error confuso (igual que
+  // received_at/delivery_at en Ordenes de Trabajo -- ver backend/CLAUDE.md).
+  if (data.last_service === '') data.last_service = null;
   return maintenanceRepository.create(data);
 }
 // Edita un mantenimiento programado existente.
 export async function update(id, patch) {
   if (!await maintenanceRepository.findById(id)) throw new ApiError(404, 'Mantenimiento no encontrado');
+  if (patch.frequency_days === '') patch.frequency_days = null;
+  if (patch.description === '') patch.description = null;
+  if (patch.last_service === '') patch.last_service = null;
   return maintenanceRepository.update(id, patch);
 }
 // Elimina un mantenimiento programado.

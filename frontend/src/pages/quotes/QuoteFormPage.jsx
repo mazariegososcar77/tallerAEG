@@ -19,6 +19,7 @@ import ClientFormModal from '../clients/ClientFormModal.jsx';
 import ArticleQuickModal from '../../components/quotes/ArticleQuickModal.jsx';
 import Combobox from '../../components/ui/Combobox.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { withUppercase } from '../../lib/text.js';
@@ -39,7 +40,7 @@ const sec = { background:C.card, border:'1px solid '+C.border, borderRadius:10, 
 const secHdr = { background:C.dark, borderBottom:'1px solid '+C.border, padding:'9px 16px', display:'flex', alignItems:'center', justifyContent:'space-between' };
 const secBody = { padding:'14px 16px' };
 const g = (cols) => ({ display:'grid', gridTemplateColumns:cols, gap:10 });
-const emptyEquipment = () => ({ name:'', brand:'', model:'', serial:'', labor:[{ description:'', quantity:1, unit_price:0 }], parts:[{ description:'', quantity:1, unit_price:0 }] });
+const emptyEquipment = () => ({ name:'', brand:'', model:'', serial:'', machine_id:null, labor:[{ description:'', quantity:1, unit_price:0 }], parts:[{ description:'', quantity:1, unit_price:0 }] });
 
 const SaveIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -199,6 +200,7 @@ export default function QuoteFormPage() {
         if (order.parts_price) parts.push({ description:'Repuestos (estimado, ajustar segun diagnostico)', quantity:1, unit_price:order.parts_price });
         setEquipments([{
           name: order.equipment_name || '', brand: order.brand || '', model: order.model || '', serial: order.serial || '',
+          machine_id: order.machine_id || null,
           labor: labor.length ? labor : [{ description:'', quantity:1, unit_price:0 }],
           parts: parts.length ? parts : [{ description:'', quantity:1, unit_price:0 }],
         }]);
@@ -245,7 +247,7 @@ export default function QuoteFormPage() {
       const equipment_data = equipments.map((eq,ei) => {
         eq.labor.forEach(l => items.push({...l, equipment_index:ei, item_type:'labor'}));
         eq.parts.forEach(p => items.push({...p, equipment_index:ei, item_type:'part'}));
-        return { name:eq.name, brand:eq.brand, model:eq.model, serial:eq.serial };
+        return { name:eq.name, brand:eq.brand, model:eq.model, serial:eq.serial, machine_id:eq.machine_id||null };
       });
       const payload = { ...form, items, equipment_data, subtotal:grandSubtotal, total:grandTotal };
       if (!isEdit && fromWorkOrderId) payload.work_order_id = fromWorkOrderId;
@@ -348,6 +350,19 @@ export default function QuoteFormPage() {
               )}
             </div>
             <div style={secBody}>
+              <div style={{ marginBottom:10 }}>
+                <label style={lbl}>Máquina del Cliente (opcional)</label>
+                <MachinePicker
+                  clientId={form.client_id}
+                  clients={clients}
+                  value={eq.machine_id}
+                  onChange={v => setEqField(ei,'machine_id',v)}
+                  onMachineLoaded={m => setEquipments(prev => prev.map((row,i) => i!==ei ? row : {
+                    ...row, machine_id:m.id, name: m.name || row.name, brand: m.brand || row.brand,
+                    model: m.model || row.model, serial: m.serial || row.serial,
+                  }))}
+                />
+              </div>
               <div style={g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr')}>
                 <div style={{ gridColumn:'span 2' }}>
                   <label style={lbl}>Nombre del Equipo / Maquina</label>
