@@ -43,7 +43,6 @@ export const NAV = [
           { to: '/cotizaciones',  label: 'Cotizaciones',        icon: FileText,      permission: 'dashboard.view' },
           { to: '/ordenes',       label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'dashboard.view' },
           { to: '/reportes',      label: 'Reportes de Trabajo', icon: Camera,        permission: 'work-reports.view' },
-          { to: '/facturacion',   label: 'Facturación',         icon: Receipt,       permission: 'billing.view' },
         ],
       },
       {
@@ -55,9 +54,13 @@ export const NAV = [
           { to: '/post/ordenes',      label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'dashboard.view' },
           { to: '/post/reportes',     label: 'Reportes de Trabajo', icon: Camera,        permission: 'work-reports.view' },
           { to: '/post/cotizaciones', label: 'Cotizaciones',        icon: FileText,      permission: 'dashboard.view' },
-          { to: '/post/facturacion',  label: 'Facturación',         icon: Receipt,       permission: 'billing.view' },
         ],
       },
+      // Facturacion es UNA sola para ambos flujos (las facturas no distinguen
+      // Pre/Post: tabla `invoices` unica, una por orden). Por eso va aqui,
+      // despues de Pre y Post, y no repetida dentro de cada flujo — ambos
+      // desembocan en esta misma pantalla (/facturacion?invoice=<id>).
+      { to: '/facturacion', label: 'Facturación', icon: Receipt, permission: 'billing.view' },
     ],
   },
   {

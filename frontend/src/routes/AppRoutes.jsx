@@ -5,7 +5,7 @@
  * "guardia" que exige tener sesion iniciada (y a veces un permiso especifico)
  * antes de dejar entrar — ver routes/ProtectedRoute.jsx.
  */
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import HomeRedirect from './HomeRedirect.jsx';
 import AppLayout from '../components/layout/AppLayout.jsx';
@@ -89,14 +89,19 @@ export default function AppRoutes() {
              Reusan las mismas pantallas de Ordenes de Trabajo con flowType="post":
              lista y formulario filtran/guardan por flujo, y el formulario muestra
              los 3 campos de precio (torno/repuestos/mano de obra) que Pre no tiene.
-             Cotizaciones/Reportes/Facturacion de Post quedan "Proximamente": la
-             secuencia invertida (reporte antes que cotizacion) es una fase futura. --- */}
+             Cotizaciones/Reportes de Post quedan "Proximamente" (la secuencia
+             invertida, reporte antes que cotizacion, es una fase futura);
+             Facturacion redirige a /facturacion porque es un solo modulo. --- */}
         <Route path="post/ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/cotizaciones" element={<ProtectedRoute permission="dashboard.view"><ComingSoonPage title="Cotizaciones (Flujo Post)" description="La cotizacion posterior al reporte de desarme esta en construccion." /></ProtectedRoute>} />
         <Route path="post/reportes" element={<ProtectedRoute permission="work-reports.view"><ComingSoonPage title="Reportes de Trabajo (Flujo Post)" description="Esta seccion esta en construccion. Por ahora, usa el icono de camara desde Ordenes de Trabajo (Post)." /></ProtectedRoute>} />
-        <Route path="post/facturacion" element={<ProtectedRoute permission="billing.view"><ComingSoonPage title="Facturación (Flujo Post)" description="La facturacion del flujo Post, generada despues de cotizar, esta en construccion." /></ProtectedRoute>} />
+        {/* La facturacion es UNA sola para ambos flujos (la tabla `invoices` no
+            distingue Pre/Post; solo cambia como nace la factura: automatica al
+            finalizar el reporte en Pre, manual con "Generar Factura" en Post).
+            Esta redireccion conserva los enlaces viejos a /post/facturacion. */}
+        <Route path="post/facturacion" element={<Navigate to="/facturacion" replace />} />
 
         {/* --- Rutas de Ordenes de Servicio (subcontratos externos, ej. torneado) ---
              Permisos granulares propios desde el inicio (service-orders.*) -- a
