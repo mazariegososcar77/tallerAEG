@@ -8,12 +8,8 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Wrench, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import Combobox from '../../components/ui/Combobox.jsx';
-import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import MachineFormModal from '../../components/machines/MachineFormModal.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
-import Modal from '../../components/ui/Modal.jsx';
-import Input from '../../components/ui/Input.jsx';
-import Textarea from '../../components/ui/Textarea.jsx';
-import Button from '../../components/ui/Button.jsx';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
@@ -27,7 +23,6 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ client_id:'', name:'', brand:'', model:'', serial:'', kw:'', voltage:'', amperage:'', rpm:'', hp:'', location:'', notes:'' });
   // Al abrir la pantalla, carga la lista de clientes (para el filtro y el formulario)
   // y la lista de maquinas.
   useEffect(() => {
@@ -42,20 +37,12 @@ export default function MachinesPage() {
   // Filtra la lista de maquinas segun lo que el usuario escribio en el buscador
   // (busca en nombre, marca o cliente).
   const filtered = machines.filter(m => (!search || m.name?.toLowerCase().includes(search.toLowerCase()) || m.brand?.toLowerCase().includes(search.toLowerCase()) || m.client_name?.toLowerCase().includes(search.toLowerCase())));
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   // Abre el formulario vacio para registrar una maquina nueva.
-  const openNew = () => { setEditing(null); setForm({ client_id:'', name:'', brand:'', model:'', serial:'', kw:'', voltage:'', amperage:'', rpm:'', hp:'', location:'', notes:'' }); setShowForm(true); };
+  const openNew = () => { setEditing(null); setShowForm(true); };
   // Abre el formulario ya lleno con los datos de la maquina que se quiere editar.
-  const openEdit = (m) => { setEditing(m); setForm({ client_id:m.client_id, name:m.name||'', brand:m.brand||'', model:m.model||'', serial:m.serial||'', kw:m.kw||'', voltage:m.voltage||'', amperage:m.amperage||'', rpm:m.rpm||'', hp:m.hp||'', location:m.location||'', notes:m.notes||'' }); setShowForm(true); };
-  // Guarda la maquina (nueva o editada). Exige que tenga cliente y nombre como minimo.
-  const handleSave = async () => {
-    if (!form.client_id || !form.name) return alert('Cliente y nombre son obligatorios');
-    try {
-      if (editing) await machinesApi.update(editing.id, form);
-      else await machinesApi.create(form);
-      setShowForm(false); loadMachines(clientFilter || undefined);
-    } catch(e) { alert(e.response?.data?.message || 'Error al guardar'); }
-  };
+  const openEdit = (m) => { setEditing(m); setShowForm(true); };
+  // Se llama cuando MachineFormModal termino de guardar (crear o editar).
+  const handleSaved = () => { setShowForm(false); loadMachines(clientFilter || undefined); };
   // Elimina una maquina, pidiendo confirmacion antes.
   const handleDelete = async (id) => {
     if (!confirm('Eliminar esta maquina?')) return;
@@ -114,38 +101,10 @@ export default function MachinesPage() {
           ))}
         </div>
       )}
-      {/* Ventana emergente con el formulario para crear o editar una maquina */}
-      <Modal
-        open={showForm}
-        onClose={() => setShowForm(false)}
-        title={editing ? 'Editar Maquina' : 'Nueva Maquina'}
-        size="lg"
-        accentColor={C.orange}
-        footer={(
-          <>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-            <Button variant="primary" onClick={handleSave}>Guardar</Button>
-          </>
-        )}
-      >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-muted">Cliente *</label>
-            <ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />
-          </div>
-          <Input label="Nombre *" className="sm:col-span-2" value={form.name} onChange={e => set('name', e.target.value)} />
-          <Input label="Marca" value={form.brand} onChange={e => set('brand', e.target.value)} />
-          <Input label="Modelo" value={form.model} onChange={e => set('model', e.target.value)} />
-          <Input label="Serie" value={form.serial} onChange={e => set('serial', e.target.value)} />
-          <Input label="Ubicacion" value={form.location} onChange={e => set('location', e.target.value)} />
-          <Input label="Potencia (KW)" type="number" value={form.kw} onChange={e => set('kw', e.target.value)} />
-          <Input label="Potencia (HP)" type="number" value={form.hp} onChange={e => set('hp', e.target.value)} />
-          <Input label="Voltaje" value={form.voltage} onChange={e => set('voltage', e.target.value)} />
-          <Input label="Amperaje" value={form.amperage} onChange={e => set('amperage', e.target.value)} />
-          <Input label="RPM" type="number" value={form.rpm} onChange={e => set('rpm', e.target.value)} />
-          <Textarea label="Notas" className="sm:col-span-2" rows={2} value={form.notes} onChange={e => set('notes', e.target.value)} />
-        </div>
-      </Modal>
+      {/* Ventana emergente con el formulario para crear o editar una maquina.
+          El formulario vive en components/machines/MachineFormModal.jsx para poder
+          reutilizarlo desde MachinePicker (Cotizaciones / Ordenes). */}
+      <MachineFormModal open={showForm} onClose={() => setShowForm(false)} onSaved={handleSaved} clients={clients} machine={editing} />
     </div>
   );
 }

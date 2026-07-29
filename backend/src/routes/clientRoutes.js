@@ -48,6 +48,9 @@ router.post('/',   requirePermission('clients.create'), validate(createSchema), 
 router.post('/quick', requirePermission('clients.quick-create'), validate(createSchema), clientController.quickCreate);
 // Ver el detalle de un cliente especifico.
 router.get('/:id', requirePermission('clients.view'),   clientController.getById);
+// Ver el "historial de equipo" del cliente: sus maquinas, y las cotizaciones/ordenes/
+// visitas de servicio de cada una, mas el total facturado historicamente.
+router.get('/:id/history', requirePermission('clients.view'), clientController.getHistory);
 // Marca un cliente como validado (revision del administrador).
 router.patch('/:id/validate', requirePermission('clients.validate'), clientController.validate);
 // Editar un cliente existente.

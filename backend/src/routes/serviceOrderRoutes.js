@@ -1,15 +1,16 @@
 // Este archivo define las direcciones web (rutas) para manejar las ÓRDENES DE SERVICIO
-// (trabajos subcontratados fuera del taller): ver la lista, ver el detalle, crear,
-// editar, cambiar su estado, borrar y descargar el PDF.
+// (el formato de visita tecnica de campo: bombas/pozos en el sitio del cliente): ver la
+// lista, ver el detalle, crear, editar, cambiar su estado, borrar, firmar, generar su
+// enlace publico de firma remota y descargar el PDF.
 //
 // A diferencia de Órdenes de Trabajo (que hoy solo usa el permiso generico
 // "dashboard.view"), este modulo usa permisos granulares propios desde el inicio
-// (service-orders.*) -- es justamente lo que permite que el rol "Subcontrato" pueda
-// ver ESTO sin heredar acceso a ningun otro modulo del sistema.
+// (service-orders.*).
 import { Router } from 'express';
 import * as serviceOrderController from '../controllers/serviceOrderController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
+import { uploadReportPhoto } from '../middleware/upload.middleware.js';
 
 const router = Router();
 router.use(authenticate);
@@ -62,8 +63,14 @@ router.get('/:id',           requirePermission('service-orders.view'),   service
 router.put('/:id',           requirePermission('service-orders.update'), serviceOrderController.update);
 router.delete('/:id',        requirePermission('service-orders.delete'), serviceOrderController.remove);
 
-// Cambiar solo el estado de una orden de servicio (enviada, en_proceso, recibida, cancelada).
+// Cambiar solo el estado de una orden de servicio (programada, en_proceso, completada, cancelada).
 router.patch('/:id/status',  requirePermission('service-orders.update'), serviceOrderController.updateStatus);
+
+// Guardar la firma (dibujada a mano) del tecnico o del cliente.
+router.post('/:id/signature', requirePermission('service-orders.update'), uploadReportPhoto, serviceOrderController.setSignature);
+
+// Generar/recuperar el token del enlace publico de firma remota.
+router.post('/:id/signing-link', requirePermission('service-orders.update'), serviceOrderController.getSigningLink);
 
 // Descargar el PDF de la orden de servicio.
 router.get('/:id/pdf',       requirePermission('service-orders.view'),   serviceOrderController.pdf);

@@ -12,7 +12,8 @@
 // En pantallas angostas (celular) se muestra como tarjetas en vez de tabla.
 // ============================================================================
 import { useState, useMemo } from 'react';
-import { Plus, Pencil, Trash2, Search, Eye, Contact, Check, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Pencil, Trash2, Search, Eye, Contact, Check, Clock, History } from 'lucide-react';
 import { useClients } from '../../hooks/useClients.js';
 import { useClientTypes } from '../../hooks/useClientTypes.js';
 import { useLoyaltyTiers } from '../../hooks/useLoyaltyTiers.js';
@@ -29,6 +30,7 @@ const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)
 const inp = { background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:13, outline:'none' };
 
 export default function ClientsPage() {
+  const navigate = useNavigate();
   const { clients, loading, reload } = useClients();
   const { types } = useClientTypes();
   const { tiers } = useLoyaltyTiers();
@@ -174,7 +176,8 @@ export default function ClientsPage() {
                 {renderValidation(c)}
               </div>
               <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                <button onClick={() => setViewing(c)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
+                <button onClick={() => setViewing(c)} title="Ver ficha" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
+                <button onClick={() => navigate('/clientes/'+c.id+'/historial')} title="Ver historial" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.orange }}><History size={14}/></button>
                 {hasPermission('clients.update') && <button onClick={() => openEdit(c)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
                 {hasPermission('clients.delete') && <button onClick={() => setDeleting(c)} style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
               </div>
@@ -209,7 +212,8 @@ export default function ClientsPage() {
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:6, marginLeft:10 }}>
-                  <button onClick={() => setViewing(c)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Eye size={15}/></button>
+                  <button onClick={() => setViewing(c)} title="Ver ficha" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Eye size={15}/></button>
+                  <button onClick={() => navigate('/clientes/'+c.id+'/historial')} title="Ver historial" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.orange }}><History size={15}/></button>
                   {hasPermission('clients.update') && <button onClick={() => openEdit(c)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>}
                   {hasPermission('clients.delete') && <button onClick={() => setDeleting(c)} style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'8px 10px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={15}/></button>}
                 </div>

@@ -64,7 +64,7 @@ export async function createFromWorkReport(report) {
   const total = order.total > 0 ? Number(order.total) : subtotal;
 
   const number = await invoiceRepository.getNextNumber();
-  return invoiceRepository.create({
+  const invoice = await invoiceRepository.create({
     number,
     work_order_id: order.id,
     work_report_id: report.id,
@@ -76,6 +76,14 @@ export async function createFromWorkReport(report) {
     total,
     status: 'pendiente_certificacion',
   }, items);
+
+  // "Codigo" del talonario: hoy Abdias lo escribia a mano cuando facturaba, para
+  // dejar la orden y la factura asociadas. Se llena solo con el numero interno de
+  // la factura recien creada; el dia que felCertifier deje de ser un stub, certify()
+  // debe repetir esta misma actualizacion con el numero fiscal real (fel_number).
+  await workOrderRepository.update(order.id, { dte_number: invoice.fel_number || invoice.number });
+
+  return invoice;
 }
 
 /**

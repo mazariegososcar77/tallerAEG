@@ -4,8 +4,9 @@
 import pool from '../lib/db.js';
 
 // Trae todas las cotizaciones, la más reciente primero, junto con el nombre del cliente
-// (armado a partir de nombre y apellido), para no tener que buscarlo aparte.
-export async function getAll() {
+// (armado a partir de nombre y apellido), para no tener que buscarlo aparte. Si se indica
+// un clientId, solo trae las de ese cliente (lo usa el historial de equipo por cliente).
+export async function getAll(clientId) {
   const [rows] = await pool.query(`
     SELECT q.*,
       CASE
@@ -15,8 +16,14 @@ export async function getAll() {
       END as client_name
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
+    ${clientId ? 'WHERE q.client_id = ?' : ''}
     ORDER BY q.created_at DESC
-  `);
+  `, clientId ? [clientId] : []);
+  for (const row of rows) {
+    if (row.equipment_data && typeof row.equipment_data === 'string') {
+      row.equipment_data = JSON.parse(row.equipment_data);
+    }
+  }
   return rows;
 }
 

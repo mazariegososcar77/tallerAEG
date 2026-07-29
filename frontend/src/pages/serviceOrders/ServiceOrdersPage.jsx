@@ -1,25 +1,21 @@
-// PANTALLA: Lista de Órdenes de Servicio (trabajos subcontratados fuera del
-// taller). Muestra el subcontratista, el cliente relacionado (si tiene), el
-// estado y los costos acordado/real — a diferencia de Órdenes de Trabajo, aquí
-// SÍ se muestran precios, porque es informacion administrativa interna para
-// Abdías, no algo que vea un técnico. Desde aquí se puede buscar, crear una
-// orden nueva, descargar el PDF, editarla, eliminarla, o abrir/crear su
-// Reporte de Trabajo fotográfico con el ícono de cámara (mismo mecanismo que
-// usan las órdenes de trabajo internas).
+// PANTALLA: Lista de Órdenes de Servicio — visitas técnicas de campo (servicio de
+// bombas/pozos en el sitio del cliente). Muestra el cliente, la fecha de visita, el
+// equipo y el estado. Desde aquí se puede buscar, crear una orden nueva, descargar el
+// PDF, editarla o eliminarla. El reporte técnico y las firmas ya viven dentro de la
+// orden misma (ver ServiceOrderFormPage.jsx) — no hay un Reporte de Trabajo aparte.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { serviceOrdersApi } from '../../api/serviceOrdersApi.js';
-import { workReportsApi } from '../../api/workReportsApi.js';
 import { getToken } from '../../lib/authStorage.js';
 import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
-import { Truck, Plus, Search, Download, Pencil, Trash2, Camera } from 'lucide-react';
+import { Truck, Plus, Search, Download, Pencil, Trash2 } from 'lucide-react';
 
 const STATUS_LABELS = {
-  enviada:    { label: 'Enviada',    color: '#3b82f6' },
+  programada: { label: 'Programada', color: '#3b82f6' },
   en_proceso: { label: 'En Proceso', color: '#f59e0b' },
-  recibida:   { label: 'Recibida',   color: '#10b981' },
+  completada: { label: 'Completada', color: '#10b981' },
   cancelada:  { label: 'Cancelada',  color: '#ef4444' },
 };
 
@@ -29,32 +25,17 @@ export default function ServiceOrdersPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [toDelete, setToDelete] = useState(null);
-  const [creatingReportId, setCreatingReportId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     serviceOrdersApi.list().then(setOrders).finally(() => setLoading(false));
   }, []);
 
-  // Abre el Reporte de Trabajo de esta orden de servicio. Si todavia no tiene
-  // reporte, lo crea (idempotente, igual que en Ordenes de Trabajo).
-  const handleOpenReport = async (order) => {
-    setCreatingReportId(order.id);
-    try {
-      const report = await workReportsApi.createForServiceOrder(order.id);
-      navigate('/reportes/' + report.id + '/editar');
-    } catch (e) {
-      notify.error(e.message || 'No se pudo abrir el reporte');
-    } finally {
-      setCreatingReportId(null);
-    }
-  };
-
   const filtered = orders.filter(o =>
     o.number?.toLowerCase().includes(search.toLowerCase()) ||
-    o.subcontractor_name?.toLowerCase().includes(search.toLowerCase()) ||
     o.client_name?.toLowerCase().includes(search.toLowerCase()) ||
-    o.description?.toLowerCase().includes(search.toLowerCase())
+    o.client_address?.toLowerCase().includes(search.toLowerCase()) ||
+    o.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleDownloadPDF = async (order) => {
@@ -93,7 +74,7 @@ export default function ServiceOrdersPage() {
           <Truck size={26} color="#f97316" />
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Ordenes de Servicio</h1>
-            <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{orders.length} ordenes registradas</p>
+            <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{orders.length} visitas registradas</p>
           </div>
         </div>
         {hasPermission('service-orders.create') && (
@@ -112,7 +93,7 @@ export default function ServiceOrdersPage() {
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por No., subcontratista, cliente o descripcion..."
+          placeholder="Buscar por No., cliente, dirección o equipo..."
           style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: 8, border: '1px solid var(--c-line)', background: 'var(--c-surface-2)', color: 'var(--c-text)', fontSize: 14, boxSizing: 'border-box' }}
         />
       </div>
@@ -127,7 +108,7 @@ export default function ServiceOrdersPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(order => {
-            const st = STATUS_LABELS[order.status] || STATUS_LABELS.enviada;
+            const st = STATUS_LABELS[order.status] || STATUS_LABELS.programada;
             return (
               <div key={order.id} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-line)', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
@@ -136,19 +117,13 @@ export default function ServiceOrdersPage() {
                       <span style={{ fontWeight: 700, fontSize: 16, color: '#f97316' }}>No. {order.number}</span>
                       <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                     </div>
-                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{order.subcontractor_name}</p>
-                    {order.client_name && <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>Cliente: {order.client_name}</p>}
-                    <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>{order.description}</p>
+                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{order.client_name || order.client_address || 'Sin cliente'}</p>
+                    <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>{order.equipment_name || 'Sin equipo'} {order.brand ? '· ' + order.brand : ''}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--c-muted)' }}>
-                      Enviado: {order.sent_at?.slice(0,10)}
-                      {order.agreed_cost ? ' · Acordado: Q' + Number(order.agreed_cost).toFixed(2) : ''}
-                      {order.actual_cost ? ' · Real: Q' + Number(order.actual_cost).toFixed(2) : ''}
+                      Visita: {order.visit_date?.slice(0,10)}{order.visit_time ? ' ' + order.visit_time : ''}
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {hasPermission('work-reports.create') && (
-                      <button onClick={() => handleOpenReport(order)} disabled={creatingReportId === order.id} title="Reporte de trabajo" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#a855f7', opacity: creatingReportId === order.id ? 0.6 : 1 }}><Camera size={16} /></button>
-                    )}
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     {hasPermission('service-orders.update') && (
                       <button onClick={() => navigate('/ordenes-servicio/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>

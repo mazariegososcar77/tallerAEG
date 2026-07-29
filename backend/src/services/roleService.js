@@ -26,6 +26,10 @@ async function toPublic(role) {
 // en el sistema; si viene algun id invalido, rechaza la operacion.
 async function validatePermissionIds(permissionIds = []) {
   const unique = [...new Set(permissionIds.map(Number))];
+  // Un rol sin ningun permiso es valido (ej. mientras se termina de configurar) --
+  // "IN ()" con un arreglo vacio es sintaxis invalida en MySQL, asi que se corta
+  // aqui antes de armar la consulta en vez de dejarla tronar con un 500.
+  if (unique.length === 0) return unique;
   const [rows] = await pool.query('SELECT id FROM permissions WHERE id IN (?)', [unique]);
   if (rows.length !== unique.length) throw new ApiError(400, 'Uno o mas permisos no existen');
   return unique;
@@ -60,8 +64,16 @@ export async function create({ name, description = '', permissions }) {
   const [existing] = await pool.query('SELECT id FROM roles WHERE name = ?', [name]);
   if (existing[0]) throw new ApiError(409, 'Ya existe un rol con ese nombre');
   const role = await roleRepository.create({ name, description });
-  if (Array.isArray(permissions)) {
-    await setPermissions(role.id, await validatePermissionIds(permissions));
+  try {
+    if (Array.isArray(permissions)) {
+      await setPermissions(role.id, await validatePermissionIds(permissions));
+    }
+  } catch (err) {
+    // Si fallo asignando permisos, no dejar el rol huerfano a medio crear --
+    // el usuario ve el error y puede reintentar sin encontrarse un rol
+    // duplicado/vacio que ya "existe" por dentro aunque la API haya fallado.
+    await roleRepository.remove(role.id);
+    throw err;
   }
   return toPublic(await roleRepository.findById(role.id));
 }

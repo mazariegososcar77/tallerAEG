@@ -29,6 +29,15 @@ function normalizePostPricing(data) {
   if (data.labor_price === '') data.labor_price = null;
 }
 
+// Convierte a "sin dato" los campos nuevos del talonario (029_work_orders_paper_form.sql)
+// cuando llegan vacios: next_service_at es DATE (igual que received_at/delivery_at, MySQL
+// rechaza '' con ER_TRUNCATED_WRONG_VALUE) y pump_seal_type es ENUM (MySQL tambien rechaza
+// '' porque no es un valor valido de la lista, a diferencia de un VARCHAR/TEXT/JSON comun).
+function normalizePaperForm(data) {
+  if (data.next_service_at === '') data.next_service_at = null;
+  if (data.pump_seal_type === '') data.pump_seal_type = null;
+}
+
 // Crea una orden de trabajo nueva: le asigna el siguiente numero correlativo y
 // convierte los campos opcionales que llegan vacios (total, datos electricos del
 // equipo, cotizacion de origen, fechas de recibido/entrega) en "sin dato", porque
@@ -42,9 +51,11 @@ export async function create({ items, ...data }) {
   if (data.rpm === '') data.rpm = null;
   if (data.hp === '') data.hp = null;
   if (data.quote_id === '' || data.quote_id === undefined) data.quote_id = null;
+  if (data.machine_id === '' || data.machine_id === undefined) data.machine_id = null;
   if (data.received_at === '') data.received_at = null;
   if (data.delivery_at === '') data.delivery_at = null;
   normalizePostPricing(data);
+  normalizePaperForm(data);
   return workOrderRepository.create({ ...data, number }, items);
 }
 
@@ -60,9 +71,11 @@ export async function update(id, { items, client_name, created_at, updated_at,
   const existing = await workOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de trabajo no encontrada');
   if (data.quote_id === '') data.quote_id = null;
+  if (data.machine_id === '') data.machine_id = null;
   if (data.received_at === '') data.received_at = null;
   if (data.delivery_at === '') data.delivery_at = null;
   normalizePostPricing(data);
+  normalizePaperForm(data);
   return workOrderRepository.update(id, data, items);
 }
 

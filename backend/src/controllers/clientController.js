@@ -11,6 +11,11 @@ export const list = asyncHandler(async (_req, res) => {
 export const getById = asyncHandler(async (req, res) => {
   res.json(await clientService.getById(req.params.id));
 });
+// Trae el "historial de equipo" del cliente (maquinas + cotizaciones/ordenes/visitas de
+// cada una + total facturado) para la pantalla de historial ("expediente" del cliente).
+export const getHistory = asyncHandler(async (req, res) => {
+  res.json(await clientService.getHistory(req.params.id));
+});
 // Cuando el usuario guarda un cliente nuevo desde el formulario completo, esto lo recibe y lo manda a guardar.
 export const create = asyncHandler(async (req, res) => {
   res.status(201).json(await clientService.create(req.body));

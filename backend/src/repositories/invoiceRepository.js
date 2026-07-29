@@ -5,8 +5,9 @@ import pool from '../lib/db.js';
 
 // Trae todas las facturas, la más reciente primero. Junto con cada factura trae también
 // el número de la orden de trabajo, el número de la cotización (si tiene) y el nombre y
-// correo del cliente, para no tener que buscarlos aparte.
-export async function getAll() {
+// correo del cliente, para no tener que buscarlos aparte. Si se indica un clientId, solo
+// trae las de ese cliente (lo usa el historial de equipo por cliente).
+export async function getAll(clientId) {
   const [rows] = await pool.query(`
     SELECT i.*, wo.number as work_order_number, q.number as quote_number,
       CASE
@@ -19,8 +20,9 @@ export async function getAll() {
     JOIN work_orders wo ON i.work_order_id = wo.id
     LEFT JOIN quotes q ON i.quote_id = q.id
     LEFT JOIN clients c ON i.client_id = c.id
+    ${clientId ? 'WHERE i.client_id = ?' : ''}
     ORDER BY i.created_at DESC
-  `);
+  `, clientId ? [clientId] : []);
   return rows;
 }
 
