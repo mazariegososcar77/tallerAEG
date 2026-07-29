@@ -9,6 +9,7 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { withUppercase } from '../../lib/text.js';
 import { notify } from '../../lib/toast.js';
 import ClientPicker from '../clients/ClientPicker.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
@@ -27,6 +28,7 @@ const emptyForm = (clientId) => ({ client_id:clientId||'', name:'', brand:'', mo
  */
 export default function MachineFormModal({ open, onClose, onSaved, clients, machine = null, defaultClientId }) {
   const isEdit = Boolean(machine);
+  const isMobile = useIsMobile();
   const [form, setForm] = useState(emptyForm(defaultClientId));
   const [saving, setSaving] = useState(false);
 
@@ -62,7 +64,7 @@ export default function MachineFormModal({ open, onClose, onSaved, clients, mach
     <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:200, padding:16 }}>
       <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:24, width:'100%', maxWidth:640, maxHeight:'90vh', overflowY:'auto' }}>
         <h2 style={{ fontSize:16, fontWeight:700, color:C.text, marginBottom:20 }}>{isEdit ? 'Editar Maquina' : 'Nueva Maquina'}</h2>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:12 }}>
           <div style={{ gridColumn:'span 2' }}>
             <label style={lbl}>Cliente *</label>
             <ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />
@@ -72,7 +74,8 @@ export default function MachineFormModal({ open, onClose, onSaved, clients, mach
           <div><label style={lbl}>Modelo</label><input value={form.model} onChange={withUppercase(e => set('model', e.target.value))} style={inp} /></div>
           <div><label style={lbl}>Serie</label><input value={form.serial} onChange={withUppercase(e => set('serial', e.target.value))} style={inp} /></div>
           <div><label style={lbl}>Ubicacion</label><input value={form.location} onChange={withUppercase(e => set('location', e.target.value))} style={inp} /></div>
-          <div><label style={lbl}>KW</label><input type='number' value={form.kw} onChange={e => set('kw', e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>Potencia (KW)</label><input type='number' value={form.kw} onChange={e => set('kw', e.target.value)} style={inp} /></div>
+          <div><label style={lbl}>Potencia (HP)</label><input type='number' value={form.hp} onChange={e => set('hp', e.target.value)} style={inp} /></div>
           <div><label style={lbl}>Voltaje</label><input value={form.voltage} onChange={withUppercase(e => set('voltage', e.target.value))} style={inp} /></div>
           <div><label style={lbl}>Amperaje</label><input value={form.amperage} onChange={withUppercase(e => set('amperage', e.target.value))} style={inp} /></div>
           <div><label style={lbl}>RPM</label><input type='number' value={form.rpm} onChange={e => set('rpm', e.target.value)} style={inp} /></div>

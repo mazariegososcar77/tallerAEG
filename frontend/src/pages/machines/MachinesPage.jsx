@@ -79,7 +79,7 @@ export default function MachinesPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign:'center', marginTop:60, color:C.muted }}>
-              <Wrench size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Wrench size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay maquinas registradas</p>
             </div>
           ) : filtered.map(m => (
@@ -101,6 +101,9 @@ export default function MachinesPage() {
           ))}
         </div>
       )}
+      {/* Ventana emergente con el formulario para crear o editar una maquina.
+          El formulario vive en components/machines/MachineFormModal.jsx para poder
+          reutilizarlo desde MachinePicker (Cotizaciones / Ordenes). */}
       <MachineFormModal open={showForm} onClose={() => setShowForm(false)} onSaved={handleSaved} clients={clients} machine={editing} />
     </div>
   );

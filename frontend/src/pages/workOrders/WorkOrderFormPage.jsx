@@ -269,6 +269,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState([]);
   const [laborArticles, setLaborArticles] = useState([]);
@@ -325,6 +326,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
 
   useEffect(() => {
     clientsApi.list().then(setClients);
+    quotesApi.list().then(setQuotes);
     clientTypesApi.list().then(setClientTypes);
     loyaltyTiersApi.list().then(setLoyaltyTiers);
     articlesApi.listByType(LABOR_ARTICLE_TYPE_ID).then(setLaborArticles);
@@ -354,6 +356,21 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   }, [id, fromQuoteId]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  // Al elegir una cotizacion en "No. Cotizacion": trae la completa (el listado no
+  // incluye items) y prellena cliente + datos del equipo, igual que el flujo ?fromQuote.
+  const handleSelectQuote = (v) => {
+    if (!v) {
+      setSourceQuote(null);
+      setEquipIndex(0);
+      setForm(f => ({ ...f, quote_id:null, quotation_number:'' }));
+      return;
+    }
+    quotesApi.get(v).then(quote => {
+      setSourceQuote(quote);
+      setEquipIndex(0);
+      applyQuoteEquip(quote, 0);
+    }).catch(() => alert('No se pudo cargar la cotizacion seleccionada'));
+  };
   // Marca o desmarca una pieza de la lista de "Partes del Equipo" (que piezas trae el equipo al llegar).
   const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
   // Agrega/quita un valor de un campo que guarda un arreglo simple de strings (work_types, physical_parts).
@@ -548,7 +565,23 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
                 <div style={{ display:'grid', gridTemplateColumns: gridCols, gap:10, marginTop:10 }}>
                   <div><label style={lbl}>Autorizado por</label><input value={form.authorized_by||''} onChange={withUppercase(e => set('authorized_by', e.target.value))} style={inp} /></div>
                   <div><label style={lbl}>Proyecto</label><input value={form.project||''} onChange={withUppercase(e => set('project', e.target.value))} style={inp} /></div>
-                  <div><label style={lbl}>No. Cotizacion</label><input value={form.quotation_number||''} onChange={withUppercase(e => set('quotation_number', e.target.value))} style={inp} /></div>
+                  <div>
+                    <label style={lbl}>No. Cotizacion</label>
+                    <Combobox
+                      value={form.quote_id ?? ''}
+                      onChange={handleSelectQuote}
+                      options={[
+                        { value:'', label:'No aplica' },
+                        ...quotes.map(q => ({
+                          value: q.id,
+                          label: `No. ${q.number}${q.client_name ? ' — ' + q.client_name : ''}`,
+                          keywords: `${q.number} ${q.client_name || ''} ${q.work_type || ''}`,
+                        })),
+                      ]}
+                      searchable
+                      placeholder="No aplica"
+                    />
+                  </div>
                   <div>
                     <label style={lbl}>Estado</label>
                     <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />

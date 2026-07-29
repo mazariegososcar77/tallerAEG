@@ -93,7 +93,7 @@ export default function QuotesPage() {
         <p style={{ color: '#64748b', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', marginTop: 60, color: '#64748b' }}>
-          <FileText size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <FileText size={48} style={{ opacity: 0.3, margin: '0 auto 12px' }} />
           <p>No hay cotizaciones registradas</p>
         </div>
       ) : (
