@@ -18,33 +18,38 @@ export default {
         content: 'var(--c-text)',     // texto principal
         heading: 'var(--c-heading)',  // titulos
         muted: 'var(--c-muted)',      // texto secundario
-        // `navy` = verde oscuro de marca (se conserva el nombre del token).
+        // `navy` = verde oscuro de marca, `orange` = amarillo dorado de marca
+        // (se conservan los nombres historicos de los tokens).
+        //
+        // Ambas escalas resuelven a variables CSS definidas en index.css, para
+        // que se puedan cambiar desde Configuracion > Configuracion general sin
+        // recompilar. El formato `rgb(var(--x) / <alpha-value>)` es a proposito:
+        // es lo que permite seguir usando transparencias tipo `bg-navy-900/50`.
         navy: {
-          50: '#ECF6EF',
-          100: '#D2E9DA',
-          200: '#A9D2B7',
-          300: '#78B78E',
-          400: '#48986A',
-          500: '#2C7A4B',
-          600: '#1E5F39',
-          700: '#164B2C', // color principal de marca (verde oscuro)
-          800: '#103A22',
-          900: '#0B2A18',
-          DEFAULT: '#164B2C',
+          50: 'rgb(var(--c-navy-50) / <alpha-value>)',
+          100: 'rgb(var(--c-navy-100) / <alpha-value>)',
+          200: 'rgb(var(--c-navy-200) / <alpha-value>)',
+          300: 'rgb(var(--c-navy-300) / <alpha-value>)',
+          400: 'rgb(var(--c-navy-400) / <alpha-value>)',
+          500: 'rgb(var(--c-navy-500) / <alpha-value>)',
+          600: 'rgb(var(--c-navy-600) / <alpha-value>)',
+          700: 'rgb(var(--c-navy-700) / <alpha-value>)', // color principal de marca
+          800: 'rgb(var(--c-navy-800) / <alpha-value>)',
+          900: 'rgb(var(--c-navy-900) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--c-navy-700) / <alpha-value>)',
         },
-        // `orange` = amarillo dorado de marca (se conserva el nombre del token).
         orange: {
-          50: '#FEFCE8',
-          100: '#FDF6C8',
-          200: '#FCEC94',
-          300: '#F5D74E',
-          400: '#E8BF1E',
-          500: '#CA8A04', // acento principal de marca (amarillo dorado)
-          600: '#A66F03',
-          700: '#875A07',
-          800: '#6B470A',
-          900: '#54380B',
-          DEFAULT: '#CA8A04',
+          50: 'rgb(var(--c-orange-50) / <alpha-value>)',
+          100: 'rgb(var(--c-orange-100) / <alpha-value>)',
+          200: 'rgb(var(--c-orange-200) / <alpha-value>)',
+          300: 'rgb(var(--c-orange-300) / <alpha-value>)',
+          400: 'rgb(var(--c-orange-400) / <alpha-value>)',
+          500: 'rgb(var(--c-orange-500) / <alpha-value>)', // acento principal de marca
+          600: 'rgb(var(--c-orange-600) / <alpha-value>)',
+          700: 'rgb(var(--c-orange-700) / <alpha-value>)',
+          800: 'rgb(var(--c-orange-800) / <alpha-value>)',
+          900: 'rgb(var(--c-orange-900) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--c-orange-500) / <alpha-value>)',
         },
       },
       fontFamily: {

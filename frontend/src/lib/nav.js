@@ -94,7 +94,7 @@ export const NAV = [
   {
     type: 'group', label: 'Configuracion', icon: Settings,
     items: [
-      { to: '/configuracion/general',    label: 'Configuracion general', icon: SlidersHorizontal, permission: 'dashboard.view' },
+      { to: '/configuracion/general',    label: 'Configuracion general', icon: SlidersHorizontal, permission: 'settings.view' },
       { to: '/configuracion/parametros', label: 'Parametros del sistema', icon: Cog,              permission: 'dashboard.view' },
       { to: '/configuracion/catalogos',  label: 'Catalogos',             icon: ListChecks,        permission: 'dashboard.view' },
     ],

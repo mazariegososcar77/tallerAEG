@@ -27,11 +27,59 @@ const GRIS = '#64748b';
 const NEGRO = '#1e293b';
 const BLANCO = '#ffffff';
 
+// ── DATOS DEL TALLER ──────────────────────────────────────────────────
+// Todos los generadores reciben como segundo parametro la configuracion del
+// sistema (`settings`, de services/settingsService.js) para imprimir el nombre,
+// direccion y telefono reales del taller — antes estaban escritos a mano aqui,
+// con un telefono de relleno ("0000-0000"). Se editan en la pantalla
+// Configuracion > Configuracion general.
+//
+// Estos valores de respaldo son los que estaban escritos a mano antes: si a un
+// generador no se le pasa la configuracion, el PDF sale igual que siempre en vez
+// de salir con campos vacios.
+const EMPRESA_FALLBACK = {
+  company_name: 'TALLER AEG',
+  company_tagline: 'Taller de Embobinado Industrial',
+  company_address: 'Guatemala, Guatemala',
+  company_phone: '(+502) 0000-0000',
+  company_email: '',
+  company_nit: '',
+  quote_valid_days: 15,
+};
+
+const empresa = (settings) => ({ ...EMPRESA_FALLBACK, ...(settings || {}) });
+
+// Dibuja el bloque de datos del taller dentro de la banda azul del encabezado
+// (la misma en los 5 PDF). Los datos vacios simplemente no se imprimen, y las
+// lineas se van acomodando hacia abajo segun cuantos haya.
+function dibujarDatosEmpresa(doc, cfg, x = 160) {
+  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text(cfg.company_name, x, 20);
+  doc.fontSize(9).font('Helvetica');
+  let y = 42;
+  const linea = (texto) => {
+    if (!texto) return;
+    doc.text(texto, x, y);
+    y += 13;
+  };
+  linea(cfg.company_tagline);
+  linea(cfg.company_address);
+  linea([
+    cfg.company_phone && 'Tel: ' + cfg.company_phone,
+    cfg.company_nit && 'NIT: ' + cfg.company_nit,
+  ].filter(Boolean).join('   '));
+  linea(cfg.company_email);
+}
+
+// Texto del taller que va en la esquina derecha del pie de pagina.
+const pieEmpresa = (cfg) =>
+  [cfg.company_name, cfg.company_address].filter(Boolean).join(' — ');
+
 // Arma el PDF de una COTIZACION: muestra los datos del cliente, la lista
 // de equipos con su mano de obra y repuestos cotizados, y los totales
 // (subtotal, descuento, total). Es el documento que se le entrega al
 // cliente antes de aceptar el trabajo.
-export function generarCotizacionPDF(quote) {
+export function generarCotizacionPDF(quote, settings) {
+  const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
   const L = 40;
@@ -46,12 +94,7 @@ export function generarCotizacionPDF(quote) {
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
-  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold')
-     .text('TALLER AEG', 160, 20);
-  doc.fontSize(9).font('Helvetica')
-     .text('Taller de Embobinado Industrial', 160, 42)
-     .text('Guatemala, Guatemala', 160, 55)
-     .text('Tel: (+502) 0000-0000', 160, 68);
+  dibujarDatosEmpresa(doc, cfg);
 
   doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
      .text('COTIZACION', 350, 18, { width: 200, align: 'right' });
@@ -183,8 +226,8 @@ export function generarCotizacionPDF(quote) {
   const pageH = doc.page.height;
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Esta cotizacion tiene validez de 15 dias a partir de la fecha de emision.', L, pageH - 28, { width: CW / 2 })
-     .text('Taller AEG — Guatemala', R - 150, pageH - 28, { width: 150, align: 'right' });
+     .text('Esta cotizacion tiene validez de ' + cfg.quote_valid_days + ' dias a partir de la fecha de emision.', L, pageH - 28, { width: CW / 2 })
+     .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text('Gracias por su preferencia', L, pageH - 15, { width: CW, align: 'center' });
 
@@ -227,7 +270,8 @@ const MEASUREMENT_LINE_FIELDS = [
   ['amperage', 'Medición de amperaje'],
 ];
 
-export function generarOrdenTrabajoPDF(order) {
+export function generarOrdenTrabajoPDF(order, settings) {
+  const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
   const L = 40;
@@ -268,11 +312,7 @@ export function generarOrdenTrabajoPDF(order) {
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
-  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
-  doc.fontSize(9).font('Helvetica')
-     .text('Taller de Embobinado Industrial', 160, 42)
-     .text('Guatemala, Guatemala', 160, 55)
-     .text('Tel: (+502) 0000-0000', 160, 68);
+  dibujarDatosEmpresa(doc, cfg);
 
   doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
      .text('ORDEN DE TRABAJO', 270, 18, { width: 280, align: 'right' });
@@ -518,8 +558,8 @@ export function generarOrdenTrabajoPDF(order) {
   const pageH = doc.page.height;
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Orden de Trabajo - Taller AEG', L, pageH - 28, { width: CW / 2 })
-     .text('Taller AEG - Guatemala', R - 150, pageH - 28, { width: 150, align: 'right' });
+     .text('Orden de Trabajo - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
+     .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text('Gracias por su preferencia', L, pageH - 15, { width: CW, align: 'center' });
 
@@ -555,7 +595,8 @@ const ADDITIONAL_SPEC_FIELDS = [
 // cliente) -- datos del cliente, fuente de energía, mediciones eléctricas,
 // condiciones del equipo, componentes instalados, especificaciones
 // adicionales, reporte técnico y firmas del técnico y del cliente.
-export function generarOrdenServicioPDF(order) {
+export function generarOrdenServicioPDF(order, settings) {
+  const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
   const L = 40;
@@ -584,11 +625,7 @@ export function generarOrdenServicioPDF(order) {
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
-  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
-  doc.fontSize(9).font('Helvetica')
-     .text('Taller de Embobinado Industrial', 160, 42)
-     .text('Guatemala, Guatemala', 160, 55)
-     .text('Tel: (+502) 0000-0000', 160, 68);
+  dibujarDatosEmpresa(doc, cfg);
 
   doc.fontSize(18).font('Helvetica-Bold').fillColor(NARANJA)
      .text('ORDEN DE SERVICIO', 220, 18, { width: 330, align: 'right' });
@@ -754,8 +791,8 @@ export function generarOrdenServicioPDF(order) {
   const pageH = doc.page.height;
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Orden de Servicio - Taller AEG', L, pageH - 28, { width: CW / 2 })
-     .text('Taller AEG - Guatemala', R - 150, pageH - 28, { width: 150, align: 'right' });
+     .text('Orden de Servicio - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
+     .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text('Favor de verificar datos para facturación', L, pageH - 15, { width: CW, align: 'center' });
 
@@ -766,7 +803,8 @@ export function generarOrdenServicioPDF(order) {
 // facturado y los totales, mas la informacion de certificacion fiscal FEL
 // si ya fue certificada (o un aviso de que todavia esta pendiente — ver
 // src/services/felCertifier.js, que hoy no genera un UUID/serie real).
-export function generarFacturaPDF(invoice) {
+export function generarFacturaPDF(invoice, settings) {
+  const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
   const L = 40;
@@ -780,11 +818,7 @@ export function generarFacturaPDF(invoice) {
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
-  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
-  doc.fontSize(9).font('Helvetica')
-     .text('Taller de Embobinado Industrial', 160, 42)
-     .text('Guatemala, Guatemala', 160, 55)
-     .text('Tel: (+502) 0000-0000', 160, 68);
+  dibujarDatosEmpresa(doc, cfg);
 
   doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
      .text('FACTURA', 350, 18, { width: 200, align: 'right' });
@@ -881,8 +915,8 @@ export function generarFacturaPDF(invoice) {
   const pageH2 = doc.page.height;
   doc.rect(0, pageH2 - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Factura interna - Taller AEG', L, pageH2 - 28, { width: CW / 2 })
-     .text('Taller AEG — Guatemala', R - 150, pageH2 - 28, { width: 150, align: 'right' });
+     .text('Factura interna - ' + cfg.company_name, L, pageH2 - 28, { width: CW / 2 })
+     .text(pieEmpresa(cfg), R - 150, pageH2 - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text('Gracias por su preferencia', L, pageH2 - 15, { width: CW, align: 'center' });
 
@@ -905,7 +939,8 @@ const STAGE_LABELS = {
 // Las fotos y firmas se insertan leyendo el archivo real desde la carpeta
 // de "uploads" del servidor; si algun archivo ya no existe en disco, se
 // dibuja un recuadro gris en su lugar en vez de fallar.
-export function generarReportePDF(report) {
+export function generarReportePDF(report, settings) {
+  const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
   const L = 40;
@@ -919,11 +954,7 @@ export function generarReportePDF(report) {
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
-  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text('TALLER AEG', 160, 20);
-  doc.fontSize(9).font('Helvetica')
-     .text('Taller de Embobinado Industrial', 160, 42)
-     .text('Guatemala, Guatemala', 160, 55)
-     .text('Tel: (+502) 0000-0000', 160, 68);
+  dibujarDatosEmpresa(doc, cfg);
 
   doc.fontSize(18).font('Helvetica-Bold').fillColor(NARANJA)
      .text('REPORTE DE TRABAJO', 220, 20, { width: 330, align: 'right' });
@@ -1033,8 +1064,8 @@ export function generarReportePDF(report) {
   const pageH3 = doc.page.height;
   doc.rect(0, pageH3 - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Reporte de Trabajo - Taller AEG', L, pageH3 - 28, { width: CW / 2 })
-     .text('Taller AEG — Guatemala', R - 150, pageH3 - 28, { width: 150, align: 'right' });
+     .text('Reporte de Trabajo - ' + cfg.company_name, L, pageH3 - 28, { width: CW / 2 })
+     .text(pieEmpresa(cfg), R - 150, pageH3 - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text('Gracias por su preferencia', L, pageH3 - 15, { width: CW, align: 'center' });
 

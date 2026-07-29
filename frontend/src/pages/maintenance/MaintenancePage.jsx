@@ -10,12 +10,14 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Calendar, Plus, Pencil, Trash2, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import Select from '../../components/ui/Select.jsx';
 import Input from '../../components/ui/Input.jsx';
 import Textarea from '../../components/ui/Textarea.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { notify } from '../../lib/toast.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#1D9E75', red:'#ef4444', amber:'#f59e0b' };
 const STATUS = { al_dia:{ label:'Al dia', color:'#1D9E75', Icon:CheckCircle }, proximo:{ label:'Proximo', color:'#f59e0b', Icon:Clock }, vencido:{ label:'Vencido', color:'#ef4444', Icon:AlertTriangle } };
@@ -36,6 +38,7 @@ export default function MaintenancePage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [toDelete, setToDelete] = useState(null); // mantenimiento pendiente de confirmar su eliminacion
   const [form, setForm] = useState({ client_id:'', machine_id:'', frequency:'semestral', frequency_days:'', last_service:'', description:'' });
   // Al abrir la pantalla, carga clientes, maquinas y los mantenimientos ya programados.
   useEffect(() => {
@@ -53,17 +56,26 @@ export default function MaintenancePage() {
   // Guarda el mantenimiento (nuevo o editado). Exige cliente y maquina como minimo;
   // el proximo servicio y el estado (al dia/proximo/vencido) los calcula el servidor.
   const handleSave = async () => {
-    if (!form.client_id || !form.machine_id) return alert('Cliente y maquina son obligatorios');
+    if (!form.client_id || !form.machine_id) return notify.error('Cliente y maquina son obligatorios');
     try {
       if (editing) await maintenanceApi.update(editing.id, form);
       else await maintenanceApi.create(form);
+      notify.success(editing ? 'Mantenimiento actualizado' : 'Mantenimiento programado');
       setShowForm(false); maintenanceApi.list().then(setRecords);
-    } catch(e) { alert(e.response?.data?.message || 'Error al guardar'); }
+    } catch(e) { notify.error(e.response?.data?.message || e.response?.data?.error || 'Error al guardar'); }
   };
-  // Elimina un mantenimiento programado, pidiendo confirmacion antes.
-  const handleDelete = async (id) => {
-    if (!confirm('Eliminar este mantenimiento?')) return;
-    await maintenanceApi.remove(id); maintenanceApi.list().then(setRecords);
+  // Elimina el mantenimiento ya confirmado en el dialogo.
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await maintenanceApi.remove(toDelete.id);
+      maintenanceApi.list().then(setRecords);
+      notify.success('Mantenimiento eliminado');
+    } catch(e) {
+      notify.error(e.response?.data?.error || e.message || 'No se pudo eliminar el mantenimiento');
+    } finally {
+      setToDelete(null);
+    }
   };
   // Cuenta cuantos mantenimientos estan vencidos y cuantos proximos, para los avisos de arriba.
   const vencidos = records.filter(r => r.status === 'vencido').length;
@@ -113,7 +125,7 @@ export default function MaintenancePage() {
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
                   <button onClick={() => openEdit(r)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'7px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>
-                  <button onClick={() => handleDelete(r.id)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'7px 10px', cursor:'pointer', color:C.red }}><Trash2 size={15}/></button>
+                  <button onClick={() => setToDelete(r)} title="Eliminar mantenimiento" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'7px 10px', cursor:'pointer', color:C.red }}><Trash2 size={15}/></button>
                 </div>
               </div>
             );
@@ -178,6 +190,15 @@ export default function MaintenancePage() {
           />
         </div>
       </Modal>
+
+      <ConfirmDialog
+        open={toDelete != null}
+        onClose={() => setToDelete(null)}
+        onConfirm={handleDelete}
+        title="Eliminar mantenimiento"
+        message={toDelete ? `¿Seguro que deseas eliminar el mantenimiento programado de "${toDelete.machine_name}"? Esta accion no se puede deshacer.` : ''}
+        confirmText="Eliminar"
+      />
     </div>
   );
 }

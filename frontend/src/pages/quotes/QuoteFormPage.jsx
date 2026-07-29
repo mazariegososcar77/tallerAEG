@@ -22,7 +22,9 @@ import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useSettings } from '../../hooks/useSettings.js';
 import { withUppercase } from '../../lib/text.js';
+import { notify } from '../../lib/toast.js';
 
 const STATUS_OPTIONS = [
   { value:'borrador',  label:'Borrador' },
@@ -110,6 +112,7 @@ export default function QuoteFormPage() {
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
+  const { settings, loading: settingsLoading } = useSettings();
   const [clients, setClients] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState([]);
@@ -132,6 +135,16 @@ export default function QuoteFormPage() {
   // los 3 precios estimados que se capturaron al abrirla (torno/repuestos/mano de
   // obra) como punto de partida editable -- no se guarda nada automatico, el
   // usuario los ajusta con lo que realmente encontro.
+  // En una cotizacion NUEVA, "Valida hasta" se propone sumandole a hoy los dias
+  // de vigencia configurados en Configuracion > Configuracion general (el usuario
+  // la puede cambiar). Al editar no se toca: se respeta la fecha ya guardada.
+  useEffect(() => {
+    if (isEdit || settingsLoading || form.valid_until) return;
+    const hasta = new Date();
+    hasta.setDate(hasta.getDate() + Number(settings.quote_valid_days || 15));
+    set('valid_until', hasta.toISOString().slice(0, 10));
+  }, [isEdit, settingsLoading, settings.quote_valid_days]);
+
   useEffect(() => {
     clientsApi.list().then(setClients);
     articlesApi.listByType(4).then(setLaborArticles);
@@ -212,8 +225,8 @@ export default function QuoteFormPage() {
   // (cada linea marcada con a que equipo pertenece), exige cliente y fecha, y
   // crea o actualiza segun si ya existia.
   const handleSubmit = async () => {
-    if (!form.client_id) return alert('Selecciona un cliente');
-    if (!form.date) return alert('Ingresa la fecha');
+    if (!form.client_id) return notify.error('Selecciona un cliente');
+    if (!form.date) return notify.error('Ingresa la fecha');
     setSaving(true);
     try {
       const items = [];
@@ -226,8 +239,9 @@ export default function QuoteFormPage() {
       if (!isEdit && fromWorkOrderId) payload.work_order_id = fromWorkOrderId;
       if (isEdit) await quotesApi.update(id, payload);
       else await quotesApi.create(payload);
+      notify.success(isEdit ? 'Cotización actualizada' : 'Cotización creada');
       navigate('/cotizaciones');
-    } catch(e) { alert(e.response?.data?.message||e.response?.data?.error||e.message||'Error al guardar'); }
+    } catch(e) { notify.error(e.response?.data?.message||e.response?.data?.error||e.message||'Error al guardar'); }
     finally { setSaving(false); }
   };
 

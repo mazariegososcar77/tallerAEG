@@ -2,6 +2,7 @@
 // crearlas, editarlas, cambiar su estado, borrarlas y descargar el PDF.
 import * as workOrderService from '../services/workOrderService.js';
 import { generarOrdenTrabajoPDF } from '../utils/pdfGenerator.js';
+import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Cuando el usuario abre la pantalla de Órdenes de Trabajo, esto trae la lista completa.
@@ -38,7 +39,7 @@ export const remove = asyncHandler(async (req, res) => {
 // Cuando el usuario descarga el PDF de una orden de trabajo, esto genera el archivo y se lo envía.
 export const pdf = asyncHandler(async (req, res) => {
   const order = await workOrderService.getById(req.params.id);
-  const doc = generarOrdenTrabajoPDF(order);
+  const doc = generarOrdenTrabajoPDF(order, await settingsService.getSettings());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="orden-${order.number}.pdf"`);
   doc.pipe(res);

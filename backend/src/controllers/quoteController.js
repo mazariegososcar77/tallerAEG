@@ -2,6 +2,7 @@
 // editarlas, cambiar su estado, borrarlas y descargar el PDF.
 import * as quoteService from '../services/quoteService.js';
 import { generarCotizacionPDF } from '../utils/pdfGenerator.js';
+import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Cuando el usuario abre la pantalla de Cotizaciones, esto trae la lista completa.
@@ -38,7 +39,7 @@ export const remove = asyncHandler(async (req, res) => {
 // Cuando el usuario descarga el PDF de una cotización, esto genera el archivo y se lo envía.
 export const pdf = asyncHandler(async (req, res) => {
   const quote = await quoteService.getById(req.params.id);
-  const doc = generarCotizacionPDF(quote);
+  const doc = generarCotizacionPDF(quote, await settingsService.getSettings());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${quote.number}.pdf"`);
   doc.pipe(res);

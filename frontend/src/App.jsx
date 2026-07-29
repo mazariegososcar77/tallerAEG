@@ -2,6 +2,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
+import { SettingsProvider } from './context/SettingsContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
 
 export default function App() {
@@ -9,6 +10,9 @@ export default function App() {
     <BrowserRouter>
       <ThemeProvider>
       <AuthProvider>
+        {/* SettingsProvider va dentro de Auth (necesita la sesion para pedir la
+            configuracion) y dentro de Theme (le aplica el tema por defecto). */}
+        <SettingsProvider>
         <AppRoutes />
         <Toaster
           position="top-center"
@@ -19,6 +23,7 @@ export default function App() {
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
+        </SettingsProvider>
       </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

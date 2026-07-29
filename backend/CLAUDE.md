@@ -137,6 +137,20 @@ Módulo 8 (facturación, `019_invoices.sql`):
   de `quote_items`; si no, es una sola línea "Servicio según orden de trabajo No. X" con
   `work_orders.total` (`work_order_items` no tiene precio, es solo checklist de piezas).
 
+Configuración general (`032_system_settings.sql`):
+- **system_settings**: tabla **clave/valor** (`setting_key` PK, `setting_value` TEXT, `updated_at`).
+  Es clave/valor a propósito: qué ajustes existen, de qué tipo son y su valor por defecto se declara
+  en `SETTINGS_SCHEMA` de [src/services/settingsService.js](src/services/settingsService.js), que es
+  la **fuente de verdad** — agregar un ajuste nuevo es una línea ahí, **sin migración**.
+- Hoy guarda: `theme_default` (`light|dark|system`), `color_primary`/`color_accent` (hex de marca),
+  `company_name/tagline/address/phone/email/nit` y `quote_valid_days`.
+- `getSettings()` siempre devuelve **todas** las claves (lo que no esté guardado sale con su default)
+  y tolera que la migración no esté aplicada (`ER_NO_SUCH_TABLE` → defaults), para que el sistema no
+  se caiga si alguien actualiza el código sin correr el script.
+- **Permisos:** `settings.view` (ver la pantalla) y `settings.update` (guardar), ids 57–58, solo rol
+  Administrador. `GET /api/settings` **no exige permiso**, solo sesión: el tema y los colores se le
+  aplican a todos los usuarios, y si esto requiriera un permiso un rol sin él vería la app descolorida.
+
 `src/data/*.json` y `src/lib/jsonStore.js` son legacy (ver "Base de datos" arriba): nada los lee en
 runtime, solo los escribe `npm run seed`.
 
@@ -154,6 +168,12 @@ runtime, solo los escribe `npm run seed`.
 - **Imágenes:** `upload-image` usa `multer` ([middleware/upload.middleware.js](src/middleware/upload.middleware.js)),
   guarda en `uploads/` (gitignored) y devuelve `{ url: '/api/uploads/<archivo>' }`. Se sirven con
   `express.static` en `/api/uploads` (cubierto por el proxy de Vite en dev). Una URL externa se guarda tal cual.
+  El filtro acepta los formatos de cámara/celular (JPEG, PNG, WEBP, GIF, BMP, TIFF, HEIC/HEIF, AVIF) y,
+  si el celular manda un mime genérico (`application/octet-stream` o vacío), decide por la extensión;
+  límite 12 MB. **SVG queda fuera a propósito** (se sirve desde el mismo dominio y puede llevar scripts).
+  Normalmente lo que llega es un JPG: el frontend ya convierte las imágenes con canvas antes de subirlas
+  (`frontend/src/lib/image.js`) — importante porque **`pdfkit` solo sabe embeber JPEG/PNG**, así que un
+  WEBP/HEIC crudo saldría como rectángulo gris en el PDF del reporte.
 - **Carga masiva:** el Excel se parsea en el frontend; `POST /articles/bulk` recibe `{ items }` con
   tipo y bodega **por nombre**, valida fila por fila e inserta las válidas
   (`articleService.bulkCreate` → `{ created, errors:[{row,message}] }`).
@@ -181,6 +201,13 @@ runtime, solo los escribe `npm run seed`.
   `/work-orders/:id/pdf` y `/quotes/:id/pdf` generan el PDF con `pdfkit`
   ([utils/pdfGenerator.js](src/utils/pdfGenerator.js): `generarOrdenTrabajoPDF`/`generarCotizacionPDF`).
   `PATCH /work-orders/:id/status` y `/quotes/:id/status` cambian solo el estado.
+- **Datos del taller en los PDF:** los 5 generadores reciben la configuración como **segundo
+  parámetro** (`generarXPDF(entidad, settings)`) y el controller se la pasa con
+  `await settingsService.getSettings()`. El nombre, giro, dirección, teléfono y NIT del encabezado y
+  del pie salen de ahí (antes estaban escritos a mano, con un teléfono de relleno `0000-0000`), igual
+  que los días de vigencia impresos en el pie de la cotización. Si a un generador no se le pasa
+  `settings`, cae a `EMPRESA_FALLBACK` — los mismos textos de antes. Los **colores** de los PDF siguen
+  fijos en `pdfGenerator.js` (no siguen los colores de marca de la configuración).
 - **RBAC más laxo:** a diferencia de Inventario/Clientes, estas rutas no tienen permisos granulares —
   todas están detrás de `requirePermission('dashboard.view')` (ver `*Routes.js` de estos recursos).
   Si agregas permisos finos (`work-orders.create`, etc.), tendrás que sembrarlos vía un nuevo script

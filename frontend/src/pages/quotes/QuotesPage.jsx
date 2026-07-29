@@ -1,13 +1,17 @@
 // PANTALLA: Lista de Cotizaciones. Muestra todas las cotizaciones hechas, con su
 // número, cliente, equipo, estado (borrador/enviada/aprobada/rechazada/vencida) y
-// total. Desde aquí se puede buscar, crear una cotización nueva, verla o
-// editarla, descargar su PDF, eliminarla y — si ya está "aprobada" — convertirla
-// en una Orden de Trabajo con el botón "Crear Orden".
+// total. Desde aquí se puede buscar, crear una cotización nueva, visualizar su
+// PDF (en una ventana dentro de la app), descargarlo, editarla, eliminarla y — si
+// ya está "aprobada" — convertirla en una Orden de Trabajo con el botón
+// "Crear Orden".
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
 import { FileText, Plus, Search, Eye, Pencil, Trash2, Download, ClipboardList } from 'lucide-react';
-import { getToken } from '../../lib/authStorage.js';
+import { downloadPdf } from '../../lib/pdf.js';
+import { notify } from '../../lib/toast.js';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 
 const STATUS_LABELS = {
   borrador:  { label: 'Borrador',  color: '#94a3b8' },
@@ -21,23 +25,15 @@ export default function QuotesPage() {
   const [quotes, setQuotes] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pdfQuote, setPdfQuote] = useState(null); // cotizacion que se esta viendo en el visor de PDF
+  const [toDelete, setToDelete] = useState(null); // cotizacion pendiente de confirmar su eliminacion
   const navigate = useNavigate();
 
   // Descarga el PDF de la cotizacion (lo pide al servidor y lo baja como archivo).
   const handleDownloadPDF = async (q) => {
     try {
-      const token = getToken();
-      const res = await fetch(`/api/quotes/${q.id}/pdf`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cotizacion-${q.number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch(e) { alert('Error al generar PDF'); }
+      await downloadPdf(`/api/quotes/${q.id}/pdf`, `cotizacion-${q.number}.pdf`);
+    } catch(e) { notify.error('Error al generar PDF'); }
   };
 
   useEffect(() => {
@@ -51,11 +47,18 @@ export default function QuotesPage() {
     q.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Elimina la cotizacion, pidiendo confirmacion antes.
-  const handleDelete = async (id) => {
-    if (!confirm('¿Eliminar esta cotización?')) return;
-    await quotesApi.remove(id);
-    setQuotes(prev => prev.filter(q => q.id !== id));
+  // Elimina la cotizacion ya confirmada en el dialogo.
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await quotesApi.remove(toDelete.id);
+      setQuotes(prev => prev.filter(q => q.id !== toDelete.id));
+      notify.success('Cotización No. ' + toDelete.number + ' eliminada');
+    } catch(e) {
+      notify.error(e.response?.data?.error || e.message || 'No se pudo eliminar la cotización');
+    } finally {
+      setToDelete(null);
+    }
   };
 
   return (
@@ -63,7 +66,7 @@ export default function QuotesPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <FileText size={26} color="#CA8A04" />
+          <FileText size={26} color="var(--c-accent)" />
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Cotizaciones</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{quotes.length} cotizaciones registradas</p>
@@ -124,10 +127,10 @@ export default function QuotesPage() {
                         <ClipboardList size={15} /> Crear Orden
                       </button>
                     )}
+                    <button onClick={() => setPdfQuote(q)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(q)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
-                    <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Eye size={16} /></button>
-                    <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
-                    <button onClick={() => handleDelete(q.id)} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
+                    <button onClick={() => setToDelete(q)} title="Eliminar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
                   </div>
                 </div>
               </div>
@@ -135,6 +138,24 @@ export default function QuotesPage() {
           })}
         </div>
       )}
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={pdfQuote != null}
+        onClose={() => setPdfQuote(null)}
+        url={pdfQuote ? `/api/quotes/${pdfQuote.id}/pdf` : null}
+        fileName={pdfQuote ? `cotizacion-${pdfQuote.number}.pdf` : ''}
+        title={pdfQuote ? `Cotización No. ${pdfQuote.number}` : ''}
+      />
+
+      <ConfirmDialog
+        open={toDelete != null}
+        onClose={() => setToDelete(null)}
+        onConfirm={handleDelete}
+        title="Eliminar cotización"
+        message={toDelete ? `¿Seguro que deseas eliminar la cotización No. ${toDelete.number}? Esta acción no se puede deshacer.` : ''}
+        confirmText="Eliminar"
+      />
     </div>
   );
 }

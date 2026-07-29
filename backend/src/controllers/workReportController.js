@@ -3,6 +3,7 @@
 // cliente, finalizarlo y descargar su PDF).
 import * as workReportService from '../services/workReportService.js';
 import { generarReportePDF } from '../utils/pdfGenerator.js';
+import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Cuando el usuario abre la pantalla de Reportes, esto trae la lista completa.
@@ -77,7 +78,7 @@ export const remove = asyncHandler(async (req, res) => {
 // Cuando el usuario descarga el PDF de un reporte, esto genera el archivo (con fotos y firmas) y se lo envía.
 export const pdf = asyncHandler(async (req, res) => {
   const report = await workReportService.getById(req.params.id);
-  const doc = generarReportePDF(report);
+  const doc = generarReportePDF(report, await settingsService.getSettings());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="reporte-${report.number}.pdf"`);
   doc.pipe(res);

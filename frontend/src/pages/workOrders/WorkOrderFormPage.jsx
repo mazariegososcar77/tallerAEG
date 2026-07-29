@@ -38,7 +38,8 @@ import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { workReportsApi } from '../../api/workReportsApi.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
-import { getToken } from '../../lib/authStorage.js';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
+import { notify } from '../../lib/toast.js';
 import { withUppercase } from '../../lib/text.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import Combobox from '../../components/ui/Combobox.jsx';
@@ -143,11 +144,12 @@ const SaveIcon = () => (
   </svg>
 );
 
-const DownloadIcon = () => (
+const ViewPdfIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-    <polyline points="7 10 12 15 17 10"/>
-    <line x1="12" y1="15" x2="12" y2="3"/>
+    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <circle cx="11.5" cy="14.5" r="2.5"/>
+    <line x1="13.5" y1="16.5" x2="15.5" y2="18.5"/>
   </svg>
 );
 
@@ -275,6 +277,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const [laborArticles, setLaborArticles] = useState([]);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showReportPrompt, setShowReportPrompt] = useState(false);
+  const [showPdf, setShowPdf] = useState(false); // true mientras el visor de PDF esta abierto
   const [createdOrderId, setCreatedOrderId] = useState(null);
   const [openingReport, setOpeningReport] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -369,7 +372,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
       setSourceQuote(quote);
       setEquipIndex(0);
       applyQuoteEquip(quote, 0);
-    }).catch(() => alert('No se pudo cargar la cotizacion seleccionada'));
+    }).catch(() => notify.error('No se pudo cargar la cotizacion seleccionada'));
   };
   // Marca o desmarca una pieza de la lista de "Partes del Equipo" (que piezas trae el equipo al llegar).
   const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
@@ -398,14 +401,16 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   // flujo Orden -> Reporte -> Cotizacion -> Factura). Para Pre, o al editar,
   // sigue navegando directo como siempre.
   const handleSubmit = async () => {
-    if (!form.client_id) return alert('Selecciona un cliente');
+    if (!form.client_id) return notify.error('Selecciona un cliente');
     setSaving(true);
     try {
       if (isEdit) {
         await workOrdersApi.update(id, { ...form, items });
+        notify.success('Orden actualizada');
         navigate(ordersBasePath);
       } else {
         const created = await workOrdersApi.create({ ...form, items });
+        notify.success('Orden creada');
         if (form.flow_type === 'post') {
           setCreatedOrderId(created.id);
           setShowReportPrompt(true);
@@ -413,7 +418,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
           navigate(ordersBasePath);
         }
       }
-    } catch(e) { alert(e.response?.data?.message || e.response?.data?.error || e.message || 'Error al guardar'); }
+    } catch(e) { notify.error(e.response?.data?.message || e.response?.data?.error || e.message || 'Error al guardar'); }
     finally { setSaving(false); }
   };
 
@@ -424,29 +429,18 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
       const report = await workReportsApi.createForOrder(createdOrderId);
       navigate('/reportes/' + report.id + '/editar');
     } catch (e) {
-      alert(e.message || 'No se pudo abrir el reporte');
+      notify.error(e.message || 'No se pudo abrir el reporte');
       navigate(ordersBasePath);
     } finally {
       setOpeningReport(false);
     }
   };
 
-  // Descarga el PDF de la orden ya guardada (por eso pide guardar primero si es nueva).
-  const handleDownloadPDF = async () => {
-    if (!id) return alert('Guarda la orden primero');
-    try {
-      const token = getToken();
-      const res = await fetch(`/api/work-orders/${id}/pdf`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `orden-${orderNumber}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch(e) { alert('Error al generar PDF'); }
+  // Abre el PDF de la orden en el visor de la app (desde ahi se puede descargar).
+  // Solo funciona si la orden ya se guardo, porque el PDF lo genera el servidor.
+  const handleViewPDF = () => {
+    if (!id) return notify.error('Guarda la orden primero');
+    setShowPdf(true);
   };
 
   const statusColor = STATUS_COLORS[form.status] || '#1D9E75';
@@ -472,8 +466,8 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           {isEdit && (
-            <button onClick={handleDownloadPDF} style={{ background:'#10b981', border:'none', color:'#fff', padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
-              <DownloadIcon /> PDF
+            <button onClick={handleViewPDF} title="Visualizar el PDF de la orden" style={{ background:'#10b981', border:'none', color:'#fff', padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
+              <ViewPdfIcon /> PDF
             </button>
           )}
           <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'8px 18px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7, opacity:saving?0.7:1 }}>
@@ -487,8 +481,8 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
         <div style={{ position:'sticky', top:0, zIndex:100, padding:'8px 16px', background:C.bg, borderBottom:'1px solid '+C.border }}>
           <div style={{ display:'flex', gap:8 }}>
             {isEdit && (
-              <button onClick={handleDownloadPDF} style={{ background:'#10b981', border:'none', color:'#fff', padding:'10px 14px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
-                <DownloadIcon /> PDF
+              <button onClick={handleViewPDF} title="Visualizar el PDF de la orden" style={{ background:'#10b981', border:'none', color:'#fff', padding:'10px 14px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
+                <ViewPdfIcon /> PDF
               </button>
             )}
             <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'10px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7, flex:1, opacity:saving?0.7:1 }}>
@@ -846,6 +840,15 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
         quick
         clientTypes={clientTypes}
         loyaltyTiers={loyaltyTiers}
+      />
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={showPdf}
+        onClose={() => setShowPdf(false)}
+        url={id ? `/api/work-orders/${id}/pdf` : null}
+        fileName={`orden-${orderNumber}.pdf`}
+        title={`Orden de Trabajo No. ${orderNumber}`}
       />
 
       <ConfirmDialog

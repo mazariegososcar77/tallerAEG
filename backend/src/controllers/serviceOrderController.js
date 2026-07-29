@@ -4,6 +4,7 @@
 // descargar el PDF.
 import * as serviceOrderService from '../services/serviceOrderService.js';
 import { generarOrdenServicioPDF } from '../utils/pdfGenerator.js';
+import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Cuando el usuario abre la pantalla de Órdenes de Servicio, esto trae la lista completa.
@@ -54,7 +55,7 @@ export const getSigningLink = asyncHandler(async (req, res) => {
 // Cuando el usuario descarga el PDF de una orden de servicio, esto genera el archivo y se lo envía.
 export const pdf = asyncHandler(async (req, res) => {
   const order = await serviceOrderService.getById(req.params.id);
-  const doc = generarOrdenServicioPDF(order);
+  const doc = generarOrdenServicioPDF(order, await settingsService.getSettings());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="orden-servicio-${order.number}.pdf"`);
   doc.pipe(res);

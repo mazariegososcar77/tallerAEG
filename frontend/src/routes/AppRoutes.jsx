@@ -116,8 +116,9 @@ export default function AppRoutes() {
         <Route path="configuracion/tipos" element={<ProtectedRoute permission="article-types.view"><ArticleTypesPage /></ProtectedRoute>} />
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
         <Route path="configuracion/categorias-pieza" element={<ProtectedRoute permission="part-categories.view"><PartCategoriesPage /></ProtectedRoute>} />
-        {/* Las siguientes tres son pantallas "Proximamente" (aun sin funcionalidad real) */}
-        <Route path="configuracion/general" element={<ProtectedRoute permission="dashboard.view"><GeneralSettingsPage /></ProtectedRoute>} />
+        {/* Ajustes generales del sistema (colores, tema por defecto, datos del taller) */}
+        <Route path="configuracion/general" element={<ProtectedRoute permission="settings.view"><GeneralSettingsPage /></ProtectedRoute>} />
+        {/* Las siguientes dos son pantallas "Proximamente" (aun sin funcionalidad real) */}
         <Route path="configuracion/parametros" element={<ProtectedRoute permission="dashboard.view"><SystemParamsPage /></ProtectedRoute>} />
         <Route path="configuracion/catalogos" element={<ProtectedRoute permission="dashboard.view"><CatalogsPage /></ProtectedRoute>} />
 

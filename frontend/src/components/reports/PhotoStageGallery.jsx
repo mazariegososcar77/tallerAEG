@@ -1,7 +1,34 @@
 import { useState } from 'react';
-import { Upload, X, ImageOff } from 'lucide-react';
+import { Upload, X, ImageOff, Camera, Images } from 'lucide-react';
 import { notify } from '../../lib/toast.js';
+import { prepareImageForUpload, IMAGE_ACCEPT } from '../../lib/image.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Spinner from '../ui/Spinner.jsx';
+
+/**
+ * Cada "boton" para agregar fotos es en realidad una etiqueta con un input de
+ * archivo escondido adentro; `capture` es lo que hace que el celular abra la
+ * camara en vez del explorador de archivos. Vive fuera del componente para que
+ * React no vuelva a crear el input en cada redibujado (si lo hiciera, podria
+ * perderse la foto que el usuario acaba de elegir).
+ */
+function AddTile({ icon: Icon, label, capture, multiple, uploading, onFiles }) {
+  return (
+    <label className="flex h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-500">
+      {uploading ? <Spinner size={18} /> : <Icon size={18} />}
+      <span className="text-[11px]">{uploading ? 'Subiendo...' : label}</span>
+      <input
+        type="file"
+        accept={IMAGE_ACCEPT}
+        {...(capture ? { capture: 'environment' } : {})}
+        multiple={multiple}
+        className="hidden"
+        onChange={onFiles}
+        disabled={uploading}
+      />
+    </label>
+  );
+}
 
 /**
  * Galeria de fotos de una etapa del reporte de trabajo. Controlado: `photos`
@@ -14,13 +41,20 @@ import Spinner from '../ui/Spinner.jsx';
  * Se usa dentro del formulario de Reporte de Trabajo, una vez por cada etapa.
  * `disabled` bloquea agregar/quitar fotos (ej. cuando el reporte ya quedo
  * finalizado y no se puede seguir editando).
+ *
+ * En celular/tablet aparecen dos botones: "Tomar foto" (abre la camara
+ * directamente) y "Galeria" (elige fotos ya guardadas en el dispositivo). En
+ * computadora solo aparece el boton de seleccionar archivos. Cualquier formato
+ * de imagen sirve: antes de subirse se convierte a JPG liviano
+ * (ver lib/image.js).
  */
 export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled }) {
+  const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false); // true mientras se estan subiendo fotos
   const [removingId, setRemovingId] = useState(null); // id de la foto que se esta borrando en este momento
 
-  // Se ejecuta cuando el usuario elige una o varias fotos para agregar: las
-  // sube una por una (llamando a onAdd por cada archivo) y avisa si algo salio mal.
+  // Se ejecuta cuando el usuario elige una o varias fotos (o toma una con la
+  // camara): las convierte a JPG y las sube una por una llamando a onAdd.
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
@@ -28,7 +62,7 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled })
     setUploading(true);
     try {
       for (const file of files) {
-        await onAdd(file);
+        await onAdd(await prepareImageForUpload(file));
       }
       notify.success(files.length > 1 ? 'Fotos agregadas' : 'Foto agregada');
     } catch (err) {
@@ -74,19 +108,16 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled })
           </div>
         ))}
 
-        {!disabled && (
-          <label className="flex h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-500">
-            {uploading ? <Spinner size={18} /> : <Upload size={18} />}
-            <span className="text-[11px]">{uploading ? 'Subiendo...' : 'Agregar foto(s)'}</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              multiple
-              className="hidden"
-              onChange={handleFiles}
-              disabled={uploading}
-            />
-          </label>
+        {/* En celular: camara y galeria por separado. En computadora: un solo
+            boton para elegir archivos. */}
+        {!disabled && isMobile && (
+          <AddTile icon={Camera} label="Tomar foto" capture uploading={uploading} onFiles={handleFiles} />
+        )}
+        {!disabled && isMobile && (
+          <AddTile icon={Images} label="Galeria" multiple uploading={uploading} onFiles={handleFiles} />
+        )}
+        {!disabled && !isMobile && (
+          <AddTile icon={Upload} label="Agregar foto(s)" multiple uploading={uploading} onFiles={handleFiles} />
         )}
 
         {disabled && photos.length === 0 && (

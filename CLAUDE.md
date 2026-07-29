@@ -24,7 +24,8 @@ Módulos implementados, funcionales end-to-end:
    mantenimientos programados (frecuencia, próximo servicio, estado `al_dia`/`proximo`/`vencido`).
 7. **Reportes de trabajo** (`/reportes`): documentación fotográfica de una orden en 4 etapas fijas
    (antes de desarmar, desarmado + piezas nuevas, piezas instaladas + usadas, armado final), varias
-   fotos y una nota por etapa. Se crea desde el botón "Reporte" de una orden de trabajo
+   fotos y una nota por etapa. En celular las fotos se pueden tomar con la cámara o elegir de la
+   galería; se acepta cualquier formato porque el navegador las convierte a JPG antes de subirlas. Se crea desde el botón "Reporte" de una orden de trabajo
    (`work-reports.createForOrder`, idempotente: una orden solo tiene un reporte). Al finalizarlo
    genera automáticamente la factura correspondiente.
 8. **Facturación** (`/facturacion`): lista de facturas con filtro por cliente/fecha/"solo pendientes"
@@ -41,8 +42,16 @@ Los módulos 4–6 (y sus rutas `work-orders`/`quotes`/`machines`/`maintenance`/
 gateados en el backend solo con el permiso genérico `dashboard.view` (no tienen permisos granulares
 `*.view/create/update/delete` como Inventario/Clientes todavía) — tenlo en cuenta si agregas RBAC fino
 ahí. Los módulos 7–8 sí usan permisos granulares (`work-reports.*`, `billing.*`) desde el inicio.
-Algunas páginas de **Configuración** (`configuracion/general`, `/parametros`, `/catalogos`) son
-placeholders "Coming Soon" (`ComingSoonPage`), no funcionalidad real.
+9. **Configuración general** (`/configuracion/general`): ajustes de todo el sistema guardados en
+   MySQL (`system_settings`, tabla clave/valor): tema por defecto (claro/oscuro/seguir el
+   dispositivo), los dos colores de marca, los datos del taller que se imprimen en **todos** los PDF
+   y la vigencia por defecto de una cotización. Solo con permiso `settings.update` (rol
+   Administrador). La lista de ajustes que existen vive en
+   [backend/src/services/settingsService.js](backend/src/services/settingsService.js) —
+   agregar uno nuevo **no** necesita migración.
+
+Las otras dos páginas de **Configuración** (`/configuracion/parametros`, `/configuracion/catalogos`)
+siguen siendo placeholders "Coming Soon" (`ComingSoonPage`), no funcionalidad real.
 
 ## Estado de la persistencia (importante)
 
@@ -90,9 +99,17 @@ Credenciales por defecto (creadas por `002_seed.sql`): **admin@talleraeg.com / A
 
 - **Idioma:** la interfaz visible está en español; los identificadores de código (variables,
   funciones, archivos) en inglés.
-- **Marca / colores:** verde oscuro `#164B2C` y amarillo dorado `#CA8A04`, definidos como escalas en
-  `frontend/tailwind.config.js`. Por compatibilidad, los tokens **conservan los nombres** `navy`
-  (= verde) y `orange` (= amarillo), así que las clases Tailwind existentes no cambian. El tema por
-  defecto es **claro** (el oscuro sigue disponible con el botón sol/luna del topbar). El logo es
-  `Propuesta 2.png` (copiado a `frontend/public/logo.png`).
+- **Avisos y confirmaciones:** nunca se usan los diálogos del navegador (`alert`/`confirm`/`prompt`).
+  Los avisos van por toast (`frontend/src/lib/toast.js`) y las confirmaciones por
+  `components/ui/ConfirmDialog`.
+- **PDF:** los genera el backend con `pdfkit` en endpoints protegidos y el frontend los muestra
+  **dentro de la app** con `components/ui/PdfViewerModal` (nunca en otra pestaña); descargar es
+  `downloadPdf()` de `frontend/src/lib/pdf.js`.
+- **Marca / colores:** verde oscuro `#164B2C` y amarillo dorado `#CA8A04`. Por compatibilidad, los
+  tokens **conservan los nombres** `navy` (= verde) y `orange` (= amarillo), así que las clases
+  Tailwind existentes no cambian. Ahora esas escalas **resuelven a variables CSS**
+  (`--c-navy-*`/`--c-orange-*` en `frontend/src/index.css`) para que se puedan cambiar desde
+  Configuración general sin recompilar — ver `frontend/CLAUDE.md`. El tema por defecto lo decide la
+  configuración del sistema (de fábrica, **claro**) y cada usuario lo puede cambiar con el botón
+  sol/luna del topbar. El logo es `Propuesta 2.png` (copiado a `frontend/public/logo.png`).
 - Cada subproyecto tiene su propio `CLAUDE.md` con los detalles de arquitectura y comandos.

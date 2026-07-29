@@ -9,13 +9,14 @@
 // mecanismo que ya existe en Reportes de Trabajo (ver WorkReportFormPage.jsx).
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { FileSearch } from 'lucide-react';
 import { serviceOrdersApi } from '../../api/serviceOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
-import { getToken } from '../../lib/authStorage.js';
 import { withUppercase } from '../../lib/text.js';
 import { notify } from '../../lib/toast.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import SignaturePad from '../../components/reports/SignaturePad.jsx';
@@ -71,12 +72,6 @@ const SaveIcon = () => (
     <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
   </svg>
 );
-const DownloadIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-    <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-  </svg>
-);
-
 export default function ServiceOrderFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -87,6 +82,7 @@ export default function ServiceOrderFormPage() {
   const [orderNumber, setOrderNumber] = useState('—');
   const [signingLink, setSigningLink] = useState(null);
   const [loadingLink, setLoadingLink] = useState(false);
+  const [showPdf, setShowPdf] = useState(false); // true mientras el visor de PDF esta abierto
   const [form, setForm] = useState({
     client_id:'', machine_id:null, caller_name:'', client_address:'', client_nit:'', client_phone:'',
     visit_date:new Date().toISOString().slice(0,10), visit_time:'', reported_problem:'',
@@ -122,35 +118,27 @@ export default function ServiceOrderFormPage() {
   const setSpec = (k, v) => setSpecs(prev => ({ ...prev, [k]: v }));
 
   const handleSubmit = async () => {
-    if (!form.visit_date) return alert('Ingresa la fecha de visita');
+    if (!form.visit_date) return notify.error('Ingresa la fecha de visita');
     setSaving(true);
     try {
       const payload = { ...form, electrical_measurements: measurements, installed_components: components, additional_specs: specs };
       if (isEdit) await serviceOrdersApi.update(id, payload);
       else await serviceOrdersApi.create(payload);
+      notify.success(isEdit ? 'Orden actualizada' : 'Orden creada');
       navigate('/ordenes-servicio');
-    } catch(e) { alert(e.response?.data?.error || e.message || 'Error al guardar'); }
+    } catch(e) { notify.error(e.response?.data?.error || e.message || 'Error al guardar'); }
     finally { setSaving(false); }
   };
 
-  const handleDownloadPDF = async () => {
-    if (!id) return alert('Guarda la orden primero');
-    try {
-      const token = getToken();
-      const res = await fetch(`/api/service-orders/${id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `orden-servicio-${orderNumber}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch(e) { alert('Error al generar PDF'); }
+  // Abre el PDF de la orden en el visor de la app (desde ahi se puede descargar).
+  const handleViewPDF = () => {
+    if (!id) return notify.error('Guarda la orden primero');
+    setShowPdf(true);
   };
 
   // Guarda la firma dibujada en la app (tecnico o cliente en persona).
   const handleSaveSignature = async (role, file, name) => {
-    if (!isEdit) return alert('Guarda la orden primero para poder firmarla');
+    if (!isEdit) return notify.error('Guarda la orden primero para poder firmarla');
     const updated = await serviceOrdersApi.setSignature(id, file, role, name);
     setForm(f => ({ ...f, ...updated }));
   };
@@ -191,8 +179,8 @@ export default function ServiceOrderFormPage() {
         </div>
         <div style={{ display:'flex', gap:8 }}>
           {isEdit && (
-            <button onClick={handleDownloadPDF} style={{ background:'#10b981', border:'none', color:'#fff', padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
-              <DownloadIcon /> PDF
+            <button onClick={handleViewPDF} title="Visualizar el PDF de la orden" style={{ background:'#10b981', border:'none', color:'#fff', padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
+              <FileSearch size={14} strokeWidth={2.5} /> PDF
             </button>
           )}
           <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'8px 18px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7, opacity:saving?0.7:1 }}>
@@ -432,6 +420,15 @@ export default function ServiceOrderFormPage() {
         </div>
         <div style={{ paddingBottom:32 }} />
       </div>
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={showPdf}
+        onClose={() => setShowPdf(false)}
+        url={id ? `/api/service-orders/${id}/pdf` : null}
+        fileName={`orden-servicio-${orderNumber}.pdf`}
+        title={`Orden de Servicio No. ${orderNumber}`}
+      />
     </div>
   );
 }
