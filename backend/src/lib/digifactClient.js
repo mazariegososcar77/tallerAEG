@@ -1,6 +1,8 @@
 /**
  * Cliente HTTP para el certificador FEL Digifact (Guatemala).
- * Referencia: https://documentacion.digifact.com/gt/api
+ * Referencia: https://documentacion.digifact.com/gt/api y el PDF que entrega
+ * Digifact junto con las credenciales (Documentacion_Tecnica_API_NUC_Digifact_GT_V2_0_6.pdf).
+ * Ante una discrepancia entre ambos, el PDF (especifico de la cuenta) manda.
  *
  * Cubre: obtener token, certificar un DTE (NUC JSON), anular un DTE y
  * consultar su estado. El token se cachea en memoria del proceso (Digifact
@@ -40,15 +42,19 @@ async function fetchToken() {
       Password: env.digifact.password,
     }),
   });
+  // Respuesta real (Documentacion_Tecnica_API_NUC_Digifact_GT_V2_0_6.pdf, pag. 6, sec. 2.1.2):
+  // { "Token": "...", "expira_en": "2023-09-29T21:53:52...Z", "otorgado_a": "000044653948" }
+  // "Token" va con T mayuscula. expira_en/otorgado_a no se usan hoy; quedan disponibles
+  // para, por ejemplo, refrescar el token de forma proactiva antes de que expire.
   const data = await res.json().catch(() => null);
-  if (!res.ok || !data?.token) {
+  if (!res.ok || !data?.Token) {
     throw new ApiError(502, 'No se pudo autenticar contra Digifact', data);
   }
-  cachedToken = data.token;
+  cachedToken = data.Token;
   return cachedToken;
 }
 
-async function getToken() {
+export async function getToken() {
   return cachedToken || fetchToken();
 }
 
