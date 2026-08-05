@@ -14,6 +14,7 @@ import machineRoutes from './machineRoutes.js';
 import maintenanceRoutes from './maintenanceRoutes.js';
 import quoteRoutes from './quoteRoutes.js';
 import partCategoryRoutes from './partCategoryRoutes.js';
+import invoiceRoutes from './invoiceRoutes.js';
 
 const router = Router();
 
@@ -33,5 +34,6 @@ router.use('/machines', machineRoutes);
 router.use('/maintenance', maintenanceRoutes);
 router.use('/quotes', quoteRoutes);
 router.use('/part-categories', partCategoryRoutes);
+router.use('/invoices', invoiceRoutes);
 
 export default router;

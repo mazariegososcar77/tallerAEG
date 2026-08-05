@@ -41,6 +41,9 @@ mysql -u root -p taller_aeg < 002_seed.sql
 | `012_machines_maintenance.sql` | Tablas de máquinas y mantenimientos programados. |
 | `013_clients_nullable_optional.sql` | Hace `email` de `clients` nullable (campo opcional). `last_name` sigue obligatorio. |
 | `014_clients_validation.sql` | Agrega `is_validated` a `clients` y los permisos `clients.quick-create` y `clients.validate` (con su mapeo a roles). |
+| `015_invoices.sql` | Tablas `invoices` e `invoice_items` (modulo de Facturacion / integracion Digifact-FEL). `quote_id` no tiene FK: `quotes` existe en la base pero nunca quedo registrada en una migracion de este directorio; endurecer cuando exista. |
+| `016_invoices_seed.sql` | Permisos del modulo de Facturacion (`invoices.*`) y su mapeo a roles. |
+| `017_invoice_items_type.sql` | Agrega `item_type` (`bien`/`servicio`) a `invoice_items`; lo exige el documento NUC de Digifact. |
 
 > Nota sobre la contraseña del admin en `002_seed.sql`: MySQL no genera hashes bcrypt. El script
 > trae un hash válido para `Admin123!`. Para regenerarlo:

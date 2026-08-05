@@ -105,3 +105,51 @@ Módulo 2 (inventario):
 - **Permisos:** `clients.*`, `client-types.*`, `loyalty.*` (ids 23–34 en el seed). Para topear datos
   ya sembrados sin reinicializar: `node scripts/backfill_clients.mjs` (idempotente) y
   `node scripts/backfill_loyalty_appearance.mjs` (agrega `color`/`icon` a niveles existentes).
+
+## Facturación — notas (integración Digifact / FEL Guatemala)
+
+- Tablas: **invoices** (`number, client_id, quote_id?, work_order_id?, tipo_dte, moneda, subtotal,
+  descuento, iva, total, estado, serie_dte?, numero_dte?, uuid_dte?, fecha_certificacion?,
+  xml_certificado?, pdf_url?, digifact_response?, digifact_error?, motivo_anulacion?, anulado_at?`)
+  e **invoice_items** (`description, item_type('bien'|'servicio'), quantity, unit_price, subtotal`).
+  Migraciones `015_invoices.sql` / `016_invoices_seed.sql` / `017_invoice_items_type.sql`.
+- **`estado`**: `borrador → certificado → anulado`, o `error` si Digifact rechaza el documento.
+  `PUT`/`DELETE` solo si está en `borrador`; `POST /:id/certify` solo si no está ya `certificado`
+  ni `anulado`; `PATCH /:id/void` (requiere `motivo`) solo si está `certificado`. `invoiceService`
+  lo valida.
+- **IVA:** `unit_price` en `invoice_items` ya incluye IVA (igual que en cotizaciones/órdenes de
+  trabajo, que nunca lo separan). `invoiceService.calcTotals` extrae el IVA (12/112) de
+  `subtotal - descuento`; `total = subtotal - descuento` (el IVA no se suma aparte). Esto asume
+  régimen general (`AfiliacionIVA=GEN`); si el taller factura bajo otro régimen hay que ajustar
+  `calcTotals` y `nucBuilder.js`.
+- **Campos protegidos**: `estado`, `number`, `subtotal`, `iva`, `total`, `serie_dte`, `numero_dte`,
+  `uuid_dte`, `fecha_certificacion`, `xml_certificado`, `pdf_url`, `digifact_response`,
+  `digifact_error`, `motivo_anulacion`, `anulado_at` — el cliente no puede escribirlos vía
+  `POST`/`PUT` (`invoiceService.stripProtected`); solo los llena el flujo de certificación/anulación.
+- **Integración real:**
+  - `src/lib/digifactClient.js` — llama a la API REST de Digifact (`documentacion.digifact.com/gt/api`):
+    login (`get_token`, cachea el token en memoria del proceso y lo renueva ante 401),
+    `certifyDte` (`POST /api/v2/transform/nuc_json`), `cancelDte` (`POST /api/CancelFelGT`),
+    `getDteInfo` (`GET /api/Shared`). Lanza `ApiError(503, ...)` si faltan credenciales en `.env`.
+  - `src/lib/nucBuilder.js` — arma el documento NUC (Header/Seller/Buyer/Items/Totals) a partir de
+    una factura + su cliente, siguiendo el schema real documentado por Digifact.
+  - `invoiceService.certify(id)` construye el payload, llama a `digifactClient.certifyDte`, y
+    persiste `serie_dte/numero_dte/uuid_dte/fecha_certificacion/xml_certificado` (o marca
+    `estado='error'` con `digifact_error` si falla).
+  - `invoiceService.voidInvoice(id, motivo)` llama primero a `digifactClient.cancelDte` y solo si
+    responde bien marca `estado='anulado'` localmente.
+  - **Antes de usar en producción:** confirmar con Digifact/el contador el régimen de IVA real
+    (`AfiliacionIVA`), el código de establecimiento/código geográfico SAT, y si aplican
+    `TipoFrase`/`Escenario` especiales (exportación, exento, etc.) — el builder actual no los
+    incluye porque no hay forma de adivinarlos con seguridad. Probar primero contra
+    `DIGIFACT_ENV=test` (sandbox) antes de `prod`.
+- **Variables de entorno** (`.env`, ver `.env.example`): `DIGIFACT_ENV`, `DIGIFACT_NIT`,
+  `DIGIFACT_USERNAME`, `DIGIFACT_PASSWORD`, `DIGIFACT_AFILIACION_IVA`,
+  `DIGIFACT_ESTABLECIMIENTO_CODIGO/NOMBRE`, `DIGIFACT_EMISOR_NOMBRE/DIRECCION/MUNICIPIO/
+  DEPARTAMENTO/CODIGO_GEOGRAFICO/EMAIL`. Sin `DIGIFACT_NIT/USERNAME/PASSWORD`, `certify`/`voidInvoice`
+  fallan con 503 en vez de intentar la llamada.
+- **`quote_id` sin FK real:** la tabla `quotes` existe en la base de datos pero nunca quedó
+  registrada en una migración de `migraciones/` (deuda técnica previa a este módulo). Por eso
+  `invoices.quote_id` es una columna indexada sin `CONSTRAINT`; endurecer con FK cuando exista esa
+  migración.
+- **Permisos:** `invoices.view/create/certify/void/delete` (ids 37–41 en el seed).
