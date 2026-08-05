@@ -1,4 +1,11 @@
-/** Carga y centraliza las variables de entorno. */
+/**
+ * En palabras simples: este archivo junta en un solo lugar la
+ * configuracion secreta/ajustable del servidor (por ejemplo en que puerto
+ * arranca, o la clave usada para generar el "carnet digital" de sesion),
+ * que normalmente se define en un archivo .env y no se sube al repositorio.
+ *
+ * Carga y centraliza las variables de entorno.
+ */
 import dotenv from 'dotenv';
 
 dotenv.config();

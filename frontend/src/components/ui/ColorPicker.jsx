@@ -2,19 +2,28 @@ import { Check } from 'lucide-react';
 
 // Paleta de colores sugeridos (mas la opcion personalizada al final).
 const PRESETS = [
-  '#16285C', // navy marca
-  '#E8551C', // naranja marca
+  '#164B2C', // verde marca
+  '#CA8A04', // amarillo marca
   '#2563EB', // azul
   '#0891B2', // cian
   '#059669', // verde
-  '#CA8A04', // amarillo
+  '#EAB308', // amarillo claro
+  '#EA580C', // naranja
   '#DC2626', // rojo
   '#7C3AED', // morado
   '#DB2777', // rosa
   '#475569', // gris
 ];
 
-/** Selector de color: paleta de presets + un selector personalizado. value/onChange en #RRGGBB. */
+/**
+ * Es el "selector de color": muestra una fila de circulitos de colores ya
+ * definidos para que el usuario elija uno con un clic (por ejemplo, al crear
+ * una bodega). También trae un último círculo con "+" que abre el selector
+ * de color propio del sistema operativo, por si se quiere un color distinto
+ * a los de la lista.
+ *
+ * Selector de color: paleta de presets + un selector personalizado. value/onChange en #RRGGBB.
+ */
 export default function ColorPicker({ label, value, onChange }) {
   const current = (value || '').toLowerCase();
   const isCustom = current && !PRESETS.includes(current);

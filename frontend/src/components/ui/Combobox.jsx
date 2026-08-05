@@ -3,6 +3,19 @@ import { createPortal } from 'react-dom';
 import { ChevronDown, Check, Search, Plus } from 'lucide-react';
 
 /**
+ * Es otro "menú desplegable" para elegir una opción de una lista, como
+ * Select.jsx, pero con dos poderes extra que se usan en pantallas como
+ * Órdenes, Cotizaciones y Máquinas:
+ *   - Si se le activa `searchable`, muestra una cajita de búsqueda arriba
+ *     de las opciones para poder escribir y filtrar en listas largas (por
+ *     ejemplo, buscar un cliente entre cientos).
+ *   - Si se le pasa `onCreateNew`, agrega una opción especial "+ Nuevo" al
+ *     principio de la lista, para poder crear un registro nuevo sin salir
+ *     del formulario (por ejemplo, dar de alta un cliente nuevo desde ahí
+ *     mismo mientras se llena una cotización).
+ * También puede mostrarle a cada opción una pequeña etiqueta de color
+ * (`badge`) al lado, por ejemplo para indicar un estado.
+ *
  * Dropdown estilizado (reemplaza el <select> nativo) pensado para las paginas
  * densas con estilos inline (Ordenes, Cotizaciones, Maquinas, etc.). Usa las
  * mismas variables de tema (--c-*) que esas paginas, asi que encaja pixel a pixel.
@@ -219,7 +232,7 @@ export default function Combobox({
               <button
                 type="button"
                 onClick={handleCreate}
-                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--c-line)', color: '#E8551C', fontSize, fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'transparent', border: 'none', borderBottom: '1px solid var(--c-line)', color: '#CA8A04', fontSize, fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}
               >
                 <Plus size={15} /> {createLabel}
               </button>
@@ -246,7 +259,7 @@ export default function Combobox({
                     fontSize,
                     cursor: 'pointer',
                     background: isActive ? 'var(--c-hover)' : 'transparent',
-                    color: isActive ? '#E8551C' : 'var(--c-text)',
+                    color: isActive ? '#CA8A04' : 'var(--c-text)',
                     fontWeight: isSelected ? 600 : 400,
                   }}
                 >
@@ -254,7 +267,7 @@ export default function Combobox({
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{opt.label}</span>
                     {opt.badge && <Badge badge={opt.badge} />}
                   </span>
-                  {isSelected && <Check size={15} style={{ color: '#E8551C', flexShrink: 0 }} />}
+                  {isSelected && <Check size={15} style={{ color: '#CA8A04', flexShrink: 0 }} />}
                 </div>
               );
             })}

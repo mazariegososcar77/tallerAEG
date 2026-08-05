@@ -1,168 +1,134 @@
+// Este archivo maneja las FACTURAS: consultarlas, generarlas automaticamente al
+// terminar un reporte de trabajo, y "certificarlas" (el paso de marcarlas como
+// facturas fiscales validas). Es el ultimo eslabon del flujo del taller:
+// Cotizacion -> Orden de Trabajo -> Reporte de Trabajo -> Factura.
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
-import * as clientRepository from '../repositories/clientRepository.js';
-import * as digifactClient from '../lib/digifactClient.js';
-import { buildFacturaPayload } from '../lib/nucBuilder.js';
+import * as workOrderRepository from '../repositories/workOrderRepository.js';
+import * as quoteRepository from '../repositories/quoteRepository.js';
+import * as workReportRepository from '../repositories/workReportRepository.js';
+import * as felCertifier from './felCertifier.js';
 import { ApiError } from '../utils/ApiError.js';
 
-const IVA_RATE = 0.12;
-
-// Campos que solo puede escribir el flujo de certificacion/anulacion (no el
-// cliente via POST/PUT), para que nadie pueda simular una factura certificada.
-const PROTECTED_FIELDS = [
-  'estado', 'number', 'subtotal', 'iva', 'total', 'serie_dte', 'numero_dte', 'uuid_dte',
-  'fecha_certificacion', 'xml_certificado', 'pdf_url', 'digifact_response', 'digifact_error',
-  'motivo_anulacion', 'anulado_at',
-];
-
-function stripProtected(data) {
-  for (const field of PROTECTED_FIELDS) delete data[field];
-  return data;
-}
-
-function normalize(data) {
-  if (data.tipo_dte === '' || data.tipo_dte === undefined) data.tipo_dte = 'FACT';
-  if (data.moneda === '' || data.moneda === undefined) data.moneda = 'GTQ';
-  if (data.descuento === '' || data.descuento === undefined) data.descuento = 0;
-  if (data.quote_id === '') data.quote_id = null;
-  if (data.work_order_id === '') data.work_order_id = null;
-  if (data.observations === '') data.observations = null;
-  return data;
-}
-
-/**
- * `unit_price` ya incluye IVA (igual que en cotizaciones/ordenes de trabajo).
- * El IVA se extrae del total post-descuento, no se suma aparte.
- */
-function calcTotals(items, descuento) {
-  const subtotal = items.reduce((s, i) => s + (parseFloat(i.quantity) || 1) * (parseFloat(i.unit_price) || 0), 0);
-  const total = subtotal - (parseFloat(descuento) || 0);
-  const iva = total - total / (1 + IVA_RATE);
-  return { subtotal, iva, total };
-}
-
-function toGtDateTimeString(value) {
-  const d = value ? new Date(value) : new Date();
-  const gt = new Date(d.getTime() - 6 * 60 * 60 * 1000);
-  const pad = (v) => String(v).padStart(2, '0');
-  return `${gt.getUTCFullYear()}-${pad(gt.getUTCMonth() + 1)}-${pad(gt.getUTCDate())}T${pad(gt.getUTCHours())}:${pad(gt.getUTCMinutes())}:${pad(gt.getUTCSeconds())}`;
-}
-
+// Devuelve la lista completa de facturas.
 export async function list() {
   return invoiceRepository.getAll();
 }
 
+// Busca una factura por id. Si no existe, avisa con un error.
 export async function getById(id) {
   const invoice = await invoiceRepository.findById(id);
   if (!invoice) throw new ApiError(404, 'Factura no encontrada');
   return invoice;
 }
 
-export async function create({ items, ...data }) {
+// Busca la factura asociada a una orden de trabajo (una orden solo puede tener
+// una factura).
+export async function getByWorkOrderId(workOrderId) {
+  return invoiceRepository.findByWorkOrderId(workOrderId);
+}
+
+/**
+ * Genera la factura de una orden de trabajo automaticamente cuando se finaliza su
+ * reporte de trabajo (ver workReportService.finalize). Si la orden viene de una
+ * cotizacion, copia las lineas (piezas/mano de obra) de esa cotizacion; si no,
+ * genera una sola linea generica con el total de la orden.
+ * Es idempotente: si la orden ya tiene factura, devuelve esa en vez de crear otra
+ * (para que no se dupliquen facturas si alguien vuelve a finalizar el reporte).
+ */
+export async function createFromWorkReport(report) {
+  const existing = await invoiceRepository.findByWorkOrderId(report.work_order_id);
+  if (existing) return existing;
+
+  const order = await workOrderRepository.findById(report.work_order_id);
+  if (!order) throw new ApiError(404, 'Orden de trabajo no encontrada');
+
+  let items = [];
+  if (order.quote_id) {
+    const quote = await quoteRepository.findById(order.quote_id);
+    if (quote) {
+      items = quote.items.map((i) => ({
+        description: i.description,
+        quantity: i.quantity,
+        unit_price: i.unit_price,
+      }));
+    }
+  }
+  if (items.length === 0) {
+    items = [{
+      description: `Servicio segun orden de trabajo No. ${order.number}`,
+      quantity: 1,
+      unit_price: order.total || 0,
+    }];
+  }
+  const subtotal = items.reduce((s, i) => s + (parseFloat(i.quantity) || 1) * (parseFloat(i.unit_price) || 0), 0);
+  const total = order.total > 0 ? Number(order.total) : subtotal;
+
   const number = await invoiceRepository.getNextNumber();
-  stripProtected(data);
-  normalize(data);
-  const { subtotal, iva, total } = calcTotals(items || [], data.descuento);
-  data.subtotal = subtotal;
-  data.iva = iva;
-  data.total = total;
-  return invoiceRepository.create({ ...data, number, estado: 'borrador' }, items || []);
+  const invoice = await invoiceRepository.create({
+    number,
+    work_order_id: order.id,
+    work_report_id: report.id,
+    quote_id: order.quote_id || null,
+    client_id: order.client_id,
+    date: new Date().toISOString().slice(0, 10),
+    subtotal,
+    discount: 0,
+    total,
+    status: 'pendiente_certificacion',
+  }, items);
+
+  // "Codigo" del talonario: hoy Abdias lo escribia a mano cuando facturaba, para
+  // dejar la orden y la factura asociadas. Se llena solo con el numero interno de
+  // la factura recien creada; el dia que felCertifier deje de ser un stub, certify()
+  // debe repetir esta misma actualizacion con el numero fiscal real (fel_number).
+  await workOrderRepository.update(order.id, { dte_number: invoice.fel_number || invoice.number });
+
+  return invoice;
 }
 
-export async function update(id, { items, ...data }) {
-  const existing = await invoiceRepository.findById(id);
-  if (!existing) throw new ApiError(404, 'Factura no encontrada');
-  if (existing.estado !== 'borrador') {
-    throw new ApiError(409, 'Solo se pueden editar facturas en borrador');
-  }
-  stripProtected(data);
-  normalize(data);
-  const effectiveItems = items ?? existing.items;
-  const effectiveDescuento = data.descuento ?? existing.descuento;
-  const { subtotal, iva, total } = calcTotals(effectiveItems, effectiveDescuento);
-  data.subtotal = subtotal;
-  data.iva = iva;
-  data.total = total;
-  return invoiceRepository.update(id, data, items);
+/**
+ * Genera la factura de una orden de trabajo del flujo "Post" (donde, a diferencia
+ * de Pre, la cotizacion se arma DESPUES del reporte, asi que no hay factura
+ * automatica al finalizarlo — ver workReportService.finalize). Se llama a mano,
+ * normalmente desde el boton "Generar Factura" de la orden, una vez que ya se
+ * aprobo la cotizacion con el diagnostico real. Reutiliza createFromWorkReport
+ * (misma logica de armar las lineas desde quote_items, mismo idempotente).
+ */
+export async function createFromWorkOrder(workOrderId) {
+  const order = await workOrderRepository.findById(workOrderId);
+  if (!order) throw new ApiError(404, 'Orden de trabajo no encontrada');
+  if (!order.quote_id) throw new ApiError(400, 'La orden todavia no tiene una cotizacion asociada');
+  const quote = await quoteRepository.findById(order.quote_id);
+  if (!quote || quote.status !== 'aprobada') throw new ApiError(400, 'La cotizacion debe estar aprobada antes de facturar');
+  const report = await workReportRepository.findByWorkOrderId(workOrderId);
+  if (!report || report.status !== 'finalizado') throw new ApiError(400, 'El reporte de trabajo debe estar finalizado antes de facturar');
+  return createFromWorkReport(report);
 }
 
-export async function remove(id) {
-  const existing = await invoiceRepository.findById(id);
-  if (!existing) throw new ApiError(404, 'Factura no encontrada');
-  if (existing.estado !== 'borrador') {
-    throw new ApiError(409, 'Solo se pueden eliminar facturas en borrador');
-  }
-  return invoiceRepository.remove(id);
-}
+/**
+ * "Certifica" una factura: guarda el correo del cliente y le pide al certificador
+ * fiscal (felCertifier.js) los datos oficiales SAT. IMPORTANTE: hoy felCertifier
+ * es un simulador que no esta conectado a ningun proveedor real, asi que esos datos
+ * fiscales (UUID/serie/numero) quedan vacios — la factura pasa a estado
+ * "certificada" solo para uso interno del taller, no es todavia una factura fiscal
+ * valida ante la SAT. No se puede certificar una factura ya anulada, y hace falta
+ * el correo del cliente para poder continuar. Si ya estaba certificada, no hace
+ * nada de nuevo (evita re-certificar por error).
+ */
+export async function certify(id, email) {
+  const invoice = await invoiceRepository.findById(id);
+  if (!invoice) throw new ApiError(404, 'Factura no encontrada');
+  if (invoice.status === 'certificada') return invoice;
+  if (invoice.status === 'anulada') throw new ApiError(409, 'La factura esta anulada');
+  if (!email) throw new ApiError(400, 'El correo del cliente es obligatorio');
 
-/** Certifica la factura ante Digifact (FEL) y persiste el resultado. */
-export async function certify(id) {
-  const existing = await invoiceRepository.findById(id);
-  if (!existing) throw new ApiError(404, 'Factura no encontrada');
-  if (existing.estado === 'certificado') throw new ApiError(409, 'La factura ya esta certificada');
-  if (existing.estado === 'anulado') throw new ApiError(409, 'La factura esta anulada');
-  if (!existing.items || existing.items.length === 0) {
-    throw new ApiError(409, 'La factura no tiene lineas para certificar');
-  }
-
-  const client = await clientRepository.findById(existing.client_id);
-  if (!client) throw new ApiError(409, 'El cliente de la factura ya no existe');
-
-  const payload = buildFacturaPayload(existing, client);
-  let response;
-  try {
-    response = await digifactClient.certifyDte(payload);
-  } catch (err) {
-    await invoiceRepository.update(id, {
-      estado: 'error',
-      digifact_error: err.message || 'Error desconocido al certificar',
-      digifact_response: err.details ? JSON.stringify(err.details) : null,
-    });
-    throw err;
-  }
-
-  if (response.code !== '1') {
-    await invoiceRepository.update(id, {
-      estado: 'error',
-      digifact_error: response.message || 'Digifact rechazo el documento',
-      digifact_response: JSON.stringify(response),
-    });
-    throw new ApiError(502, response.message || 'Digifact rechazo el documento', response);
-  }
-
+  const fel = await felCertifier.certify(invoice);
   return invoiceRepository.update(id, {
-    estado: 'certificado',
-    serie_dte: response.batch,
-    numero_dte: response.serial,
-    uuid_dte: response.authNumber,
-    fecha_certificacion: response.enrolledTimeStamp ? new Date(response.enrolledTimeStamp) : new Date(),
-    xml_certificado: response.responseData1 ? Buffer.from(response.responseData1, 'base64').toString('utf8') : null,
-    digifact_response: JSON.stringify(response),
-    digifact_error: null,
-  });
-}
-
-/** Anula una factura ya certificada (llama a Digifact y luego marca el estado local). */
-export async function voidInvoice(id, motivo) {
-  const existing = await invoiceRepository.findById(id);
-  if (!existing) throw new ApiError(404, 'Factura no encontrada');
-  if (existing.estado !== 'certificado') {
-    throw new ApiError(409, 'Solo se pueden anular facturas certificadas');
-  }
-  if (!motivo || !motivo.trim()) {
-    throw new ApiError(400, 'El motivo de anulacion es obligatorio');
-  }
-
-  const client = await clientRepository.findById(existing.client_id);
-  await digifactClient.cancelDte({
-    authNumber: existing.uuid_dte,
-    idReceptor: client?.nit || client?.dpi || 'CF',
-    fechaEmisionOriginal: toGtDateTimeString(existing.fecha_certificacion),
-    motivo: motivo.trim(),
-  });
-
-  return invoiceRepository.update(id, {
-    estado: 'anulado',
-    motivo_anulacion: motivo.trim(),
-    anulado_at: new Date(),
+    status: 'certificada',
+    client_email: email,
+    fel_certifier: fel.fel_certifier,
+    fel_uuid: fel.fel_uuid,
+    fel_series: fel.fel_series,
+    fel_number: fel.fel_number,
   });
 }

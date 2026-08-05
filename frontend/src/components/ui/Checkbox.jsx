@@ -1,6 +1,10 @@
 import { Check } from 'lucide-react';
 
 /**
+ * Es la casilla de marcar (el "cuadrito" que se pone una palomita al hacer
+ * clic) usada en formularios y listas de toda la aplicación, con el estilo
+ * propio de Taller AEG en vez del cuadrito feo del navegador.
+ *
  * Checkbox propio (reemplaza el <input type="checkbox"> nativo) con el estilo de la app.
  * Controlado: `checked` + `onChange(nextChecked)`. Toda la fila es clicable.
  */

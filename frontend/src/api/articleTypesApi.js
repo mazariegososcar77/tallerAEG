@@ -1,5 +1,7 @@
+// Este archivo maneja el catalogo de "tipos de articulo" (categorias del inventario, configurables en Configuracion).
 import { client } from './client.js';
 
+// Funciones basicas para listar, crear, editar y eliminar tipos de articulo.
 export const articleTypesApi = {
   list: () => client.get('/article-types').then((r) => r.data),
   create: (payload) => client.post('/article-types', payload).then((r) => r.data),

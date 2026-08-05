@@ -1,7 +1,12 @@
+// PANTALLA: Lista de Cotizaciones. Muestra todas las cotizaciones hechas, con su
+// número, cliente, equipo, estado (borrador/enviada/aprobada/rechazada/vencida) y
+// total. Desde aquí se puede buscar, crear una cotización nueva, verla o
+// editarla, descargar su PDF, eliminarla y — si ya está "aprobada" — convertirla
+// en una Orden de Trabajo con el botón "Crear Orden".
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
-import { FileText, Plus, Search, Eye, Pencil, Trash2, Download } from 'lucide-react';
+import { FileText, Plus, Search, Eye, Pencil, Trash2, Download, ClipboardList } from 'lucide-react';
 import { getToken } from '../../lib/authStorage.js';
 
 const STATUS_LABELS = {
@@ -18,6 +23,7 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
+  // Descarga el PDF de la cotizacion (lo pide al servidor y lo baja como archivo).
   const handleDownloadPDF = async (q) => {
     try {
       const token = getToken();
@@ -38,12 +44,14 @@ export default function QuotesPage() {
     quotesApi.list().then(setQuotes).finally(() => setLoading(false));
   }, []);
 
+  // Filtra la lista de cotizaciones segun lo que el usuario busco (por numero, cliente o equipo).
   const filtered = quotes.filter(q =>
     q.number?.toLowerCase().includes(search.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     q.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Elimina la cotizacion, pidiendo confirmacion antes.
   const handleDelete = async (id) => {
     if (!confirm('¿Eliminar esta cotización?')) return;
     await quotesApi.remove(id);
@@ -55,7 +63,7 @@ export default function QuotesPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <FileText size={26} color="#E8551C" />
+          <FileText size={26} color="#CA8A04" />
           <div>
             <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Cotizaciones</h1>
             <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{quotes.length} cotizaciones registradas</p>
@@ -63,7 +71,7 @@ export default function QuotesPage() {
         </div>
         <button
           onClick={() => navigate('/cotizaciones/nueva')}
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#E8551C', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+          style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#CA8A04', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
         >
           <Plus size={18} /> Nueva Cotización
         </button>
@@ -85,7 +93,7 @@ export default function QuotesPage() {
         <p style={{ color: '#64748b', textAlign: 'center', marginTop: 40 }}>Cargando...</p>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', marginTop: 60, color: '#64748b' }}>
-          <FileText size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+          <FileText size={48} style={{ opacity: 0.3, margin: '0 auto 12px' }} />
           <p>No hay cotizaciones registradas</p>
         </div>
       ) : (
@@ -97,7 +105,7 @@ export default function QuotesPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700, fontSize: 16, color: '#E8551C' }}>No. {q.number}</span>
+                      <span style={{ fontWeight: 700, fontSize: 16, color: '#CA8A04' }}>No. {q.number}</span>
                       <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                     </div>
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{q.client_name || '—'}</p>
@@ -109,6 +117,13 @@ export default function QuotesPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
+                    {/* Solo aparece si la cotizacion ya esta "aprobada": abre el formulario de
+                        Orden de Trabajo prellenado con los datos de este equipo/cotizacion. */}
+                    {q.status === 'aprobada' && (
+                      <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
+                        <ClipboardList size={15} /> Crear Orden
+                      </button>
+                    )}
                     <button onClick={() => handleDownloadPDF(q)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Eye size={16} /></button>
                     <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>

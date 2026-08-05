@@ -1,8 +1,10 @@
+// Este archivo trae del servidor la lista de "niveles de fidelización" de
+// clientes (por ejemplo Oro, Plata, Bronce) para usarla en la app.
 import { useState, useEffect, useCallback } from 'react';
 import { loyaltyTiersApi } from '../api/loyaltyTiersApi.js';
 import { notify } from '../lib/toast.js';
 
-/** Carga la lista de niveles de fidelizacion y expone una funcion para recargar. */
+/** Trae la lista de niveles de fidelización del servidor y permite volver a cargarla. */
 export function useLoyaltyTiers() {
   const [tiers, setTiers] = useState([]);
   const [loading, setLoading] = useState(true);

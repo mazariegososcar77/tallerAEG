@@ -1,5 +1,11 @@
 import { uppercaseInPlace } from '../../lib/text.js';
 
+// Es el campo de texto (la "cajita" para escribir) que se usa en todos los
+// formularios del sistema: nombre, dirección, NIT, etc. Además del cuadro de
+// texto normal, convierte automáticamente lo que se escribe a MAYÚSCULAS
+// (así quedan uniformes los datos guardados), excepto en los campos donde
+// eso no tendría sentido, como contraseñas, correos o fechas.
+//
 // Tipos de input donde forzar mayúsculas rompería el valor (credenciales,
 // datos numéricos/temporales, selectores nativos). En esos no se transforma.
 const NO_UPPERCASE_TYPES = new Set([

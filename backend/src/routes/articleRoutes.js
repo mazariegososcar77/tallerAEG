@@ -1,3 +1,5 @@
+// Este archivo define las direcciones web (rutas) para manejar los ARTICULOS del inventario:
+// ver la lista, ver el detalle, crear, editar, borrar, subir su imagen y cargarlos en masa desde Excel.
 import { Router } from 'express';
 import { z } from 'zod';
 import * as articleController from '../controllers/articleController.js';
@@ -8,6 +10,8 @@ import { uploadImage } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
+// Datos que se piden para crear un articulo nuevo: codigo y nombre son obligatorios,
+// tipo y bodega deben ser validos, y el resto (cantidad, precio, marca, piezas, mano de obra, etc.) es opcional.
 const createSchema = z.object({
   code: z.string().min(1, 'El codigo es obligatorio'),
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -28,15 +32,18 @@ const createSchema = z.object({
   labor: z.array(z.string().trim().min(1).max(190)).optional(),
 });
 
+// Para editar un articulo: los mismos datos de arriba pero todos opcionales (se manda solo lo que cambia),
+// y exige que venga al menos un cambio.
 const updateSchema = createSchema.partial().refine((d) => Object.keys(d).length > 0, {
   message: 'No hay cambios para aplicar',
 });
 
-// El detalle de cada fila se valida en el servicio (mensajes por fila); aqui solo el contenedor.
+// Para la carga masiva por Excel: exige que venga al menos una fila. El detalle de cada fila se valida en el servicio (mensajes por fila); aqui solo el contenedor.
 const bulkSchema = z.object({
   items: z.array(z.record(z.any())).min(1, 'No hay filas para cargar'),
 });
 
+// A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
 /**
@@ -49,6 +56,7 @@ router.use(authenticate);
  *     responses:
  *       201: { description: "Resumen { created, errors }" }
  */
+// Cargar muchos articulos de una vez (desde un Excel). Solo quien puede crear articulos.
 router.post('/bulk', requirePermission('articles.create'), validate(bulkSchema), articleController.bulkCreate);
 
 /**
@@ -68,6 +76,7 @@ router.post('/bulk', requirePermission('articles.create'), validate(bulkSchema),
  *     responses:
  *       201: { description: "{ url }" }
  */
+// Subir la foto de un articulo. Solo quien puede crear articulos.
 router.post('/upload-image', requirePermission('articles.create'), uploadImage, articleController.uploadImage);
 
 /**
@@ -87,7 +96,9 @@ router.post('/upload-image', requirePermission('articles.create'), uploadImage, 
  *       201: { description: Articulo creado }
  *       409: { description: Codigo duplicado }
  */
+// Ver la lista de articulos del inventario.
 router.get('/', requirePermission('articles.view'), articleController.list);
+// Crear un articulo nuevo.
 router.post('/', requirePermission('articles.create'), validate(createSchema), articleController.create);
 
 /**
@@ -116,8 +127,11 @@ router.post('/', requirePermission('articles.create'), validate(createSchema), a
  *     responses:
  *       204: { description: Eliminado }
  */
+// Ver el detalle de un articulo especifico.
 router.get('/:id', requirePermission('articles.view'), articleController.getById);
+// Editar un articulo existente.
 router.put('/:id', requirePermission('articles.update'), validate(updateSchema), articleController.update);
+// Borrar un articulo.
 router.delete('/:id', requirePermission('articles.delete'), articleController.remove);
 
 export default router;

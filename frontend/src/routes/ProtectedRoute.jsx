@@ -8,6 +8,17 @@ import Spinner from '../components/ui/Spinner.jsx';
  * - Mientras valida la sesion: spinner.
  * - Sin sesion: redirige a /login.
  * - Con sesion pero sin permiso: muestra "No autorizado".
+ *
+ * Explicacion sencilla: piensa en este archivo como el "guardia de seguridad"
+ * de cada pantalla. Antes de mostrar una pantalla, revisa dos cosas: 1) ¿esta
+ * persona inicio sesion? Si no, la manda a la pantalla de login. 2) si esa
+ * pantalla requiere un permiso especifico, ¿la persona lo tiene? Si no, le
+ * muestra un mensaje de "No autorizado" en vez de la pantalla. Como los
+ * permisos del usuario se cargan solo al iniciar sesion (ver AuthContext.jsx),
+ * si un administrador le da un permiso nuevo a alguien que ya tenia la sesion
+ * abierta, ese guardia todavia no se entera — la persona tiene que cerrar
+ * sesion y volver a entrar (o recargar la pagina) para que el cambio se
+ * aplique.
  */
 export default function ProtectedRoute({ permission, children }) {
   const { user, loading, hasPermission } = useAuth();

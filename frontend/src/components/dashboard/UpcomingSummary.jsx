@@ -5,7 +5,7 @@ import { maintenanceApi } from '../../api/maintenanceApi.js';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { notify } from '../../lib/toast.js';
 
-const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', red:'#ef4444' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const MONTHS_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -34,12 +34,18 @@ function DateBadge({ dateKey }) {
  * Resumen de lo que viene: próximos mantenimientos programados (por fecha de
  * próximo servicio) y entregas de órdenes de trabajo (por fecha de entrega),
  * combinados y ordenados por fecha ascendente desde hoy en adelante.
+ *
+ * Este componente es la lista "Proximas fechas" que se ve en el Dashboard,
+ * al lado del calendario. Al hacer clic en un elemento de la lista, lleva
+ * directo a esa orden de trabajo o a la pantalla de mantenimientos.
  */
 export default function UpcomingSummary() {
   const navigate = useNavigate();
-  const [records, setRecords] = useState([]);
-  const [orders, setOrders] = useState([]);
+  const [records, setRecords] = useState([]); // mantenimientos programados
+  const [orders, setOrders] = useState([]); // ordenes de trabajo
 
+  // Al abrir el componente, trae del servidor los mantenimientos y las
+  // ordenes de trabajo para poder armar la lista de proximas fechas.
   useEffect(() => {
     maintenanceApi.list().then(setRecords).catch(err => notify.error(err.message));
     workOrdersApi.list().then(setOrders).catch(err => notify.error(err.message));

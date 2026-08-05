@@ -1,5 +1,10 @@
 import { uppercaseInPlace } from '../../lib/text.js';
 
+// Es el campo de texto de varias líneas (como una cajita más grande) usado
+// para notas, descripciones u observaciones largas en los formularios.
+// Igual que el campo de texto normal (Input.jsx), convierte automáticamente
+// lo escrito a MAYÚSCULAS, salvo que se le indique lo contrario con
+// `noUppercase`.
 export default function Textarea({ label, error, id, className = '', rows = 3, noUppercase = false, onChange, ...props }) {
   const fieldId = id || props.name;
 

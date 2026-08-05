@@ -1,3 +1,8 @@
+// PANTALLA: Alta / edición de un artículo del inventario.
+// Aquí se llenan los datos de un artículo (código, nombre, precio, bodega, etc.),
+// se le puede poner una imagen, y se le agregan sus piezas y su mano de obra
+// (listas simples de texto, como una lista de compras). Se usa tanto para crear
+// un artículo nuevo como para editar uno existente (según si la URL trae un "id").
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Info, Boxes, Wrench } from 'lucide-react';
@@ -48,7 +53,8 @@ export default function ArticleFormPage() {
   const [loadingArticle, setLoadingArticle] = useState(isEdit);
   const [tab, setTab] = useState('datos');
 
-  // Cargar el articulo en modo edicion.
+  // Si estamos editando un articulo existente, trae sus datos del servidor
+  // y los pone en el formulario para que el usuario los pueda modificar.
   useEffect(() => {
     if (!isEdit) return;
     articlesApi
@@ -89,9 +95,13 @@ export default function ArticleFormPage() {
     }));
   }, [types, warehouses, isEdit]);
 
+  // Atajos para actualizar un solo campo del formulario cuando el usuario escribe o elige algo.
   const setField = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
   const setValue = (field) => (value) => setForm((p) => ({ ...p, [field]: value }));
 
+  // Guarda el articulo: si ya existia lo actualiza, si es nuevo lo crea.
+  // Si el servidor responde con errores de campos (por ejemplo, un codigo repetido),
+  // los muestra debajo de cada campo y regresa a la pestaña "Datos" para que se vean.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -165,7 +175,7 @@ export default function ArticleFormPage() {
           ]}
         />
 
-        {/* Pestaña: datos del articulo */}
+        {/* Pestaña: datos del articulo (codigo, nombre, tipo, bodega, cantidad, precio, etc.) */}
         <div className={tab === 'datos' ? 'grid gap-6 lg:grid-cols-3' : 'hidden'}>
           {/* Datos */}
           <Card className="space-y-4 p-6 lg:col-span-2">
@@ -184,14 +194,14 @@ export default function ArticleFormPage() {
             <Textarea label="Descripcion" rows={4} value={form.description} onChange={setField('description')} error={errors.description} />
           </Card>
 
-          {/* Imagen + estado */}
+          {/* Foto del articulo y si esta activo (visible para usarse) o no */}
           <Card className="flex flex-col gap-4 p-6">
             <ImagePicker value={form.image_url} onChange={setValue('image_url')} />
             <Checkbox label="Articulo activo" checked={form.is_active} onChange={setValue('is_active')} />
           </Card>
         </div>
 
-        {/* Pestaña: piezas */}
+        {/* Pestaña: piezas que componen este articulo (lista simple, se agregan escribiendo y con Enter) */}
         <div className={tab === 'pieces' ? 'block' : 'hidden'}>
           <Card className="p-6">
             <ItemListInput
@@ -205,7 +215,7 @@ export default function ArticleFormPage() {
           </Card>
         </div>
 
-        {/* Pestaña: mano de obra */}
+        {/* Pestaña: tareas de mano de obra asociadas a este articulo */}
         <div className={tab === 'labor' ? 'block' : 'hidden'}>
           <Card className="p-6">
             <ItemListInput

@@ -1,3 +1,7 @@
+// PANTALLA: Ventana emergente (modal) que muestra el detalle de UN artículo,
+// solo para consultar — aquí no se puede editar nada. Se abre al hacer clic en
+// el icono de "ojito" desde la lista de Inventario. Tiene 3 pestañas: información
+// general, piezas y mano de obra.
 import { useState, useEffect } from 'react';
 import { Package, Info, Boxes, Wrench } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
@@ -5,6 +9,7 @@ import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
 
+// Pequeño bloque de "etiqueta: valor" que se repite varias veces en la pantalla de información.
 function Field({ label, children }) {
   return (
     <div>
@@ -62,7 +67,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
       onClose={onClose}
       title="Detalle del articulo"
       size="xl"
-      accentColor={article.warehouse_color || '#16285C'}
+      accentColor={article.warehouse_color || '#164B2C'}
       footer={
         <Button variant="outline" onClick={onClose}>
           Cerrar
@@ -83,7 +88,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
       <div className="min-h-[60vh]">
         {tab === 'info' && (
           <div className="grid gap-6 sm:grid-cols-[260px_1fr]">
-            {/* Imagen */}
+            {/* Imagen del articulo (si no tiene o no carga, se muestra un icono generico) */}
             <div className="flex h-64 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
               {article.image_url && !broken ? (
                 <img
@@ -97,7 +102,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
               )}
             </div>
 
-            {/* Informacion */}
+            {/* Datos generales: nombre, codigo, tipo, bodega, cantidad, precio, etc. */}
             <div>
               <h4 className="text-xl font-bold text-navy-800">{article.name}</h4>
               <p className="font-mono text-xs text-slate-500">{article.code}</p>

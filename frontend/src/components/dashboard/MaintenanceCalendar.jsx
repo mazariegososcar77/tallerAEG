@@ -7,7 +7,7 @@ import { notify } from '../../lib/toast.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Modal from '../ui/Modal.jsx';
 
-const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C', red:'#ef4444' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const STATUS = {
   vencido: { label: 'Vencido', color: '#ef4444' },
   proximo: { label: 'Proximo', color: '#f59e0b' },
@@ -39,6 +39,10 @@ const navBtn = { width:30, height:30, display:'flex', alignItems:'center', justi
  *  - los mantenimientos (fecha de proximo servicio) en naranja
  *  - las entregas de ordenes de trabajo (fecha de entrega) en rojo
  * El filtro permite ver ambos, solo mantenimientos o solo ordenes.
+ *
+ * Este es el calendario que aparece en el Dashboard (panel principal). Al
+ * hacer clic en un dia marcado, se abre una ventana con el detalle de lo que
+ * hay ese dia; si es una orden de trabajo, se puede entrar a verla completa.
  */
 export default function MaintenanceCalendar() {
   const today = new Date();
@@ -54,6 +58,8 @@ export default function MaintenanceCalendar() {
 
   const showBody = !isMobile || open;
 
+  // Al abrir el componente, pide al servidor la lista de mantenimientos y de
+  // ordenes de trabajo para poder marcarlos en el calendario.
   useEffect(() => {
     maintenanceApi.list().then(setRecords).catch(err => notify.error(err.message));
     workOrdersApi.list().then(setOrders).catch(err => notify.error(err.message));
@@ -84,6 +90,9 @@ export default function MaintenanceCalendar() {
     return map;
   }, [orders]);
 
+  // Arma la cuadricula de dias del mes que se esta viendo: primero unos
+  // espacios en blanco (para que el dia 1 caiga en la columna correcta del
+  // dia de la semana) y luego los numeros del 1 hasta el ultimo dia del mes.
   const cells = useMemo(() => {
     const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();

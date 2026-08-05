@@ -1,3 +1,6 @@
+// PANTALLA: Lista de Usuarios. Muestra todas las personas que tienen acceso al
+// sistema, con su nombre, correo, rol y si estan activas o no. Desde aquí se
+// puede crear un usuario nuevo, editarlo (abre "UserFormModal") o eliminarlo.
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Users } from 'lucide-react';
 import { useUsers } from '../../hooks/useUsers.js';
@@ -9,7 +12,7 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import UserFormModal from './UserFormModal.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
-const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 
 export default function UsersPage() {
   const { users, loading, reload } = useUsers();
@@ -23,6 +26,7 @@ export default function UsersPage() {
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (u) => { setEditing(u); setFormOpen(true); };
   const handleSaved = () => { setFormOpen(false); reload(); };
+  // Elimina el usuario seleccionado, despues de confirmar.
   const handleDelete = async () => {
     try {
       await usersApi.remove(deleting.id);
@@ -35,7 +39,7 @@ export default function UsersPage() {
     <div style={{ padding:'20px 16px', maxWidth:1100, margin:'0 auto' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <Users size={26} color="#E8551C" />
+          <Users size={26} color="#CA8A04" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Usuarios</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>{users.length} usuarios registrados</p>
@@ -50,7 +54,7 @@ export default function UsersPage() {
 
       <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
 
-        {/* Desktop */}
+        {/* Tabla para pantallas grandes (computadora) */}
         {!isMobile && (
           <>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 150px 100px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
@@ -82,7 +86,7 @@ export default function UsersPage() {
           </>
         )}
 
-        {/* Mobile - Cards */}
+        {/* Version en tarjetas para pantallas de celular */}
         {isMobile && (
           <>
             {loading ? (

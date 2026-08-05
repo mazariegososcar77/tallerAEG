@@ -3,6 +3,11 @@ import Modal from './Modal.jsx';
 import Button from './Button.jsx';
 
 /**
+ * Es la ventanita de "¿Estás seguro?" que aparece antes de hacer una acción
+ * delicada, como eliminar un registro. Tiene un botón para cancelar y otro
+ * para confirmar; mientras se está procesando la confirmación (por ejemplo,
+ * mientras espera la respuesta del servidor) muestra una ruedita de carga.
+ *
  * Dialogo de confirmacion (p.ej. para eliminar). onConfirm puede ser async;
  * muestra estado de carga mientras se resuelve.
  */

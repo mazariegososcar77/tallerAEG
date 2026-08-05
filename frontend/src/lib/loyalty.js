@@ -1,6 +1,9 @@
+// Este archivo tiene las opciones de colores e iconos que se pueden elegir
+// para cada "nivel de fidelización" de clientes (por ejemplo Oro, Plata,
+// Bronce), usadas en la pantalla de Configuración > Fidelización.
 import { Award, Medal, Crown, Trophy, Star, Gem, Shield, Sparkles, BadgeCheck, Heart } from 'lucide-react';
 
-/** Colores predefinidos (metales y piedras) para los niveles de fidelizacion. */
+/** Lista de colores que se pueden elegir para un nivel de fidelización. */
 export const LOYALTY_COLORS = [
   { key: 'gold', label: 'Dorado', value: '#D4AF37' },
   { key: 'silver', label: 'Plata', value: '#9CA3AF' },
@@ -10,13 +13,14 @@ export const LOYALTY_COLORS = [
   { key: 'emerald', label: 'Esmeralda', value: '#10B981' },
   { key: 'sapphire', label: 'Zafiro', value: '#2563EB' },
   { key: 'ruby', label: 'Rubi', value: '#DC2626' },
-  { key: 'orange', label: 'Naranja', value: '#E8551C' },
-  { key: 'navy', label: 'Azul marino', value: '#16285C' },
+  { key: 'yellow', label: 'Amarillo', value: '#CA8A04' },
+  { key: 'green', label: 'Verde oscuro', value: '#164B2C' },
 ];
 
-export const DEFAULT_LOYALTY_COLOR = '#E8551C';
+/** Color que se usa por defecto si no se elige ninguno. */
+export const DEFAULT_LOYALTY_COLOR = '#CA8A04';
 
-/** Iconos distintivos disponibles (lucide). Se guarda el `key` en BD. */
+/** Lista de iconos que se pueden elegir para un nivel de fidelización. */
 export const LOYALTY_ICONS = [
   { key: 'award', label: 'Medalla', Icon: Award },
   { key: 'medal', label: 'Condecoracion', Icon: Medal },
@@ -30,11 +34,12 @@ export const LOYALTY_ICONS = [
   { key: 'heart', label: 'Corazon', Icon: Heart },
 ];
 
+/** Icono que se usa por defecto si no se elige ninguno. */
 export const DEFAULT_LOYALTY_ICON = 'award';
 
 const ICON_MAP = Object.fromEntries(LOYALTY_ICONS.map((i) => [i.key, i.Icon]));
 
-/** Componente de icono lucide para un key (Award por defecto). */
+/** Busca el icono correspondiente a un nivel guardado (usa la medalla si no lo encuentra). */
 export function getLoyaltyIcon(key) {
   return ICON_MAP[key] || Award;
 }

@@ -1,4 +1,14 @@
 /**
+ * IMPORTANTE — este script esta OBSOLETO / ya no inicializa el sistema real.
+ *
+ * En palabras simples: este archivo llena de datos de ejemplo (usuarios,
+ * roles, permisos, catalogos) los archivos .json viejos de src/data/
+ * (ver lib/jsonStore.js), de la epoca antes de usar MySQL. Hoy el sistema
+ * real usa una base de datos MySQL, y sus datos iniciales se cargan
+ * aplicando los scripts SQL de la carpeta backend/migraciones/ (no con este
+ * archivo). Correr `npm run seed` NO prepara la aplicacion para funcionar;
+ * se conserva solo por referencia historica.
+ *
  * Inicializa los archivos JSON con datos por defecto: catalogo de permisos,
  * roles base, su mapeo de permisos y un usuario administrador.
  *
@@ -132,6 +142,10 @@ const LOYALTY_TIERS = [
   { id: 3, name: 'Oro', discount: 15, benefits: 'Descuento maximo, atencion VIP y entregas express', color: '#D4AF37', icon: 'crown' },
 ];
 
+// Funcion principal: revisa si ya hay datos guardados; si no hay (o si se
+// fuerza con FORCE=1), escribe permisos, roles, el usuario administrador y
+// los catalogos iniciales en los archivos .json (metodo viejo, ver aviso
+// arriba).
 async function seed() {
   const force = process.env.FORCE === '1' || process.argv.includes('--force');
   const hasData = readCollection('users').length > 0;

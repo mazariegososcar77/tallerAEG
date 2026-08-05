@@ -7,13 +7,13 @@
     <title>Taller AEG</title>
     <script>
       // Aplica el tema guardado antes de pintar para evitar parpadeo.
-      // Por defecto: oscuro (look original).
+      // Por defecto: claro.
       (function () {
         try {
-          var t = localStorage.getItem('taller_aeg_theme') || 'dark';
+          var t = localStorage.getItem('taller_aeg_theme') || 'light';
           if (t === 'dark') document.documentElement.classList.add('dark');
         } catch (e) {
-          document.documentElement.classList.add('dark');
+          // Por defecto claro: no se añade la clase 'dark'.
         }
       })();
     </script>

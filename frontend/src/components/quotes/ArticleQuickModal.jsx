@@ -8,13 +8,32 @@ import Button from '../../components/ui/Button.jsx';
 
 const LABOR_PREFIX = 'MO';
 
+/**
+ * ArticleQuickModal es la ventana emergente para crear rapidamente un
+ * articulo nuevo (una "Mano de Obra" o un "Repuesto") sin salir de la
+ * pantalla de Cotizaciones. Sirve para cuando, al armar una cotizacion, el
+ * usuario necesita agregar algo que todavia no existe en el Inventario: lo
+ * crea aqui mismo y de inmediato queda disponible para usarlo en la
+ * cotizacion. El codigo del articulo (ej. "MO-001" o "ROD-004") se genera
+ * solo, automaticamente.
+ *
+ * Props:
+ * - open / onClose: si la ventana esta visible y como cerrarla.
+ * - onSaved: que hacer con el articulo recien creado (normalmente, agregarlo
+ *   a la cotizacion que se esta armando).
+ * - type: 'labor' para crear una Mano de Obra, o 'part' para crear un Repuesto.
+ */
 export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labor' }) {
   const [saving, setSaving] = useState(false);
-  const [categories, setCategories] = useState([]);
-  const [selectedCat, setSelectedCat] = useState(null);
-  const [code, setCode] = useState('');
+  const [categories, setCategories] = useState([]); // categorias de pieza disponibles (solo aplica para repuestos)
+  const [selectedCat, setSelectedCat] = useState(null); // categoria elegida para el repuesto
+  const [code, setCode] = useState(''); // codigo generado automaticamente (ej. "MO-001")
   const [form, setForm] = useState({ name:'', price:0, brand:'', description:'' });
 
+  // Cada vez que se abre la ventana, limpia el formulario y pide el siguiente
+  // codigo disponible: si es Mano de Obra, usa el prefijo fijo "MO"; si es
+  // Repuesto, primero trae la lista de categorias para que el usuario elija una
+  // (el codigo de un repuesto depende de la categoria que se seleccione).
   useEffect(() => {
     if (!open) return;
     setForm({ name:'', price:0, brand:'', description:'' });
@@ -27,6 +46,8 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
     }
   }, [open, type]);
 
+  // Cuando el usuario elige una categoria de repuesto, pide el siguiente
+  // codigo disponible para esa categoria en particular.
   useEffect(() => {
     if (type === 'part' && selectedCat) {
       partCategoriesApi.nextCode(selectedCat.prefix).then(setCode);
@@ -35,6 +56,11 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  // Se ejecuta al apretar "Crear Mano de Obra" / "Crear Repuesto": valida que
+  // los datos minimos esten completos, arma el articulo con valores por
+  // defecto segun el tipo (ej. un repuesto nuevo entra con cantidad 0 y
+  // precio Q0.00, listo para actualizarlo despues desde Inventario) y lo
+  // guarda en el servidor.
   const handleSave = async () => {
     if (!form.name.trim()) return notify.error('El nombre es requerido');
     if (type === 'part' && !selectedCat) return notify.error('Selecciona una categoria');
@@ -94,9 +120,9 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
                 <button key={cat.id} onClick={() => setSelectedCat(cat)}
                   style={{
                     padding:'8px 6px', borderRadius:7, cursor:'pointer', fontSize:12, fontWeight:600,
-                    background: selectedCat?.id === cat.id ? '#E8551C22' : 'var(--c-surface-2)',
-                    border: '1px solid ' + (selectedCat?.id === cat.id ? '#E8551C' : 'var(--c-line)'),
-                    color: selectedCat?.id === cat.id ? '#E8551C' : '#94a3b8',
+                    background: selectedCat?.id === cat.id ? '#CA8A0422' : 'var(--c-surface-2)',
+                    border: '1px solid ' + (selectedCat?.id === cat.id ? '#CA8A04' : 'var(--c-line)'),
+                    color: selectedCat?.id === cat.id ? '#CA8A04' : '#94a3b8',
                   }}>
                   <div style={{ fontSize:10, color:'#64748b' }}>{cat.prefix}</div>
                   {cat.name}

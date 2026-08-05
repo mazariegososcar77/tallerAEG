@@ -1,8 +1,10 @@
+// Este archivo trae del servidor la lista de "tipos de artículo" (el catálogo que
+// se configura en Configuración) y la deja lista para usar en los formularios.
 import { useState, useEffect, useCallback } from 'react';
 import { articleTypesApi } from '../api/articleTypesApi.js';
 import { notify } from '../lib/toast.js';
 
-/** Carga la lista de tipos de articulo y expone una funcion para recargar. */
+/** Trae la lista de tipos de artículo del servidor y permite volver a cargarla. */
 export function useArticleTypes() {
   const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);

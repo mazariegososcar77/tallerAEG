@@ -1,3 +1,11 @@
+// ============================================================================
+// COMPONENTE: Aviso "Próximamente / En construcción"
+// No es una pantalla propia, sino una plantilla reutilizable que muestran
+// otras pantallas (CatalogsPage, GeneralSettingsPage, SystemParamsPage) para
+// dejar claro que esa sección todavía no tiene funcionalidad real: solo
+// aparece un ícono, un título, un texto explicativo y una etiqueta de
+// "En construcción". No hay nada que hacer clic ni que llenar aquí.
+// ============================================================================
 import { Construction } from 'lucide-react';
 
 /** Pagina placeholder para modulos aun no implementados. */

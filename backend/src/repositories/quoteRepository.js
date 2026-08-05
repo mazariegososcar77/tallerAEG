@@ -1,6 +1,12 @@
+// Este archivo guarda y consulta las COTIZACIONES del taller: los presupuestos que se le
+// dan a un cliente antes de trabajar en su equipo, con sus líneas de mano de obra/piezas
+// (quote_items) y los datos de cada equipo cotizado (equipment_data).
 import pool from '../lib/db.js';
 
-export async function getAll() {
+// Trae todas las cotizaciones, la más reciente primero, junto con el nombre del cliente
+// (armado a partir de nombre y apellido), para no tener que buscarlo aparte. Si se indica
+// un clientId, solo trae las de ese cliente (lo usa el historial de equipo por cliente).
+export async function getAll(clientId) {
   const [rows] = await pool.query(`
     SELECT q.*,
       CASE
@@ -10,11 +16,20 @@ export async function getAll() {
       END as client_name
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
+    ${clientId ? 'WHERE q.client_id = ?' : ''}
     ORDER BY q.created_at DESC
-  `);
+  `, clientId ? [clientId] : []);
+  for (const row of rows) {
+    if (row.equipment_data && typeof row.equipment_data === 'string') {
+      row.equipment_data = JSON.parse(row.equipment_data);
+    }
+  }
   return rows;
 }
 
+// Busca una cotización por su id, con el nombre del cliente y además le agrega su lista
+// de líneas (quote_items) y convierte el detalle de los equipos cotizados (equipment_data,
+// que se guarda como texto) de vuelta a un objeto usable. Si no existe, devuelve null.
 export async function findById(id) {
   const [[quote]] = await pool.query(`
     SELECT q.*,
@@ -39,11 +54,16 @@ export async function findById(id) {
   return quote;
 }
 
+// Calcula el siguiente número correlativo de cotización (busca el número más alto ya
+// usado y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos.
 export async function getNextNumber() {
   const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM quotes');
   return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
 }
 
+// Guarda una nueva cotización junto con todas sus líneas (quote_items). Todo se hace como
+// una sola operación (transacción): si algo falla a mitad de camino, se deshace todo para
+// no dejar una cotización a medio guardar.
 export async function create(data, items = []) {
   const conn = await pool.getConnection();
   try {
@@ -75,6 +95,9 @@ export async function create(data, items = []) {
   }
 }
 
+// Actualiza una cotización existente. Si vienen líneas nuevas (items), primero borra
+// todas las líneas anteriores y guarda las nuevas en su lugar (así siempre queda la
+// lista completa y correcta). Todo se hace como una sola operación (transacción).
 export async function update(id, data, items) {
   const conn = await pool.getConnection();
   try {
@@ -106,6 +129,7 @@ export async function update(id, data, items) {
   }
 }
 
+// Elimina una cotización. Devuelve true si sí se borró algo, false si no existía.
 export async function remove(id) {
   const [result] = await pool.query('DELETE FROM quotes WHERE id = ?', [id]);
   return result.affectedRows > 0;

@@ -12,6 +12,14 @@ export default defineConfig({
         target: 'http://localhost:4000',
         changeOrigin: true,
       },
+      // Imagenes subidas: el backend las guarda como "/uploads/<archivo>" pero
+      // solo las sirve bajo "/api/uploads/" (ver app.js) -> se reescribe la
+      // ruta aqui, igual que en nginx.conf para produccion.
+      '/uploads': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+        rewrite: (path) => '/api' + path,
+      },
     },
   },
 });
