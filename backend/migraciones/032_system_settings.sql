@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS system_settings (
   updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Apariencia
+-- Apariencia  
 -- INSERT IGNORE: si el script se corre dos veces no falla ni pisa los valores
 -- que el taller ya haya configurado desde la pantalla.
 INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES
