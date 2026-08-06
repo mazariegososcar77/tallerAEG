@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - developer
+  # Permite lanzar el deploy a mano desde la pestana Actions ("Run workflow"),
+  # sin tener que pushear un commit vacio solo para redesplegar.
+  workflow_dispatch:
 
 jobs:
   deploy:
