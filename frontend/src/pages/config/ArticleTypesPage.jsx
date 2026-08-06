@@ -22,7 +22,7 @@ export default function ArticleTypesPage() {
       loading={loading}
       reload={reload}
       api={articleTypesApi}
-      emoji={<Tags size={26} color="#CA8A04" />}
+      emoji={<Tags size={26} color="var(--c-accent)" />}
       permPrefix="article-types"
     />
   );

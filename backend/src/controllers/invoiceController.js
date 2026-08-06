@@ -2,6 +2,7 @@
 // certificarlas y descargar el PDF de una factura.
 import * as invoiceService from '../services/invoiceService.js';
 import { generarFacturaPDF } from '../utils/pdfGenerator.js';
+import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Cuando el usuario abre la pantalla de Facturación, esto trae la lista de facturas.
@@ -31,7 +32,7 @@ export const certify = asyncHandler(async (req, res) => {
 // Cuando el usuario descarga el PDF de una factura, esto genera el archivo y se lo envía.
 export const pdf = asyncHandler(async (req, res) => {
   const invoice = await invoiceService.getById(req.params.id);
-  const doc = generarFacturaPDF(invoice);
+  const doc = generarFacturaPDF(invoice, await settingsService.getSettings());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="factura-${invoice.number}.pdf"`);
   doc.pipe(res);

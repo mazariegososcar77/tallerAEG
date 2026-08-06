@@ -5,7 +5,7 @@
 // finalizar un Reporte de Trabajo). Desde aquí se puede:
 //   - Buscar y filtrar facturas por cliente, rango de fechas o "solo
 //     pendientes de certificar".
-//   - Ver una vista previa del PDF o descargarlo.
+//   - Ver una vista previa del PDF (en una ventana dentro de la app) o descargarlo.
 //   - Certificar una factura pendiente (abre la ventana CertifyInvoiceModal).
 // La certificación fiscal (FEL) real todavía no está integrada; certificar
 // aquí solo cambia el estado interno de la factura.
@@ -14,12 +14,13 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { invoicesApi } from '../../api/invoicesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
-import { getToken } from '../../lib/authStorage.js';
+import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import CertifyInvoiceModal from './CertifyInvoiceModal.jsx';
 import { Receipt, Search, Download, Eye, ShieldCheck } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export default function InvoicesPage() {
   const [onlyPending, setOnlyPending] = useState(true);
   const [loading, setLoading] = useState(true);
   const [toCertify, setToCertify] = useState(null);
+  const [pdfInvoice, setPdfInvoice] = useState(null); // factura que se esta viendo en el visor de PDF
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Vuelve a traer la lista de facturas desde el servidor (se usa al cargar
@@ -85,30 +87,8 @@ export default function InvoicesPage() {
   // Descarga el PDF de la factura al dispositivo del usuario.
   const handleDownloadPDF = async (inv) => {
     try {
-      const token = getToken();
-      const res = await fetch(`/api/invoices/${inv.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `factura-${inv.number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadPdf(`/api/invoices/${inv.id}/pdf`, `factura-${inv.number}.pdf`);
     } catch (e) { notify.error('Error al generar PDF'); }
-  };
-
-  // Abre el PDF de la factura en una pestaña nueva del navegador, para
-  // verla sin necesidad de descargarla primero.
-  const handlePreviewPDF = async (inv) => {
-    try {
-      const token = getToken();
-      const res = await fetch(`/api/invoices/${inv.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      // No se revoca el URL de inmediato: la pestaña nueva necesita seguir
-      // leyendo el blob mientras el usuario la tenga abierta.
-      window.open(url, '_blank');
-    } catch (e) { notify.error('Error al generar la vista previa'); }
   };
 
   // Se llama cuando la ventana de certificar confirma los datos: le pide al
@@ -183,7 +163,7 @@ export default function InvoicesPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(inv.total).toFixed(2)}</span>
-                    <button onClick={() => handlePreviewPDF(inv)} title="Vista previa del PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
+                    <button onClick={() => setPdfInvoice(inv)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(inv)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     {inv.status === 'pendiente_certificacion' && hasPermission('billing.certify') && (
                       <button onClick={() => setToCertify(inv)} title="Certificar factura" style={{ background: '#E8551C', border: 'none', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
@@ -197,6 +177,15 @@ export default function InvoicesPage() {
           })}
         </div>
       )}
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={pdfInvoice != null}
+        onClose={() => setPdfInvoice(null)}
+        url={pdfInvoice ? `/api/invoices/${pdfInvoice.id}/pdf` : null}
+        fileName={pdfInvoice ? `factura-${pdfInvoice.number}.pdf` : ''}
+        title={pdfInvoice ? `Factura No. ${pdfInvoice.number}` : ''}
+      />
 
       <CertifyInvoiceModal
         open={toCertify != null}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link2, Upload, X, ImageOff } from 'lucide-react';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
+import { prepareImageForUpload, IMAGE_ACCEPT } from '../../lib/image.js';
 import Input from '../ui/Input.jsx';
 import Spinner from '../ui/Spinner.jsx';
 
@@ -20,15 +21,16 @@ export default function ImagePicker({ value, onChange }) {
   const [uploading, setUploading] = useState(false); // true mientras la imagen se esta subiendo al servidor
   const [broken, setBroken] = useState(false); // true si la imagen no se pudo mostrar (enlace invalido, etc.)
 
-  // Se ejecuta cuando el usuario elige un archivo de imagen de su computadora:
-  // lo envia al servidor y, si se sube bien, guarda el enlace resultante.
+  // Se ejecuta cuando el usuario elige un archivo de imagen de su computadora
+  // (o del celular): lo convierte a JPG liviano, lo envia al servidor y, si se
+  // sube bien, guarda el enlace resultante.
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     setUploading(true);
     try {
-      const { url } = await articlesApi.uploadImage(file);
+      const { url } = await articlesApi.uploadImage(await prepareImageForUpload(file));
       setBroken(false);
       onChange(url);
       notify.success('Imagen subida');
@@ -83,10 +85,10 @@ export default function ImagePicker({ value, onChange }) {
             border-slate-300 px-4 py-3 text-sm text-navy-700 hover:border-orange-400 hover:bg-orange-50"
         >
           {uploading ? <Spinner size={16} className="text-orange-500" /> : <Upload size={16} />}
-          {uploading ? 'Subiendo...' : 'Seleccionar imagen (JPG, PNG, WEBP, GIF)'}
+          {uploading ? 'Subiendo...' : 'Seleccionar imagen (cualquier formato)'}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept={IMAGE_ACCEPT}
             className="hidden"
             onChange={handleFile}
             disabled={uploading}

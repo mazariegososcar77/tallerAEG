@@ -12,12 +12,13 @@ import { useNavigate } from 'react-router-dom';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { workReportsApi } from '../../api/workReportsApi.js';
 import { invoicesApi } from '../../api/invoicesApi.js';
-import { getToken } from '../../lib/authStorage.js';
+import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import WorkOrderViewModal from './WorkOrderViewModal.jsx';
-import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt } from 'lucide-react';
+import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch } from 'lucide-react';
 
 const STATUS_LABELS = {
   recibido:   { label: 'Recibido',   color: '#3b82f6' },
@@ -35,6 +36,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [viewId, setViewId] = useState(null);
+  const [pdfOrder, setPdfOrder] = useState(null); // orden que se esta viendo en el visor de PDF
   const [toDelete, setToDelete] = useState(null);
   const [creatingReportId, setCreatingReportId] = useState(null);
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState(null);
@@ -90,17 +92,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
   // Descarga el PDF de la orden.
   const handleDownloadPDF = async (order) => {
     try {
-      const token = getToken();
-      const res = await fetch('/api/work-orders/' + order.id + '/pdf', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'orden-' + order.number + '.pdf';
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadPdf('/api/work-orders/' + order.id + '/pdf', 'orden-' + order.number + '.pdf');
     } catch(e) { notify.error('Error al generar PDF'); }
   };
 
@@ -187,6 +179,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                     {isPost && order.quote_id && order.quote_status === 'aprobada' && !order.invoice_id && hasPermission('billing.create') && (
                       <button onClick={() => handleGenerateInvoice(order)} disabled={generatingInvoiceId === order.id} title="Generar factura" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#f97316', opacity: generatingInvoiceId === order.id ? 0.6 : 1 }}><Receipt size={16} /></button>
                     )}
+                    <button onClick={() => setPdfOrder(order)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#0ea5e9' }}><FileSearch size={16} /></button>
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate(basePath + '/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
                     <button onClick={() => setToDelete(order)} title="Eliminar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
@@ -203,6 +196,16 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
         orderId={viewId}
         onClose={() => setViewId(null)}
         onDownload={handleDownloadPDF}
+        onViewPdf={(order) => { setViewId(null); setPdfOrder(order); }}
+      />
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={pdfOrder != null}
+        onClose={() => setPdfOrder(null)}
+        url={pdfOrder ? `/api/work-orders/${pdfOrder.id}/pdf` : null}
+        fileName={pdfOrder ? `orden-${pdfOrder.number}.pdf` : ''}
+        title={pdfOrder ? `Orden de Trabajo No. ${pdfOrder.number}` : ''}
       />
 
       <ConfirmDialog

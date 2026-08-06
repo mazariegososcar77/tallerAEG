@@ -8,8 +8,10 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { Wrench, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import Combobox from '../../components/ui/Combobox.jsx';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import MachineFormModal from '../../components/machines/MachineFormModal.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { notify } from '../../lib/toast.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', red:'#ef4444' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
@@ -23,6 +25,7 @@ export default function MachinesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [toDelete, setToDelete] = useState(null); // maquina pendiente de confirmar su eliminacion
   // Al abrir la pantalla, carga la lista de clientes (para el filtro y el formulario)
   // y la lista de maquinas.
   useEffect(() => {
@@ -43,10 +46,18 @@ export default function MachinesPage() {
   const openEdit = (m) => { setEditing(m); setShowForm(true); };
   // Se llama cuando MachineFormModal termino de guardar (crear o editar).
   const handleSaved = () => { setShowForm(false); loadMachines(clientFilter || undefined); };
-  // Elimina una maquina, pidiendo confirmacion antes.
-  const handleDelete = async (id) => {
-    if (!confirm('Eliminar esta maquina?')) return;
-    await machinesApi.remove(id); loadMachines(clientFilter || undefined);
+  // Elimina la maquina ya confirmada en el dialogo.
+  const handleDelete = async () => {
+    if (!toDelete) return;
+    try {
+      await machinesApi.remove(toDelete.id);
+      loadMachines(clientFilter || undefined);
+      notify.success('Maquina eliminada');
+    } catch(e) {
+      notify.error(e.response?.data?.error || e.message || 'No se pudo eliminar la maquina');
+    } finally {
+      setToDelete(null);
+    }
   };
   return (
     <div style={{ padding:'16px', maxWidth:1100, margin:'0 auto' }}>
@@ -95,7 +106,7 @@ export default function MachinesPage() {
               </div>
               <div style={{ display:'flex', gap:8 }}>
                 <button onClick={() => openEdit(m)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'7px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>
-                <button onClick={() => handleDelete(m.id)} style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'7px 10px', cursor:'pointer', color:C.red }}><Trash2 size={15}/></button>
+                <button onClick={() => setToDelete(m)} title="Eliminar maquina" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:7, padding:'7px 10px', cursor:'pointer', color:C.red }}><Trash2 size={15}/></button>
               </div>
             </div>
           ))}
@@ -105,6 +116,15 @@ export default function MachinesPage() {
           El formulario vive en components/machines/MachineFormModal.jsx para poder
           reutilizarlo desde MachinePicker (Cotizaciones / Ordenes). */}
       <MachineFormModal open={showForm} onClose={() => setShowForm(false)} onSaved={handleSaved} clients={clients} machine={editing} />
+
+      <ConfirmDialog
+        open={toDelete != null}
+        onClose={() => setToDelete(null)}
+        onConfirm={handleDelete}
+        title="Eliminar maquina"
+        message={toDelete ? `¿Seguro que deseas eliminar la maquina "${toDelete.name}"? Esta accion no se puede deshacer.` : ''}
+        confirmText="Eliminar"
+      />
     </div>
   );
 }

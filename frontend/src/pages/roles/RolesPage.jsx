@@ -40,7 +40,7 @@ export default function RolesPage() {
     <div style={{ padding:'20px 16px', maxWidth:1100, margin:'0 auto' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <ShieldCheck size={26} color="#CA8A04" />
+          <ShieldCheck size={26} color="var(--c-accent)" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Roles</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>{roles.length} roles registrados</p>

@@ -73,7 +73,7 @@ export default function ArticlesPage() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <Package size={26} color="#CA8A04" />
+          <Package size={26} color="var(--c-accent)" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Inventario</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>{articles.length} articulos registrados</p>

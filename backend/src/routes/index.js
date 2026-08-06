@@ -20,6 +20,7 @@ import partCategoryRoutes from './partCategoryRoutes.js';
 import workReportRoutes from './workReportRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
 import serviceOrderRoutes from './serviceOrderRoutes.js';
+import settingsRoutes from './settingsRoutes.js';
 import publicRoutes from './publicRoutes.js';
 
 const router = Router();
@@ -62,6 +63,8 @@ router.use('/work-reports', workReportRoutes);
 router.use('/invoices', invoiceRoutes);
 // Administrar ordenes de servicio (visitas tecnicas de campo: bombas/pozos en sitio del cliente).
 router.use('/service-orders', serviceOrderRoutes);
+// Configuracion general del sistema (colores, tema por defecto, datos del taller).
+router.use('/settings', settingsRoutes);
 // Rutas PUBLICAS (sin sesion) -- hoy solo el enlace de firma remota del cliente.
 router.use('/public', publicRoutes);
 

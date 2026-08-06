@@ -7,8 +7,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { workReportsApi } from '../../api/workReportsApi.js';
-import { getToken } from '../../lib/authStorage.js';
+import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import { Camera, Search, Pencil, Eye, Download } from 'lucide-react';
 
 const STATUS_LABELS = {
@@ -20,6 +21,7 @@ export default function WorkReportsPage() {
   const [reports, setReports] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [pdfReport, setPdfReport] = useState(null); // reporte que se esta viendo en el visor de PDF
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,33 +35,10 @@ export default function WorkReportsPage() {
     r.work_order_number?.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Pide al servidor el PDF del reporte (usado tanto para verlo como para descargarlo).
-  const fetchPdfBlob = async (report) => {
-    const token = getToken();
-    const res = await fetch(`/api/work-reports/${report.id}/pdf`, { headers: { Authorization: `Bearer ${token}` } });
-    if (!res.ok) throw new Error('No se pudo generar el PDF');
-    return res.blob();
-  };
-
-  // Abre el PDF del reporte en una pestaña nueva, para verlo sin descargarlo.
-  const handlePreviewPDF = async (report) => {
-    try {
-      const blob = await fetchPdfBlob(report);
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (e) { notify.error('Error al generar la vista previa'); }
-  };
-
   // Descarga el PDF del reporte al dispositivo.
   const handleDownloadPDF = async (report) => {
     try {
-      const blob = await fetchPdfBlob(report);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `reporte-${report.number}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadPdf(`/api/work-reports/${report.id}/pdf`, `reporte-${report.number}.pdf`);
     } catch (e) { notify.error('Error al generar PDF'); }
   };
 
@@ -112,7 +91,7 @@ export default function WorkReportsPage() {
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>Orden No. {report.work_order_number}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button onClick={() => handlePreviewPDF(report)} title="Vista previa del PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
+                    <button onClick={() => setPdfReport(report)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(report)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate('/reportes/' + report.id + '/editar')} title="Ver / Editar reporte" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
                   </div>
@@ -122,6 +101,15 @@ export default function WorkReportsPage() {
           })}
         </div>
       )}
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={pdfReport != null}
+        onClose={() => setPdfReport(null)}
+        url={pdfReport ? `/api/work-reports/${pdfReport.id}/pdf` : null}
+        fileName={pdfReport ? `reporte-${pdfReport.number}.pdf` : ''}
+        title={pdfReport ? `Reporte No. ${pdfReport.number}` : ''}
+      />
     </div>
   );
 }

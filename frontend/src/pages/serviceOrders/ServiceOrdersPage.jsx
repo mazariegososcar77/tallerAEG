@@ -1,16 +1,17 @@
 // PANTALLA: Lista de Órdenes de Servicio — visitas técnicas de campo (servicio de
 // bombas/pozos en el sitio del cliente). Muestra el cliente, la fecha de visita, el
-// equipo y el estado. Desde aquí se puede buscar, crear una orden nueva, descargar el
-// PDF, editarla o eliminarla. El reporte técnico y las firmas ya viven dentro de la
+// equipo y el estado. Desde aquí se puede buscar, crear una orden nueva, visualizar
+// su PDF (en una ventana dentro de la app), descargarlo, editarla o eliminarla. El reporte técnico y las firmas ya viven dentro de la
 // orden misma (ver ServiceOrderFormPage.jsx) — no hay un Reporte de Trabajo aparte.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { serviceOrdersApi } from '../../api/serviceOrdersApi.js';
-import { getToken } from '../../lib/authStorage.js';
+import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
-import { Truck, Plus, Search, Download, Pencil, Trash2 } from 'lucide-react';
+import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
+import { Truck, Plus, Search, Download, Pencil, Trash2, FileSearch } from 'lucide-react';
 
 const STATUS_LABELS = {
   programada: { label: 'Programada', color: '#3b82f6' },
@@ -25,6 +26,7 @@ export default function ServiceOrdersPage() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [toDelete, setToDelete] = useState(null);
+  const [pdfOrder, setPdfOrder] = useState(null); // orden que se esta viendo en el visor de PDF
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,17 +42,7 @@ export default function ServiceOrdersPage() {
 
   const handleDownloadPDF = async (order) => {
     try {
-      const token = getToken();
-      const res = await fetch('/api/service-orders/' + order.id + '/pdf', {
-        headers: { Authorization: 'Bearer ' + token }
-      });
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'orden-servicio-' + order.number + '.pdf';
-      a.click();
-      URL.revokeObjectURL(url);
+      await downloadPdf('/api/service-orders/' + order.id + '/pdf', 'orden-servicio-' + order.number + '.pdf');
     } catch(e) { notify.error('Error al generar PDF'); }
   };
 
@@ -124,6 +116,7 @@ export default function ServiceOrdersPage() {
                     </p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button onClick={() => setPdfOrder(order)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#0ea5e9' }}><FileSearch size={16} /></button>
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     {hasPermission('service-orders.update') && (
                       <button onClick={() => navigate('/ordenes-servicio/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
@@ -138,6 +131,15 @@ export default function ServiceOrdersPage() {
           })}
         </div>
       )}
+
+      {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
+      <PdfViewerModal
+        open={pdfOrder != null}
+        onClose={() => setPdfOrder(null)}
+        url={pdfOrder ? `/api/service-orders/${pdfOrder.id}/pdf` : null}
+        fileName={pdfOrder ? `orden-servicio-${pdfOrder.number}.pdf` : ''}
+        title={pdfOrder ? `Orden de Servicio No. ${pdfOrder.number}` : ''}
+      />
 
       <ConfirmDialog
         open={toDelete != null}

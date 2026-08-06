@@ -17,22 +17,43 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const MAX_SIZE_MB = 5;
-const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+// El frontend ya convierte las fotos a JPG liviano antes de subirlas
+// (frontend/src/lib/image.js), pero si el navegador del usuario no pudo leer el
+// formato manda el archivo original: por eso aqui se aceptan tambien los
+// formatos de camara/celular y un limite de tamano holgado.
+const MAX_SIZE_MB = 12;
+const ALLOWED_MIMES = new Set([
+  'image/jpeg', 'image/jpg', 'image/pjpeg', // algunos navegadores usan estas variantes
+  'image/png', 'image/webp', 'image/gif',
+  'image/bmp', 'image/x-ms-bmp',
+  'image/tiff', 'image/tif',
+  'image/heic', 'image/heif', 'image/heic-sequence', 'image/heif-sequence', // fotos de iPhone
+  'image/avif',
+]);
+// SVG queda fuera a proposito: se sirve desde el mismo dominio y puede llevar
+// scripts adentro.
+const ALLOWED_EXTS = /^\.(jpg|jpeg|png|webp|gif|bmp|tif|tiff|heic|heif|avif)$/;
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
   filename: (_req, file, cb) => {
     const ext = (path.extname(file.originalname) || '').toLowerCase();
-    const safeExt = /^\.(jpg|jpeg|png|webp|gif)$/.test(ext) ? ext : '.bin';
+    const safeExt = ALLOWED_EXTS.test(ext) ? ext : '.bin';
     cb(null, `${crypto.randomUUID()}${safeExt}`);
   },
 });
 
-const fileFilter = (_req, file, cb) =>
-  ALLOWED_MIMES.has(file.mimetype)
-    ? cb(null, true)
-    : cb(new ApiError(400, `Tipo de archivo no permitido: ${file.mimetype}`));
+// Acepta el archivo si el tipo declarado es una imagen conocida. Algunos
+// celulares mandan tipos genericos (`application/octet-stream`) o vacios aunque
+// el archivo si sea una foto; en ese caso se decide por la extension.
+const fileFilter = (_req, file, cb) => {
+  const mime = (file.mimetype || '').toLowerCase();
+  const ext = (path.extname(file.originalname) || '').toLowerCase();
+  if (ALLOWED_MIMES.has(mime)) return cb(null, true);
+  const genericMime = !mime || mime === 'application/octet-stream' || mime === 'binary/octet-stream';
+  if (genericMime && ALLOWED_EXTS.test(ext)) return cb(null, true);
+  return cb(new ApiError(400, `Tipo de archivo no permitido: ${file.mimetype || 'desconocido'}`));
+};
 
 const single = multer({
   storage,

@@ -5,9 +5,45 @@
 /*
  * Tokens de tema. El tema CLARO (por defecto) usa un verde super claro de
  * fondo, tarjetas blancas y texto oscuro. El tema OSCURO usa verdes oscuros.
- * El sidebar (verde) y el acento amarillo son fijos en ambos temas.
+ * El sidebar (verde) y el acento amarillo son iguales en ambos temas.
+ *
+ * PALETA DE MARCA (--c-navy-* y --c-orange-*): son los colores configurables
+ * desde Configuracion > Configuracion general. Van como canales RGB sueltos
+ * ("22 75 44" en vez de "#164B2C") porque asi Tailwind puede aplicarles
+ * transparencia — es lo que hace que sigan funcionando clases como
+ * `bg-navy-900/50` o `border-orange-500/40` (ver tailwind.config.js).
+ * `--c-primary` / `--c-accent` son los mismos dos colores en hex, para los
+ * estilos en linea que no pasan por Tailwind.
+ * Los valores de abajo son la paleta de marca original: si nadie cambia los
+ * colores en la configuracion, el sistema se ve exactamente igual que antes.
  */
 :root {
+  /* Marca: verde oscuro (token historico `navy`) */
+  --c-navy-50: 236 246 239;
+  --c-navy-100: 210 233 218;
+  --c-navy-200: 169 210 183;
+  --c-navy-300: 120 183 142;
+  --c-navy-400: 72 152 106;
+  --c-navy-500: 44 122 75;
+  --c-navy-600: 30 95 57;
+  --c-navy-700: 22 75 44;   /* color principal de marca */
+  --c-navy-800: 16 58 34;
+  --c-navy-900: 11 42 24;
+  /* Marca: amarillo dorado (token historico `orange`) */
+  --c-orange-50: 254 252 232;
+  --c-orange-100: 253 246 200;
+  --c-orange-200: 252 236 148;
+  --c-orange-300: 245 215 78;
+  --c-orange-400: 232 191 30;
+  --c-orange-500: 202 138 4;  /* acento principal de marca */
+  --c-orange-600: 166 111 3;
+  --c-orange-700: 135 90 7;
+  --c-orange-800: 107 71 10;
+  --c-orange-900: 84 56 11;
+  /* Los mismos dos colores en hex, para estilos en linea */
+  --c-primary: #164B2C;
+  --c-accent: #CA8A04;
+
   /* Tema claro (verde super claro) — por defecto */
   --c-app: #ECF5EF;
   --c-surface: #FFFFFF;
