@@ -208,12 +208,18 @@ runtime, solo los escribe `npm run seed`.
   devuelve en vez de crear otro (es lo que llama el botón "Reporte" de `WorkOrdersPage`).
   `invoiceService.createFromWorkReport(report)` es igual de idempotente vía `UNIQUE work_order_id`.
 - **Certificación FEL:** `invoiceService.certify(id, email)` llama a `felCertifier.certify(invoice)`
-  (`src/services/felCertifier.js`), que hoy es un **stub** — devuelve todo `null` a propósito. El
-  estado interno de la factura sí avanza a `certificada` (uso administrativo), pero **no genera un
-  UUID/serie fiscal real** ni hace ninguna llamada externa. No "arregles" esto rellenando datos falsos:
-  cuando se contrate un certificador (Digifact/Infile/Megaprint/etc.), la integración real va dentro de
-  esa función, sin tocar `invoiceService` ni las rutas. `generarFacturaPDF` imprime un aviso visible
-  cuando `fel_uuid` es null.
+  (`src/services/felCertifier.js`). Ya está conectado a **Digifact** (`src/lib/digifactClient.js` +
+  `src/lib/nucBuilder.js`, basados en `documentacion.digifact.com/gt/api` y el PDF
+  `Documentacion_Tecnica_API_NUC_Digifact_GT_V2_0_6.pdf` que entrega Digifact con las credenciales),
+  pero **sigue comportándose como el stub original mientras falten credenciales**:
+  `felCertifier.certify` revisa `digifactClient._internal.isConfigured()` (¿hay
+  `DIGIFACT_NIT/USERNAME/PASSWORD` en `.env`?) y si no las hay devuelve todo `null` sin llamar a
+  nadie — el estado interno de la factura avanza a `certificada` igual (uso administrativo), pero
+  **no genera un UUID/serie fiscal real**. No "arregles" esto rellenando datos falsos.
+  `generarFacturaPDF` imprime un aviso visible cuando `fel_uuid` es null. Antes de poner
+  credenciales reales: confirmar con Digifact/el contador el régimen de IVA (`AfiliacionIVA`), el
+  establecimiento y el código geográfico SAT (variables `DIGIFACT_*` en `.env.example`), y probar
+  primero contra `DIGIFACT_ENV=test`.
 - El envío del correo de certificación **no está implementado** (no hay SMTP/nodemailer en el backend).
   El frontend captura y guarda el correo (`invoices.client_email`), pero no se envía nada todavía.
 - **Editar un reporte finalizado:** por defecto, un reporte `finalizado` queda de solo lectura (fotos y
