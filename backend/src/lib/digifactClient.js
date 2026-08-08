@@ -13,6 +13,11 @@ import { ApiError } from '../utils/ApiError.js';
 
 let cachedToken = null;
 
+// Digifact a veces tarda (o no responde) en el sandbox; sin esto una llamada
+// colgada deja al usuario viendo el boton "Certificar" girando para siempre
+// (el fetch de Node y el axios del frontend no tienen timeout propio).
+const REQUEST_TIMEOUT_MS = 20000;
+
 function isConfigured() {
   return Boolean(env.digifact.nit && env.digifact.username && env.digifact.password);
 }
@@ -34,14 +39,21 @@ function nit12(nit) {
 
 async function fetchToken() {
   requireConfigured();
-  const res = await fetch(`${baseUrl()}/api/login/get_token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      Username: `GT.${nit12(env.digifact.nit)}.${env.digifact.username}`,
-      Password: env.digifact.password,
-    }),
-  });
+  let res;
+  try {
+    res = await fetch(`${baseUrl()}/api/login/get_token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        Username: `GT.${nit12(env.digifact.nit)}.${env.digifact.username}`,
+        Password: env.digifact.password,
+      }),
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err.name === 'TimeoutError') throw new ApiError(504, 'Digifact no respondio a tiempo al autenticar. Intenta de nuevo.');
+    throw err;
+  }
   // Respuesta real (Documentacion_Tecnica_API_NUC_Digifact_GT_V2_0_6.pdf, pag. 6, sec. 2.1.2):
   // { "Token": "...", "expira_en": "2023-09-29T21:53:52...Z", "otorgado_a": "000044653948" }
   // "Token" va con T mayuscula. expira_en/otorgado_a no se usan hoy; quedan disponibles
@@ -66,14 +78,22 @@ async function authedFetch(path, { method = 'GET', query, body } = {}) {
     if (value !== undefined && value !== null) url.searchParams.set(key, value);
   }
 
-  const doFetch = async (token) => fetch(url, {
-    method,
-    headers: {
-      Authorization: token,
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const doFetch = async (token) => {
+    try {
+      return await fetch(url, {
+        method,
+        headers: {
+          Authorization: token,
+          ...(body ? { 'Content-Type': 'application/json' } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (err) {
+      if (err.name === 'TimeoutError') throw new ApiError(504, 'Digifact no respondio a tiempo. Intenta de nuevo.');
+      throw err;
+    }
+  };
 
   let token = await getToken();
   let res = await doFetch(token);

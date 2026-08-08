@@ -107,7 +107,12 @@ export default function WorkReportFormPage() {
   };
 
   // Guarda la firma dibujada (del tecnico o de quien recibe) junto con el nombre de quien firma.
+  // Primero guarda las notas pendientes: firmar dispara un load() que trae el reporte
+  // del servidor y pisa el estado local de generalNotes/stageNotes, así que si hubiera
+  // notas escritas sin guardar se perderían de la pantalla (aunque nunca se guardaron,
+  // parecía que la firma las "borraba"). Mismo patrón que handleFinalize.
   const handleSaveSignature = async (role, file, name) => {
+    await handleSaveNotes();
     await workReportsApi.setSignature(id, file, role, name);
     load();
   };
