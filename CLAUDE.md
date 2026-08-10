@@ -29,9 +29,17 @@ Módulos implementados, funcionales end-to-end:
    (`work-reports.createForOrder`, idempotente: una orden solo tiene un reporte). Al finalizarlo
    genera automáticamente la factura correspondiente.
 8. **Facturación** (`/facturacion`): lista de facturas con filtro por cliente/fecha/"solo pendientes"
-   y certificación (captura el correo del cliente, prellenado desde su ficha). La certificación **FEL
-   real está pendiente de integrar** (ver [backend/src/services/felCertifier.js](backend/src/services/felCertifier.js))
-   — hoy solo cambia el estado interno, no genera un UUID/serie fiscal válido.
+   y certificación (captura el correo del cliente, prellenado desde su ficha). La certificación FEL
+   ya está **conectada a Digifact (Guatemala)**: `felCertifier.certify` arma el documento NUC con
+   [backend/src/lib/nucBuilder.js](backend/src/lib/nucBuilder.js) y lo envía con
+   [backend/src/lib/digifactClient.js](backend/src/lib/digifactClient.js), devolviendo el
+   UUID/serie/número que asigna la SAT. **Mientras falten las credenciales**
+   (`DIGIFACT_NIT/USERNAME/PASSWORD` en `.env`, ver [backend/.env.example](backend/.env.example))
+   sigue comportándose como el stub original: no llama a nadie, deja los campos `fel_*` en `null` y
+   la factura avanza a `certificada` solo para uso administrativo — **no es válida ante la SAT**. No
+   se debe "arreglar" eso rellenando datos falsos. El **envío del correo** de certificación tampoco
+   está implementado (no hay SMTP en el backend); el correo se guarda pero no se manda. Detalles en
+   [backend/CLAUDE.md](backend/CLAUDE.md).
 
 Flujo completo: **Cotización → Orden de Trabajo → Reporte de Trabajo → Factura**, vinculado por FKs
 reales (`work_orders.quote_id`, `work_reports.work_order_id`, `invoices.work_order_id/quote_id`). Una
@@ -58,7 +66,7 @@ siguen siendo placeholders "Coming Soon" (`ComingSoonPage`), no funcionalidad re
 **Ya hay base de datos real: MySQL.** Todos los repositorios (`backend/src/repositories/*.js`)
 consultan MySQL vía el pool de `mysql2` en [backend/src/lib/db.js](backend/src/lib/db.js) — ya no leen
 JSON. El esquema vive como scripts SQL incrementales y numerados en
-[backend/migraciones/](backend/migraciones/) (`001_init.sql` … `020_reports_billing_seed.sql`); **hay
+[backend/migraciones/](backend/migraciones/) (`001_init.sql` … `032_system_settings.sql`); **hay
 que aplicarlos a mano** (no hay migrador automático — ver siguiente sección).
 
 Detalle que puede confundir: `backend/src/seed.js` (`npm run seed`) es **legacy** — todavía escribe a
