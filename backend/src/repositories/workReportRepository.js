@@ -14,6 +14,10 @@ const UNIFIED_SELECT = `
   wr.*,
   COALESCE(wo.number, so.number) as order_number,
   CASE WHEN wr.work_order_id IS NOT NULL THEN 'work_order' ELSE 'service_order' END as order_kind,
+  -- Flujo (Pre/Post) de la orden que documenta este reporte, para que la lista pueda
+  -- separarlos igual que la pantalla de Ordenes de Trabajo. Viene NULL en los reportes
+  -- de Orden de Servicio, que no pertenecen a ninguno de los dos flujos.
+  wo.flow_type,
   COALESCE(wo.number, so.number) as work_order_number,
   COALESCE(wo.equipment_name, so.equipment_name) as equipment_name,
   COALESCE(wo.brand, so.brand) as brand,

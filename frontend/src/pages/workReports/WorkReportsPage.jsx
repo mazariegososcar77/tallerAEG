@@ -17,7 +17,8 @@ const STATUS_LABELS = {
   finalizado:  { label: 'Finalizado',  color: '#10b981' },
 };
 
-export default function WorkReportsPage() {
+export default function WorkReportsPage({ flowType = 'pre' }) {
+  const isPost = flowType === 'post';
   const [reports, setReports] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -28,8 +29,14 @@ export default function WorkReportsPage() {
     workReportsApi.list().then(setReports).finally(() => setLoading(false));
   }, []);
 
+  // Separa los reportes por flujo, igual que WorkOrdersPage con las ordenes: cada
+  // pantalla muestra solo los suyos. Los reportes de Orden de Servicio no pertenecen a
+  // ningun flujo (flow_type viene null), y por eso caen del lado "Pre" -- que es donde
+  // se venian viendo -- en vez de quedarse sin pantalla que los liste.
+  const flowReports = reports.filter(r => (r.flow_type || 'pre') === flowType);
+
   // Filtra la lista segun lo que el usuario busco (por numero de reporte, orden o cliente).
-  const filtered = reports.filter(r =>
+  const filtered = flowReports.filter(r =>
     r.number?.toLowerCase().includes(search.toLowerCase()) ||
     r.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     r.work_order_number?.toLowerCase().includes(search.toLowerCase())
@@ -49,8 +56,8 @@ export default function WorkReportsPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Camera size={26} color="#E8551C" />
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Reportes de Trabajo</h1>
-            <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{reports.length} reportes registrados</p>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Reportes de Trabajo{isPost ? ' (Post)' : ''}</h1>
+            <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{flowReports.length} reportes registrados</p>
           </div>
         </div>
       </div>

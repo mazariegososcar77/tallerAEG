@@ -96,12 +96,10 @@ export default function AppRoutes() {
         <Route path="post/ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/cotizaciones" element={<ProtectedRoute permission="dashboard.view"><ComingSoonPage title="Cotizaciones (Flujo Post)" description="La cotizacion posterior al reporte de desarme esta en construccion." /></ProtectedRoute>} />
-        {/* Los reportes son UNA sola pantalla para ambos flujos: /reportes lista los de
-            Pre y los de Post juntos (la consulta no distingue flow_type). Esto era un
-            "Proximamente" que llevaba a una pantalla que nunca se construyo, teniendo la
-            lista real a un clic de distancia; ahora redirige, igual que post/facturacion,
-            para no romper los enlaces viejos. */}
-        <Route path="post/reportes" element={<Navigate to="/reportes" replace />} />
+        {/* Reusa la misma pantalla de Reportes con flowType="post": lista solo los reportes
+            de ordenes Post. Los de Orden de Servicio no tienen flujo y se listan del lado
+            Pre, que es donde se venian viendo. */}
+        <Route path="post/reportes" element={<ProtectedRoute permission="work-reports.view"><WorkReportsPage flowType="post" /></ProtectedRoute>} />
         {/* La facturacion es UNA sola para ambos flujos (la tabla `invoices` no
             distingue Pre/Post; solo cambia como nace la factura: automatica al
             finalizar el reporte en Pre, manual con "Generar Factura" en Post).
