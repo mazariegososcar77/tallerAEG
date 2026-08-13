@@ -176,6 +176,17 @@ export async function setInProgressIfReady(id, executor = pool) {
   return result.affectedRows > 0;
 }
 
+// Deja la marca de que alguien ya revisó los documentos adjuntos de esta orden (el
+// paso previo a facturar). Va aparte de `update` porque aquel abre su propia
+// transacción y reemplaza los ítems de la orden: para escribir dos columnas no hace
+// falta nada de eso.
+export async function markDocumentsReviewed(id, userId = null, executor = pool) {
+  await executor.query(
+    'UPDATE work_orders SET documents_reviewed_at = NOW(), documents_reviewed_by = ? WHERE id = ?',
+    [userId, id]
+  );
+}
+
 // Elimina una orden de trabajo. Devuelve true si sí se borró algo, false si no existía.
 export async function remove(id) {
   const [result] = await pool.query('DELETE FROM work_orders WHERE id = ?', [id]);

@@ -18,7 +18,8 @@ import { useAuth } from '../../hooks/useAuth.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import WorkOrderViewModal from './WorkOrderViewModal.jsx';
-import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch } from 'lucide-react';
+import WorkOrderDocumentsModal from '../../components/workOrders/WorkOrderDocumentsModal.jsx';
+import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch, Paperclip } from 'lucide-react';
 
 const STATUS_LABELS = {
   recibido:   { label: 'Recibido',   color: '#3b82f6' },
@@ -40,6 +41,8 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
   const [toDelete, setToDelete] = useState(null);
   const [creatingReportId, setCreatingReportId] = useState(null);
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState(null);
+  const [docsOrder, setDocsOrder] = useState(null);      // orden cuya seccion de documentos se esta viendo
+  const [docsStepOrder, setDocsStepOrder] = useState(null); // orden detenida en el paso previo a facturar
   const navigate = useNavigate();
 
   // Abre el Reporte de Trabajo (fotos + notas) de esta orden. Si la orden todavia
@@ -57,11 +60,20 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
     }
   };
 
+  // Paso obligatorio previo a facturar: hay que revisar los documentos de terceros
+  // de la orden (aunque sea para confirmar que no hay ninguno). Abrir la ventana
+  // aqui no es un adorno: el backend lo exige igual, y sin la confirmacion
+  // createFromWorkOrder responde 409.
+  const handleGenerateInvoice = (order) => {
+    if (!order.documents_reviewed_at) return setDocsStepOrder(order);
+    return generateInvoice(order);
+  };
+
   // Flujo Post, boton "Generar Factura": la cotizacion ya esta aprobada (se armo
   // despues del reporte, con el diagnostico real), asi que ya se puede facturar
   // a mano (en Pre esto es automatico al finalizar el reporte, ver
   // workReportService.finalize / WorkReportFormPage).
-  const handleGenerateInvoice = async (order) => {
+  const generateInvoice = async (order) => {
     setGeneratingInvoiceId(order.id);
     try {
       const invoice = await invoicesApi.createFromWorkOrder(order.id);
@@ -71,6 +83,15 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
     } finally {
       setGeneratingInvoiceId(null);
     }
+  };
+
+  // Cuando el usuario confirma la revision en la ventana de documentos, se cierra
+  // el paso y se sigue con lo que venia haciendo: generar la factura.
+  const handleDocsConfirmed = () => {
+    const order = docsStepOrder;
+    setDocsStepOrder(null);
+    setOrders(prev => prev.map(o => o.id === order.id ? { ...o, documents_reviewed_at: new Date().toISOString() } : o));
+    generateInvoice(order);
   };
 
   useEffect(() => {
@@ -170,6 +191,9 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                     {hasPermission('work-reports.create') && (
                       <button onClick={() => handleOpenReport(order)} disabled={creatingReportId === order.id} title="Reporte de trabajo" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#a855f7', opacity: creatingReportId === order.id ? 0.6 : 1 }}><Camera size={16} /></button>
                     )}
+                    {hasPermission('work-order-documents.view') && (
+                      <button onClick={() => setDocsOrder(order)} title="Documentos adjuntos (papeleria de terceros)" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: order.documents_reviewed_at ? '#10b981' : '#CA8A04' }}><Paperclip size={16} /></button>
+                    )}
                     {/* Flujo Post: una vez finalizado el reporte y sin cotizacion todavia,
                         deja crear la cotizacion con el diagnostico ya conocido. */}
                     {isPost && order.report_status === 'finalizado' && !order.quote_id && (
@@ -215,6 +239,24 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
         title="Eliminar orden de trabajo"
         message={toDelete ? `¿Seguro que deseas eliminar la orden No. ${toDelete.number}? Esta accion no se puede deshacer.` : ''}
         confirmText="Eliminar"
+      />
+
+      {/* Documentos adjuntos, abiertos a mano desde el clip de la orden. */}
+      <WorkOrderDocumentsModal
+        open={docsOrder != null}
+        order={docsOrder}
+        onClose={() => setDocsOrder(null)}
+      />
+
+      {/* La MISMA ventana, pero como paso obligatorio: aparece cuando se quiso
+          generar la factura de una orden que todavia no paso por la revision de
+          documentos. Al confirmar, sigue sola con la factura. */}
+      <WorkOrderDocumentsModal
+        open={docsStepOrder != null}
+        order={docsStepOrder}
+        stepMode
+        onClose={() => setDocsStepOrder(null)}
+        onConfirmed={handleDocsConfirmed}
       />
     </div>
   );

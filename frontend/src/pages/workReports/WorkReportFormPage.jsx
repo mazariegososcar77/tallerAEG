@@ -21,6 +21,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import PhotoStageGallery from '../../components/reports/PhotoStageGallery.jsx';
 import SignaturePad from '../../components/reports/SignaturePad.jsx';
+import WorkOrderDocumentsModal from '../../components/workOrders/WorkOrderDocumentsModal.jsx';
 
 // Las 4 etapas fijas del reporte, en orden. Cada una necesita fotos + una nota.
 const STAGES = [
@@ -55,6 +56,7 @@ export default function WorkReportFormPage() {
   const [stageNotes, setStageNotes] = useState({});
   const [saving, setSaving] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [docsStep, setDocsStep] = useState(false); // paso de documentos abierto antes de finalizar
   const [signingLink, setSigningLink] = useState(null);
   const [loadingLink, setLoadingLink] = useState(false);
 
@@ -161,6 +163,30 @@ export default function WorkReportFormPage() {
   // - Orden de Servicio (subcontrato): nunca factura (costo interno, no se le
   //   cobra a un cliente) -- se queda en el reporte, ya finalizado y de solo
   //   lectura.
+  // Paso obligatorio previo: si el reporte documenta una Orden de Trabajo que
+  // todavia no paso por la revision de documentos de terceros, primero se abre esa
+  // ventana. El backend rechaza el finalize sin esa marca (409), asi que esto no es
+  // solo cortesia: es el camino para cumplirla sin salir de aqui.
+  //
+  // Los reportes de Orden de Servicio no entran: nunca generan factura.
+  const handleFinalizeClick = () => {
+    if (missingRequirements.length > 0) {
+      notify.error('Completa los datos obligatorios antes de finalizar');
+      return;
+    }
+    if (report?.work_order_id && !report.documents_reviewed_at) {
+      setDocsStep(true);
+      return;
+    }
+    handleFinalize();
+  };
+
+  // Al confirmar la revision, se cierra el paso y sigue el finalize normal.
+  const handleDocsConfirmed = () => {
+    setDocsStep(false);
+    handleFinalize();
+  };
+
   const handleFinalize = async () => {
     if (missingRequirements.length > 0) {
       notify.error('Completa los datos obligatorios antes de finalizar');
@@ -206,7 +232,7 @@ export default function WorkReportFormPage() {
               <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Notas'}
             </button>
             {!isFinal && (
-              <button onClick={handleFinalize} disabled={finalizing || missingRequirements.length > 0}
+              <button onClick={handleFinalizeClick} disabled={finalizing || missingRequirements.length > 0}
                 title={missingRequirements.length > 0 ? 'Faltan datos obligatorios (ver aviso abajo)' : undefined}
                 style={{ background:C.orange, border:'none', color:'#fff', padding:'8px 18px', borderRadius:6, fontWeight:700, fontSize:13, cursor: missingRequirements.length > 0 ? 'not-allowed' : 'pointer', opacity:(finalizing || missingRequirements.length > 0) ? 0.5 : 1 }}>
                 {finalizing ? 'Finalizando...' : 'Finalizar Reporte'}
@@ -338,6 +364,21 @@ export default function WorkReportFormPage() {
         </div>
         <div style={{ paddingBottom:32 }} />
       </div>
+
+      {/* Paso obligatorio antes de facturar: revisar los documentos de terceros de
+          la orden. Aparece al presionar "Finalizar Reporte" si esa orden todavia no
+          paso por ahi; al confirmar, el finalize sigue solo. */}
+      <WorkOrderDocumentsModal
+        open={docsStep}
+        order={{
+          id: report.work_order_id,
+          number: report.order_number,
+          documents_reviewed_at: report.documents_reviewed_at,
+        }}
+        stepMode
+        onClose={() => setDocsStep(false)}
+        onConfirmed={handleDocsConfirmed}
+      />
     </div>
   );
 }

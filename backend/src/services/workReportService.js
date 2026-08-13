@@ -13,6 +13,7 @@ import * as serviceOrderRepository from '../repositories/serviceOrderRepository.
 import * as articleRepository from '../repositories/articleRepository.js';
 import * as invoiceService from './invoiceService.js';
 import * as inventoryService from './inventoryService.js';
+import * as workOrderDocumentService from './workOrderDocumentService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Las 4 etapas fijas por las que pasa todo reporte de trabajo, en orden.
@@ -344,6 +345,17 @@ export async function finalize(id, userId = null) {
   const missing = getMissingRequirements(report);
   if (missing.length > 0) {
     throw new ApiError(400, `Faltan datos obligatorios para finalizar: ${missing.join(', ')}.`);
+  }
+  // Paso previo a facturar: alguien tiene que haber revisado los documentos de la
+  // orden (aunque sea para confirmar que no hay ninguno). Se verifica ANTES de tocar
+  // nada -- si esperara hasta el momento de crear la factura, el reporte ya habria
+  // quedado finalizado y el material descontado de bodega, y el corte dejaria el
+  // trabajo cerrado sin factura. Aqui simplemente no empieza.
+  //
+  // Solo aplica a reportes de Orden de Trabajo: los de Orden de Servicio nunca
+  // generan factura, asi que no hay nada que trabar.
+  if (report.work_order_id) {
+    await workOrderDocumentService.requireReviewed(report.work_order_id);
   }
 
   const outcome = await withTransaction(async (conn) => {

@@ -98,3 +98,71 @@ export function uploadReportPhoto(req, res, next) {
     return next(err);
   });
 }
+
+// ---------------------------------------------------------------------------
+// Documentos adjuntos de una orden de trabajo
+// ---------------------------------------------------------------------------
+// Papeleria de terceros (la factura del torneador, un certificado, la cotizacion
+// de un proveedor). A diferencia de las fotos, aqui el archivo llega tal como lo
+// mando el tercero y no se puede exigir que sea una imagen: lo normal es un PDF.
+const MAX_DOC_SIZE_MB = 20;
+const ALLOWED_DOC_MIMES = new Set([
+  'application/pdf',
+  'text/plain', 'text/csv',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  // Una foto tambien vale como documento (la placa del motor, un recibo fotografiado).
+  'image/jpeg', 'image/jpg', 'image/pjpeg', 'image/png', 'image/webp',
+  'image/heic', 'image/heif', 'image/gif', 'image/bmp', 'image/tiff', 'image/tif',
+]);
+// SVG queda fuera igual que en las imagenes (se sirve desde el mismo dominio y
+// puede llevar scripts adentro), y con el mismo criterio no se acepta nada
+// ejecutable ni comprimido: un .zip o un .exe adjunto a una orden no es
+// papeleria, y guardarlo en un directorio que se sirve por HTTP es un riesgo
+// que no compensa.
+const ALLOWED_DOC_EXTS = /^\.(pdf|txt|csv|doc|docx|xls|xlsx|jpg|jpeg|png|webp|heic|heif|gif|bmp|tif|tiff)$/;
+
+const docStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+  filename: (_req, file, cb) => {
+    const ext = (path.extname(file.originalname) || '').toLowerCase();
+    // El nombre en disco es un UUID, nunca el que trae el archivo: el nombre
+    // original lo elige un tercero y podria traer rutas o caracteres raros. El
+    // nombre de verdad se guarda en la base (work_order_documents.original_name).
+    const safeExt = ALLOWED_DOC_EXTS.test(ext) ? ext : '.bin';
+    cb(null, `${crypto.randomUUID()}${safeExt}`);
+  },
+});
+
+const docFilter = (_req, file, cb) => {
+  const mime = (file.mimetype || '').toLowerCase();
+  const ext = (path.extname(file.originalname) || '').toLowerCase();
+  if (ALLOWED_DOC_MIMES.has(mime) && ALLOWED_DOC_EXTS.test(ext)) return cb(null, true);
+  // Igual que con las fotos: hay navegadores y celulares que mandan un tipo
+  // generico o vacio aunque el archivo si sea valido. En ese caso decide la
+  // extension, que para esto es suficiente.
+  const genericMime = !mime || mime === 'application/octet-stream' || mime === 'binary/octet-stream';
+  if (genericMime && ALLOWED_DOC_EXTS.test(ext)) return cb(null, true);
+  return cb(new ApiError(400, `Tipo de archivo no permitido: ${file.originalname || file.mimetype || 'desconocido'}. Se aceptan PDF, texto, Word, Excel e imagenes.`));
+};
+
+const singleDoc = multer({
+  storage: docStorage,
+  limits: { fileSize: MAX_DOC_SIZE_MB * 1024 * 1024, files: 1 },
+  fileFilter: docFilter,
+}).single('document');
+
+// Recibe UN documento adjunto de una orden de trabajo (campo "document").
+export function uploadDocument(req, res, next) {
+  singleDoc(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const msg =
+        err.code === 'LIMIT_FILE_SIZE' ? `El documento excede ${MAX_DOC_SIZE_MB} MB` : err.message;
+      return next(new ApiError(400, msg));
+    }
+    return next(err);
+  });
+}

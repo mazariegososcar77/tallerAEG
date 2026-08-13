@@ -18,6 +18,10 @@ const UNIFIED_SELECT = `
   -- separarlos igual que la pantalla de Ordenes de Trabajo. Viene NULL en los reportes
   -- de Orden de Servicio, que no pertenecen a ninguno de los dos flujos.
   wo.flow_type,
+  -- Marca del paso previo a facturar (documentos de terceros revisados). La
+  -- pantalla del reporte la necesita para saber si al presionar "Finalizar" hay
+  -- que pasar primero por esa revision.
+  wo.documents_reviewed_at,
   COALESCE(wo.number, so.number) as work_order_number,
   COALESCE(wo.equipment_name, so.equipment_name) as equipment_name,
   COALESCE(wo.brand, so.brand) as brand,

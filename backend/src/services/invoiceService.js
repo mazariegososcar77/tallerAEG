@@ -7,6 +7,7 @@ import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as quoteRepository from '../repositories/quoteRepository.js';
 import * as workReportRepository from '../repositories/workReportRepository.js';
 import * as felCertifier from './felCertifier.js';
+import * as workOrderDocumentService from './workOrderDocumentService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Devuelve la lista completa de facturas.
@@ -102,6 +103,11 @@ export async function createFromWorkOrder(workOrderId) {
   if (!quote || quote.status !== 'aprobada') throw new ApiError(400, 'La cotizacion debe estar aprobada antes de facturar');
   const report = await workReportRepository.findByWorkOrderId(workOrderId);
   if (!report || report.status !== 'finalizado') throw new ApiError(400, 'El reporte de trabajo debe estar finalizado antes de facturar');
+  // Mismo paso previo que en el flujo Pre: nadie factura sin que alguien haya
+  // revisado los documentos de la orden. Aqui el bloqueo va justo antes de crear la
+  // factura porque es lo unico que hace esta funcion; en Pre va al inicio de
+  // finalize, que ademas descuenta inventario.
+  await workOrderDocumentService.requireReviewed(workOrderId);
   return createFromWorkReport(report);
 }
 

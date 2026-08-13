@@ -9,4 +9,19 @@ export const workOrdersApi = {
   // Cambia solo el estado de la orden (recibido, en_proceso, listo, entregado o cancelado).
   updateStatus: (id, status)  => client.patch(`/work-orders/${id}/status`, { status }).then(r => r.data),
   remove:       (id)       => client.delete(`/work-orders/${id}`).then(r => r.data),
+
+  // --- Documentos adjuntos (papeleria de terceros: factura del torneador,
+  // certificados, cotizaciones de proveedores) ---
+  documents:       (id) => client.get(`/work-orders/${id}/documents`).then(r => r.data),
+  addDocument:     (id, file, title) => {
+    const form = new FormData();
+    form.append('document', file);
+    form.append('title', title);
+    return client.post(`/work-orders/${id}/documents`, form).then(r => r.data);
+  },
+  removeDocument:  (id, documentId) => client.delete(`/work-orders/${id}/documents/${documentId}`).then(r => r.data),
+  // Deja constancia de que ya se revisaron los documentos de la orden. Es el paso
+  // que destraba la facturacion: sin esto, finalizar el reporte (Pre) o generar la
+  // factura (Post) responden 409.
+  reviewDocuments: (id) => client.post(`/work-orders/${id}/documents/review`).then(r => r.data),
 };
