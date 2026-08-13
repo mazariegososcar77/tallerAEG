@@ -152,6 +152,30 @@ export async function update(id, data, items) {
   }
 }
 
+/**
+ * Regresa una orden de trabajo de 'listo' a 'en_proceso'. Es el paso inverso del que da
+ * finalize al cerrar su reporte, y lo usa reopen: si el reporte se reabre, la orden no
+ * puede seguir figurando como lista.
+ *
+ * La condición va en el WHERE y no en un `if` de JavaScript a propósito. Primero porque
+ * así es imposible que se toque una orden ya 'entregado' o 'cancelado' (son estados
+ * terminales) aunque alguien cambie el código de arriba; el único paso que esta consulta
+ * sabe dar es 'listo' → 'en_proceso'. Y segundo porque leer el estado y escribirlo en dos
+ * viajes deja una rendija en el medio: otra persona podría marcar la orden como entregada
+ * justo ahí, y este UPDATE se la revertiría. En una sola sentencia eso no puede pasar.
+ *
+ * A diferencia de `update`, acepta un `executor`: se llama desde dentro de la transacción
+ * de reopen, para que si la devolución de material a bodega falla, el estado de la orden
+ * se revierta junto con ella. Devuelve true solo si realmente cambió el estado.
+ */
+export async function setInProgressIfReady(id, executor = pool) {
+  const [result] = await executor.query(
+    "UPDATE work_orders SET status = 'en_proceso' WHERE id = ? AND status = 'listo'",
+    [id]
+  );
+  return result.affectedRows > 0;
+}
+
 // Elimina una orden de trabajo. Devuelve true si sí se borró algo, false si no existía.
 export async function remove(id) {
   const [result] = await pool.query('DELETE FROM work_orders WHERE id = ?', [id]);

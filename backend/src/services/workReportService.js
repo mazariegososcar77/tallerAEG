@@ -5,10 +5,14 @@
 // (Cotizacion -> Orden de Trabajo -> Reporte de Trabajo -> Factura): al FINALIZAR
 // un reporte, el sistema genera automaticamente la factura correspondiente.
 import crypto from 'crypto';
+import { withTransaction } from '../lib/db.js';
 import * as workReportRepository from '../repositories/workReportRepository.js';
+import * as workReportItemRepository from '../repositories/workReportItemRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as serviceOrderRepository from '../repositories/serviceOrderRepository.js';
+import * as articleRepository from '../repositories/articleRepository.js';
 import * as invoiceService from './invoiceService.js';
+import * as inventoryService from './inventoryService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Las 4 etapas fijas por las que pasa todo reporte de trabajo, en orden.
@@ -196,6 +200,122 @@ export async function setPublicClientSignature(token, name, file) {
   return setSignature(report.id, 'client', name, file, false);
 }
 
+// ---------------------------------------------------------------------------
+// Material consumido (work_report_items)
+// ---------------------------------------------------------------------------
+
+/**
+ * Confirma que el reporte existe y todavia se puede editar su material, dejando su fila
+ * bloqueada por el resto de la transaccion (por eso exige la conexion de una).
+ *
+ * El material solo se toca mientras el reporte esta en borrador ('en_progreso'), y
+ * aqui NO aplica el permiso de "forzar edicion" que si vale para fotos y notas: al
+ * finalizar, el material ya se descargo de bodega, asi que cambiarlo por un costado
+ * dejaria el kardex diciendo una cosa y el reporte otra. La via para corregirlo es
+ * reabrir el reporte (reopen), que devuelve el material al inventario primero.
+ *
+ * Que la revision vaya bajo candado y dentro de la misma transaccion que el cambio es lo
+ * que evita la rendija entre "esta en borrador" y "guardo el material": si alguien finaliza
+ * el reporte justo en ese instante, esta linea entraria despues del descuento de bodega y
+ * nunca se descontaria. Con el candado, o entra antes de finalizar, o el finalizar ya paso
+ * y esta funcion responde 409.
+ */
+async function requireDraft(id, conn) {
+  const report = await workReportRepository.lockById(id, conn);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status !== 'en_progreso') {
+    throw new ApiError(409, 'El reporte ya esta finalizado: para cambiar el material hay que reabrirlo');
+  }
+  return report;
+}
+
+// Lista el material cargado en un reporte (con codigo, nombre, unidad y existencia
+// actual de cada articulo).
+export async function listItems(id) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  return workReportItemRepository.findByReportId(id);
+}
+
+/**
+ * Agrega material al reporte. Si ese articulo ya estaba cargado, le SUMA la cantidad
+ * en vez de fallar: la tabla no admite el mismo articulo dos veces en un reporte, y
+ * para quien lo usa "agregar 2 cojinetes" dos veces significa 4 cojinetes, no un error.
+ *
+ * El costo que se guarda aqui es provisional; el definitivo se congela al finalizar
+ * (ver snapshotCosts), que es el momento en que el material realmente sale de bodega.
+ */
+export async function addItem(id, { article_id, quantity }) {
+  const qty = Number(quantity);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    throw new ApiError(400, 'La cantidad debe ser mayor a cero');
+  }
+  const article = await articleRepository.findById(article_id);
+  if (!article) throw new ApiError(404, 'Articulo no encontrado');
+  return withTransaction(async (conn) => {
+    await requireDraft(id, conn);
+    const existing = await workReportItemRepository.findByReportAndArticle(id, article_id, conn);
+    const cost = Number(article.cost ?? 0);
+    if (existing) {
+      const total = Number(existing.quantity) + qty;
+      return workReportItemRepository.update(existing.id, {
+        quantity: total,
+        subtotal: Math.round(total * cost * 100) / 100,
+      }, conn);
+    }
+    return workReportItemRepository.create({
+      work_report_id: Number(id),
+      article_id,
+      quantity: qty,
+      unit_cost: cost,
+      subtotal: Math.round(qty * cost * 100) / 100,
+    }, conn);
+  });
+}
+
+// Cambia la cantidad de una linea de material ya cargada (aqui si se reemplaza el
+// valor, no se suma: es una correccion, no una carga nueva).
+export async function updateItem(id, itemId, { quantity }) {
+  const qty = Number(quantity);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    throw new ApiError(400, 'La cantidad debe ser mayor a cero');
+  }
+  return withTransaction(async (conn) => {
+    await requireDraft(id, conn);
+    const item = await workReportItemRepository.findById(itemId, conn);
+    if (!item || item.work_report_id !== Number(id)) throw new ApiError(404, 'Material no encontrado');
+    const cost = Number(item.unit_cost ?? 0);
+    return workReportItemRepository.update(itemId, {
+      quantity: qty,
+      subtotal: Math.round(qty * cost * 100) / 100,
+    }, conn);
+  });
+}
+
+// Quita una linea de material del reporte. Verifica que pertenezca a este reporte,
+// para que no se borre por error la de otro.
+export async function removeItem(id, itemId) {
+  return withTransaction(async (conn) => {
+    await requireDraft(id, conn);
+    const item = await workReportItemRepository.findById(itemId, conn);
+    if (!item || item.work_report_id !== Number(id)) throw new ApiError(404, 'Material no encontrado');
+    return workReportItemRepository.remove(itemId, conn);
+  });
+}
+
+/**
+ * Respuesta para un reporte que ya estaba finalizado: se devuelve tal como quedo, con su
+ * factura si la tiene, sin volver a procesar nada. Cubre los dos casos en que finalize se
+ * encuentra el trabajo ya hecho — se pidio finalizar algo que ya estaba cerrado, o dos
+ * peticiones simultaneas y esta perdio la carrera por el candado — y en ambos evita
+ * generar una factura duplicada o descontar el material dos veces.
+ */
+async function alreadyFinalizedResult(id) {
+  const report = await workReportRepository.findById(id);
+  const invoice = report.work_order_id ? await invoiceService.getByWorkOrderId(report.work_order_id) : null;
+  return { report, invoice: invoice || null, stock_warnings: [] };
+}
+
 /**
  * Cierra un reporte de trabajo. Que pasa despues depende de que esta documentando:
  * - Orden de Trabajo, flujo "Pre" (el de siempre): genera automaticamente la factura
@@ -210,22 +330,57 @@ export async function setPublicClientSignature(token, name, file) {
  * etapas) — devuelve el detalle de que falta para que el usuario lo complete. Si
  * el reporte ya estaba finalizado, no lo vuelve a procesar: simplemente devuelve
  * el reporte y su factura ya existente si la hay (evita generar una duplicada).
+ *
+ * Finalizar es tambien el momento en que el material sale de bodega: el cambio de
+ * estado y el descuento de inventario van en la MISMA transaccion, de modo que si el
+ * descuento falla el reporte tampoco queda finalizado. Lo contrario dejaria un trabajo
+ * cerrado y facturado con el inventario intacto, que es justo el descuadre silencioso
+ * que este modulo existe para evitar.
  */
-export async function finalize(id) {
+export async function finalize(id, userId = null) {
   const report = await workReportRepository.findById(id);
   if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
-  if (report.status === 'finalizado') {
-    const invoice = report.work_order_id ? await invoiceService.getByWorkOrderId(report.work_order_id) : null;
-    return { report, invoice: invoice || null };
-  }
+  if (report.status === 'finalizado') return alreadyFinalizedResult(id);
   const missing = getMissingRequirements(report);
   if (missing.length > 0) {
     throw new ApiError(400, `Faltan datos obligatorios para finalizar: ${missing.join(', ')}.`);
   }
-  const updated = await workReportRepository.update(id, {
-    status: 'finalizado',
-    finalized_at: new Date(),
+
+  const outcome = await withTransaction(async (conn) => {
+    // Lo PRIMERO de la transaccion: tomar el candado del reporte y volver a leer su estado
+    // ya adentro. La revision de arriba se hizo sin candado, asi que entre aquella y esta
+    // cabe otro "Finalizar" del mismo reporte; el que llegue segundo espera aqui y, cuando
+    // entra, encuentra el reporte ya finalizado y se va sin descontar nada. Sin esto, los
+    // dos verian el reporte sin material descargado y bodega perderia el doble.
+    const locked = await workReportRepository.lockById(id, conn);
+    if (!locked) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+    if (locked.status === 'finalizado') return null;
+
+    const saved = await workReportRepository.update(id, {
+      status: 'finalizado',
+      finalized_at: new Date(),
+    }, conn);
+    // Congela el costo del material con el costo de compra vigente hoy, y recien
+    // entonces lo lee: lo que costo este trabajo queda fijo aunque manana cambie el
+    // costo del articulo en el catalogo.
+    await workReportItemRepository.snapshotCosts(id, conn);
+    const items = await workReportItemRepository.findByReportId(id, conn);
+    const { warnings } = await inventoryService.syncConsumption({
+      referenceType: 'work_report',
+      referenceId: Number(id),
+      items,
+      userId,
+      conn,
+    });
+    return { updated: saved, stockWarnings: warnings };
   });
+
+  // Otro lo finalizo mientras esperabamos el candado: no se procesa de nuevo.
+  if (!outcome) return alreadyFinalizedResult(id);
+  const { updated, stockWarnings } = outcome;
+
+  // La factura se genera FUERA de la transaccion, despues de que el inventario ya
+  // cuadro (es el orden que exige el flujo: primero baja el material, luego se cobra).
   let invoice = null;
   if (updated.work_order_id) {
     const order = await workOrderRepository.findById(updated.work_order_id);
@@ -237,7 +392,85 @@ export async function finalize(id) {
   if (order && !['entregado', 'cancelado'].includes(order.status)) {
     await workOrderRepository.update(report.work_order_id, { status: 'listo' });
   }
-  return { report: updated, invoice };
+  return { report: updated, invoice, stock_warnings: stockWarnings };
+}
+
+/**
+ * Reabre un reporte ya finalizado para poder corregirlo (permiso work-reports.force-edit,
+ * normalmente solo Administrador).
+ *
+ * Devuelve el material al inventario: le pide al kardex dejar el consumo de este reporte
+ * en cero, lo que genera las entradas que reponen exactamente lo que se habia descontado
+ * — ni mas ni menos, porque se calcula contra lo que el kardex dice que salio, no contra
+ * lo que las lineas dicen hoy. Igual que finalizar, el cambio de estado y la devolucion
+ * van juntos en una transaccion.
+ *
+ * Tambien deshace el otro efecto de finalizar: la orden de trabajo que habia quedado
+ * "lista" regresa a "en proceso" (nunca una ya entregada o cancelada).
+ *
+ * Si el reporte ya genero factura, NO bloquea: reabrir un reporte no anula nada en
+ * facturacion, y quien reabre necesita enterarse para ir a corregir la factura por su
+ * lado. Eso y el cambio de estado de la orden se devuelven en `notices`, para que el
+ * frontend le muestre al usuario todo lo que se movio al reabrir.
+ */
+export async function reopen(id, userId = null) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status !== 'finalizado') {
+    throw new ApiError(409, 'El reporte no esta finalizado');
+  }
+
+  const { updated, stockWarnings, orderReopened } = await withTransaction(async (conn) => {
+    // Mismo candado que en finalize, y por lo mismo: dos "Reabrir" a la vez leerian ambos
+    // que hay material pendiente de devolver y lo repondrian dos veces. El segundo entra
+    // cuando el primero ya confirmo, ve el reporte en borrador y no mueve nada.
+    const locked = await workReportRepository.lockById(id, conn);
+    if (!locked) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+    if (locked.status !== 'finalizado') {
+      throw new ApiError(409, 'El reporte no esta finalizado');
+    }
+
+    const saved = await workReportRepository.update(id, {
+      status: 'en_progreso',
+      finalized_at: null,
+    }, conn);
+    const { warnings } = await inventoryService.syncConsumption({
+      referenceType: 'work_report',
+      referenceId: Number(id),
+      items: [],
+      userId,
+      conn,
+    });
+
+    // La orden de trabajo que este reporte habia dejado "lista" vuelve a "en proceso": el
+    // trabajo se reabrio, asi que la orden no puede seguir figurando como terminada. Solo
+    // ese paso -- una orden ya entregada o cancelada no se toca (la condicion vive en el
+    // WHERE de setInProgressIfReady). Un reporte de Orden de Servicio no tiene orden de
+    // trabajo detras, y en ese caso no hay nada que hacer.
+    const backToInProgress = report.work_order_id
+      ? await workOrderRepository.setInProgressIfReady(report.work_order_id, conn)
+      : false;
+
+    return { updated: saved, stockWarnings: warnings, orderReopened: backToInProgress };
+  });
+
+  const notices = [];
+  // Se avisa del cambio de estado de la orden porque el usuario no lo pidio: presiono
+  // "Reabrir" sobre el reporte y de paso se le movio la orden. Un cambio de estado
+  // silencioso es justo lo que despues nadie sabe explicar.
+  if (orderReopened) {
+    notices.push(`La orden de trabajo No. ${updated.order_number} volvio a "en proceso".`);
+  }
+  const invoice = updated.work_order_id
+    ? await invoiceService.getByWorkOrderId(updated.work_order_id)
+    : null;
+  if (invoice) {
+    notices.push(
+      `Este reporte ya genero la factura No. ${invoice.number}, que NO se anula al reabrirlo. ` +
+      'Si el trabajo cambia, hay que corregir la factura por separado en Facturacion.'
+    );
+  }
+  return { report: updated, notices, stock_warnings: stockWarnings };
 }
 
 // Elimina un reporte de trabajo.

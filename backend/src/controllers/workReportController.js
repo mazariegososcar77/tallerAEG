@@ -63,10 +63,41 @@ export const getSigningLink = asyncHandler(async (req, res) => {
   res.json({ token });
 });
 
+// Trae el material (repuestos e insumos) cargado en un reporte.
+export const listItems = asyncHandler(async (req, res) => {
+  res.json(await workReportService.listItems(req.params.id));
+});
+
+// Cuando el usuario agrega un material al reporte, esto lo guarda (si ese artículo ya
+// estaba cargado, le suma la cantidad).
+export const addItem = asyncHandler(async (req, res) => {
+  const item = await workReportService.addItem(req.params.id, req.body);
+  res.status(201).json(item);
+});
+
+// Cuando el usuario corrige la cantidad de un material ya cargado.
+export const updateItem = asyncHandler(async (req, res) => {
+  res.json(await workReportService.updateItem(req.params.id, req.params.itemId, req.body));
+});
+
+// Cuando el usuario quita un material del reporte.
+export const removeItem = asyncHandler(async (req, res) => {
+  await workReportService.removeItem(req.params.id, req.params.itemId);
+  res.status(204).end();
+});
+
 // Cuando el usuario presiona "Finalizar Reporte", esto lo cierra (si le faltan fotos, notas
-// o firmas obligatorias avisa qué falta) y genera automáticamente la factura correspondiente.
+// o firmas obligatorias avisa qué falta), descuenta de bodega el material usado y genera
+// automáticamente la factura correspondiente. Se registra quién lo hizo, porque el
+// descuento de inventario queda a su nombre en el kardex.
 export const finalize = asyncHandler(async (req, res) => {
-  res.json(await workReportService.finalize(req.params.id));
+  res.json(await workReportService.finalize(req.params.id, req.user.id));
+});
+
+// Cuando un administrador reabre un reporte ya finalizado: lo devuelve a borrador y
+// regresa a bodega el material que se había descontado.
+export const reopen = asyncHandler(async (req, res) => {
+  res.json(await workReportService.reopen(req.params.id, req.user.id));
 });
 
 // Cuando el usuario borra un reporte, esto lo elimina.

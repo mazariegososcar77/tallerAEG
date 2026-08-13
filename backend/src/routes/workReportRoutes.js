@@ -27,6 +27,17 @@ const updateSchema = z.object({
   stage_notes: z.record(z.string().max(2000)).optional(),
 });
 
+// Para cargar material consumido: que articulo del inventario y cuanto se uso.
+const addItemSchema = z.object({
+  article_id: z.coerce.number().int().positive('Articulo invalido'),
+  quantity: z.coerce.number().positive('La cantidad debe ser mayor a cero'),
+});
+
+// Para corregir la cantidad de un material ya cargado.
+const updateItemSchema = z.object({
+  quantity: z.coerce.number().positive('La cantidad debe ser mayor a cero'),
+});
+
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
@@ -125,6 +136,67 @@ router.delete('/:id/photos/:photoId', requirePermission('work-reports.update'), 
 
 /**
  * @openapi
+ * /work-reports/{id}/items:
+ *   get:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Listar el material (repuestos e insumos) usado en el reporte
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: Lista de material usado }
+ *   post:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Agregar material usado al reporte (solo mientras esta en borrador)
+ *     description: Si el articulo ya estaba cargado, le suma la cantidad en vez de fallar.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               article_id: { type: integer }
+ *               quantity: { type: number }
+ *     responses:
+ *       201: { description: Material agregado }
+ *       409: { description: El reporte ya esta finalizado }
+ */
+// Ver el material usado en el reporte.
+router.get('/:id/items', requirePermission('work-reports.view'), workReportController.listItems);
+// Agregar material usado (solo con el reporte en borrador).
+router.post('/:id/items', requirePermission('work-report-items.manage'), validate(addItemSchema), workReportController.addItem);
+
+/**
+ * @openapi
+ * /work-reports/{id}/items/{itemId}:
+ *   put:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Corregir la cantidad de un material del reporte
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *       - { in: path, name: itemId, required: true, schema: { type: integer } }
+ *     responses:
+ *       200: { description: Material actualizado }
+ *       409: { description: El reporte ya esta finalizado }
+ *   delete:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Quitar un material del reporte
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *       - { in: path, name: itemId, required: true, schema: { type: integer } }
+ *     responses:
+ *       204: { description: Material eliminado }
+ */
+// Corregir la cantidad de un material ya cargado.
+router.put('/:id/items/:itemId', requirePermission('work-report-items.manage'), validate(updateItemSchema), workReportController.updateItem);
+// Quitar un material del reporte.
+router.delete('/:id/items/:itemId', requirePermission('work-report-items.manage'), workReportController.removeItem);
+
+/**
+ * @openapi
  * /work-reports/{id}/signature:
  *   post:
  *     tags: [Reportes de Trabajo]
@@ -173,6 +245,25 @@ router.get('/:id/pdf', requirePermission('work-reports.view'), workReportControl
  */
 // Finalizar el reporte (exige que las 4 etapas tengan foto y nota, y ambas firmas) y generar la factura.
 router.post('/:id/finalize', requirePermission('work-reports.update'), workReportController.finalize);
+
+/**
+ * @openapi
+ * /work-reports/{id}/reopen:
+ *   post:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Reabrir un reporte finalizado y devolver su material a bodega
+ *     description: >
+ *       Regresa el reporte a borrador y repone en inventario todo el material que se
+ *       habia descontado al finalizarlo. Si el reporte ya genero factura, esta NO se
+ *       anula: se devuelve un aviso en "notices" para que se corrija por separado.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: "{ report, notices, stock_warnings }" }
+ *       409: { description: El reporte no esta finalizado }
+ */
+// Reabrir un reporte finalizado (solo con el permiso de forzar edicion: Administrador).
+router.post('/:id/reopen', requirePermission('work-reports.force-edit'), workReportController.reopen);
 
 /**
  * @openapi

@@ -46,15 +46,18 @@ export async function getAll() {
 // (ver arriba), y le agrega su lista de fotos (ordenadas por etapa) y sus notas por etapa
 // (que se guardan como texto y aquí se convierten de vuelta a un objeto usable). Si no
 // existe, devuelve null.
-export async function findById(id) {
-  const [[report]] = await pool.query(`
+// El `executor` opcional es el pool para una consulta suelta, o la conexión (`conn`)
+// cuando se está dentro de una transacción — si no se le pasa la conexión, la consulta
+// va por fuera y no ve los cambios que la transacción todavía no ha confirmado.
+export async function findById(id, executor = pool) {
+  const [[report]] = await executor.query(`
     SELECT ${UNIFIED_SELECT}
     FROM work_reports wr
     ${UNIFIED_JOIN}
     WHERE wr.id = ?
   `, [id]);
   if (!report) return null;
-  const [photos] = await pool.query(
+  const [photos] = await executor.query(
     'SELECT * FROM work_report_photos WHERE work_report_id = ? ORDER BY stage, sort_order, id',
     [id]
   );
@@ -63,6 +66,25 @@ export async function findById(id) {
     report.stage_notes = JSON.parse(report.stage_notes);
   }
   return report;
+}
+
+/**
+ * Lee el estado de un reporte dejando su fila BLOQUEADA hasta que termine la transacción
+ * (`FOR UPDATE`). Solo tiene sentido dentro de una transacción: hay que pasarle su conexión.
+ *
+ * Es el candado que serializa todo lo que mueve inventario a nombre de este reporte. Sin él,
+ * dos "Finalizar" simultáneos (un doble clic, un reintento del navegador) alcanzan a leer los
+ * dos que el reporte todavía no tiene material descargado — cada uno calcula su descuento
+ * contra ese mismo panorama — y el material termina saliendo de bodega dos veces. Con el
+ * candado, el segundo espera, entra cuando el primero ya confirmó, ve el reporte finalizado
+ * y no descuenta nada.
+ *
+ * Devuelve solo id y status (es lo único que se necesita para decidir): quien quiera el
+ * reporte completo usa findById.
+ */
+export async function lockById(id, executor) {
+  const [rows] = await executor.query('SELECT id, status FROM work_reports WHERE id = ? FOR UPDATE', [id]);
+  return rows[0] || null;
 }
 
 // Busca el reporte de trabajo que corresponde a una orden de trabajo (cada orden tiene
@@ -107,15 +129,15 @@ export async function create(data) {
 // Actualiza un reporte de trabajo existente (por ejemplo, sus notas o su estado). Las
 // notas por etapa se convierten a texto antes de guardarlas, porque así se almacenan en
 // la base de datos.
-export async function update(id, data) {
+export async function update(id, data, executor = pool) {
   if (data.stage_notes && typeof data.stage_notes !== 'string') {
     data.stage_notes = JSON.stringify(data.stage_notes);
   }
   if (Object.keys(data).length > 0) {
     const fields = Object.keys(data).map((k) => k + ' = ?').join(', ');
-    await pool.query(`UPDATE work_reports SET ${fields} WHERE id = ?`, [...Object.values(data), id]);
+    await executor.query(`UPDATE work_reports SET ${fields} WHERE id = ?`, [...Object.values(data), id]);
   }
-  return findById(id);
+  return findById(id, executor);
 }
 
 // Elimina un reporte de trabajo. Devuelve true si sí se borró algo, false si no existía.

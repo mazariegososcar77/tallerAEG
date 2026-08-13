@@ -45,6 +45,32 @@ export async function update(id, patch) {
   await pool.query('UPDATE articles SET ' + fields + ' WHERE id = ?', [...values, id]);
   return findById(id);
 }
+/**
+ * Lee un artículo dejándolo BLOQUEADO hasta que termine la transacción (`FOR UPDATE`).
+ * Solo tiene sentido dentro de una transacción: hay que pasarle su conexión (`conn`).
+ *
+ * Sirve para mover existencias sin corromper el saldo: si dos reportes de trabajo se
+ * finalizan al mismo tiempo y ambos usan el mismo artículo, sin este bloqueo los dos
+ * leerían el mismo saldo (digamos 10), cada uno restaría lo suyo sobre ese 10 y el
+ * segundo pisaría al primero — quedarían 8 cuando debían quedar 5, y el kardex dejaría
+ * de cuadrar en silencio. Con el bloqueo, el segundo espera a que el primero termine y
+ * lee el saldo ya actualizado.
+ */
+export async function lockById(id, executor) {
+  const [rows] = await executor.query(
+    'SELECT id, code, name, unit, quantity, cost, price FROM articles WHERE id = ? FOR UPDATE',
+    [id]
+  );
+  return rows[0] || null;
+}
+
+// Fija el saldo (quantity) de un artículo. Es de uso exclusivo de inventoryService:
+// el resto del sistema nunca debe tocar quantity directo, siempre a través de un
+// movimiento del kardex (ver stock_movements).
+export async function setQuantity(id, quantity, executor = pool) {
+  await executor.query('UPDATE articles SET quantity = ? WHERE id = ?', [quantity, id]);
+}
+
 // Elimina un artículo. Devuelve true si sí se borró algo, false si no existía.
 export async function remove(id) {
   const [result] = await pool.query('DELETE FROM articles WHERE id = ?', [id]);

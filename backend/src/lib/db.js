@@ -20,4 +20,30 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
+/**
+ * Corre varias operaciones como una sola transaccion: si cualquiera falla, se
+ * deshacen todas (rollback) y no queda nada a medias. Recibe una funcion y le
+ * entrega la conexion (`conn`), que hay que ir pasandole a los repositorios
+ * para que todas las consultas viajen por la MISMA conexion -- si alguna usa
+ * el pool por su cuenta, queda fuera de la transaccion y no se deshace.
+ *
+ * Existe porque hay operaciones que tocan varias tablas a la vez y no pueden
+ * quedar a medias: por ejemplo finalizar un reporte de trabajo descuenta el
+ * material de bodega, escribe el kardex y actualiza el saldo del articulo.
+ */
+export async function withTransaction(fn) {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const result = await fn(conn);
+    await conn.commit();
+    return result;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+}
+
 export default pool;
