@@ -16,7 +16,7 @@ export const getById = asyncHandler(async (req, res) => {
 });
 // Cuando el usuario guarda un artículo nuevo desde el formulario, esto lo recibe y lo manda a guardar.
 export const create = asyncHandler(async (req, res) => {
-  res.status(201).json(await articleService.create(req.body));
+  res.status(201).json(await articleService.create(req.body, req.user.id));
 });
 // Cuando el usuario edita un artículo existente y guarda los cambios, esto los aplica.
 export const update = asyncHandler(async (req, res) => {
@@ -34,7 +34,7 @@ export const bulkCreate = asyncHandler(async (req, res) => {
   const results = { created: 0, errors: [] };
   for (const [i, item] of items.entries()) {
     try {
-      await articleService.create(item);
+      await articleService.create(item, req.user.id);
       results.created++;
     } catch (err) {
       results.errors.push({ row: i + 1, error: err.message });

@@ -193,6 +193,36 @@ export async function adjust({ articleId, type, quantity, reason, userId = null,
 }
 
 /**
+ * Registra el saldo de apertura de un articulo: la existencia con la que nace en el
+ * sistema, sin una compra ni un trabajo detras que la explique.
+ *
+ * Es la contraparte en runtime de lo que hace 035_stock_movements_seed.sql con los
+ * articulos que ya existian cuando se activo el kardex, y usa el mismo
+ * reference_type ('saldo_inicial'). Va aparte de adjust() en vez de reusarlo porque un
+ * ajuste es una correccion de un saldo que ya existia -- por eso exige un motivo -- y una
+ * apertura no corrige nada: es el punto de partida. Mezclarlos dejaria las aperturas
+ * contadas como ajustes y ensuciaria cualquier lectura del kardex que separe una cosa de
+ * la otra.
+ *
+ * Normalmente se llama con la conexion de una transaccion, para que el articulo y su
+ * saldo inicial nazcan juntos o no nazca ninguno.
+ */
+export async function openingBalance({ articleId, quantity, unitCost = null, userId = null, conn = null }) {
+  return run(conn, async (tx) => {
+    const result = await applyMovement(tx, {
+      articleId,
+      type: 'entrada',
+      quantity,
+      unitCost,
+      referenceType: 'saldo_inicial',
+      userId,
+      notes: 'Existencia inicial al dar de alta el articulo',
+    });
+    return { movement: result.movement, warnings: result.warning ? [result.warning] : [] };
+  });
+}
+
+/**
  * Calcula que se descontaria si se sincronizara este consumo, SIN escribir nada.
  * Lo usa la pantalla de reportes para mostrar, antes de finalizar, el detalle de
  * "esto es lo que va a salir de bodega" y advertir si algo va a quedar en negativo.

@@ -17,9 +17,23 @@ const createSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   type_id: z.coerce.number().int().positive('Tipo invalido'),
   warehouse_id: z.coerce.number().int().positive('Bodega invalida'),
+  // Existencia inicial. Solo se acepta al CREAR: no se escribe directo en la columna,
+  // se convierte en un movimiento 'saldo_inicial' del kardex (ver articleService.create).
   quantity: z.coerce.number().min(0).optional(),
   unit: z.string().max(30).optional(),
+  // Precio de VENTA (lo que se le cobra al cliente).
   price: z.coerce.number().min(0).optional(),
+  // Precio de COMPRA (lo que le cuesta a AEG). Es lo que valua el kardex: usar aqui el
+  // precio de venta daria un costo de trabajo falso.
+  //
+  // Distingue "vacio" de "cero" a proposito: un campo en blanco llega como null, que en
+  // la columna significa "todavia no se ha capturado el costo" (ver 033_stock_movements.sql),
+  // y eso NO es lo mismo que un costo real de Q0.00. Sin el preprocess, zod convertiria
+  // el string vacio en 0 y estariamos inventando un dato que nadie capturo.
+  cost: z.preprocess(
+    (v) => (v === '' ? null : v),
+    z.coerce.number().min(0).nullable().optional()
+  ),
   brand: z.string().max(120).optional(),
   model: z.string().max(120).optional(),
   location: z.string().max(120).optional(),
@@ -34,9 +48,19 @@ const createSchema = z.object({
 
 // Para editar un articulo: los mismos datos de arriba pero todos opcionales (se manda solo lo que cambia),
 // y exige que venga al menos un cambio.
-const updateSchema = createSchema.partial().refine((d) => Object.keys(d).length > 0, {
-  message: 'No hay cambios para aplicar',
-});
+//
+// `quantity` queda FUERA a proposito: la existencia de un articulo no se edita desde su
+// ficha. Solo cambia por un movimiento del kardex (consumo de un reporte, ajuste manual o
+// saldo inicial), que es lo que permite responder despues "por que hay 7 y no 10". Como el
+// middleware de validacion reemplaza el body por el dato ya parseado y zod descarta las
+// claves que no estan en el schema, un cliente que igual la mande no recibe un error: se
+// ignora en silencio y el resto de sus cambios se guarda normal.
+const updateSchema = createSchema
+  .partial()
+  .omit({ quantity: true })
+  .refine((d) => Object.keys(d).length > 0, {
+    message: 'No hay cambios para aplicar',
+  });
 
 // Para la carga masiva por Excel: exige que venga al menos una fila. El detalle de cada fila se valida en el servicio (mensajes por fila); aqui solo el contenedor.
 const bulkSchema = z.object({

@@ -73,7 +73,12 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
         warehouse_id: type === 'labor' ? 3 : 2,
         unit:         type === 'labor' ? 'servicio' : 'unidad',
         price:        type === 'labor' ? parseFloat(form.price) || 0 : 0,
-        quantity:     type === 'part'  ? 0 : 1,
+        // Siempre 0, tambien para mano de obra. Una existencia mayor a cero genera un
+        // movimiento de saldo inicial en el kardex, y la mano de obra no es algo que este
+        // fisicamente en bodega: aparecerian servicios con existencia, ensuciando el
+        // inventario y los reportes de movimiento. El repuesto que se crea desde aqui
+        // tampoco trae existencia: se carga despues con un ajuste, que deja constancia.
+        quantity:     0,
         brand:        form.brand || '',
         description:  form.description || '',
         is_active:    true,

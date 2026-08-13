@@ -28,6 +28,7 @@ const emptyForm = {
   type_id: '',
   warehouse_id: '',
   quantity: 0,
+  cost: '',
   unit: 'unidad',
   price: 0,
   brand: '',
@@ -66,6 +67,7 @@ export default function ArticleFormPage() {
           type_id: a.type_id,
           warehouse_id: a.warehouse_id,
           quantity: a.quantity,
+          cost: a.cost ?? '',
           unit: a.unit,
           price: a.price,
           brand: a.brand,
@@ -106,13 +108,23 @@ export default function ArticleFormPage() {
     e.preventDefault();
     setSaving(true);
     setErrors({});
+    const { quantity, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       type_id: Number(form.type_id),
       warehouse_id: Number(form.warehouse_id),
-      quantity: Number(form.quantity) || 0,
       price: Number(form.price) || 0,
+      // El precio de compra en blanco viaja como null ("todavia no se ha capturado"),
+      // que no es lo mismo que un costo real de Q0.00. Si mandaramos 0 estariamos
+      // diciendo que el articulo no cuesta nada.
+      cost: form.cost === '' || form.cost === null || form.cost === undefined
+        ? null
+        : Number(form.cost),
     };
+    // La existencia solo se manda al CREAR: ahi el backend la convierte en el saldo
+    // inicial del kardex. Al editar no se manda, porque editar la ficha de un articulo
+    // no cambia su existencia -- eso se hace con un ajuste de inventario.
+    if (!isEdit) payload.quantity = Number(quantity) || 0;
     try {
       if (isEdit) {
         await articlesApi.update(id, payload);
@@ -184,9 +196,31 @@ export default function ArticleFormPage() {
               <Input label="Nombre" value={form.name} onChange={setField('name')} error={errors.name} required />
               <Select label="Tipo" value={form.type_id} onChange={setValue('type_id')} options={typeOptions} error={errors.type_id} />
               <Select label="Bodega" value={form.warehouse_id} onChange={setValue('warehouse_id')} options={warehouseOptions} error={errors.warehouse_id} />
-              <Input label="Cantidad" type="number" min="0" step="any" value={form.quantity} onChange={setField('quantity')} error={errors.quantity} />
+              {/* La existencia solo se escribe al dar de alta el articulo (ahi nace como su
+                  saldo inicial en el kardex). Despues queda de solo lectura: cambiarla es
+                  un ajuste de inventario, que deja constancia de por que cambio. Se deja
+                  visible en vez de esconderla para que se vea cuanto hay sin salir de aqui. */}
+              <div>
+                <Input
+                  label={isEdit ? 'Existencia actual' : 'Existencia inicial'}
+                  type="number" min="0" step="any"
+                  value={form.quantity}
+                  onChange={setField('quantity')}
+                  error={errors.quantity}
+                  disabled={isEdit}
+                />
+                <p className="mt-1 text-xs text-muted">
+                  {isEdit
+                    ? 'La existencia se cambia con un ajuste de inventario, no desde aqui.'
+                    : 'Queda registrada como saldo inicial en el kardex.'}
+                </p>
+              </div>
               <Input label="Unidad" value={form.unit} onChange={setField('unit')} error={errors.unit} />
-              <Input label="Precio" type="number" min="0" step="any" value={form.price} onChange={setField('price')} error={errors.price} />
+              {/* Los dos precios juntos y etiquetados sin ambiguedad: el de compra es lo que
+                  le cuesta a AEG (valua el inventario) y el de venta lo que se le cobra al
+                  cliente. Confundirlos deja el costo de los trabajos mal calculado. */}
+              <Input label="Precio de compra (Q)" type="number" min="0" step="any" value={form.cost} onChange={setField('cost')} error={errors.cost} placeholder="Sin capturar" />
+              <Input label="Precio de venta (Q)" type="number" min="0" step="any" value={form.price} onChange={setField('price')} error={errors.price} />
               <Input label="Marca" value={form.brand} onChange={setField('brand')} error={errors.brand} />
               <Input label="Modelo" value={form.model} onChange={setField('model')} error={errors.model} />
               <Input label="Ubicacion" value={form.location} onChange={setField('location')} error={errors.location} />

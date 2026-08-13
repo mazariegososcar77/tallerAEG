@@ -60,6 +60,10 @@ export default function ArticleViewModal({ open, onClose, article }) {
 
   const pieces = article.pieces || [];
   const labor = article.labor || [];
+  // Margen = lo que se cobra menos lo que costo. Es dato calculado al vuelo, no una
+  // columna: guardarlo obligaria a recalcularlo cada vez que cambia cualquiera de los
+  // dos precios, y tarde o temprano quedaria desactualizado.
+  const margen = Number(article.price || 0) - Number(article.cost || 0);
 
   return (
     <Modal
@@ -125,10 +129,29 @@ export default function ArticleViewModal({ open, onClose, article }) {
                     {article.warehouse_name}
                   </span>
                 </Field>
-                <Field label="Cantidad">
+                <Field label="Existencia">
                   {article.quantity} {article.unit}
                 </Field>
-                <Field label="Precio">Q {Number(article.price).toFixed(2)}</Field>
+                {/* Un costo sin capturar se muestra como "—", no como Q 0.00: en la columna,
+                    NULL significa "todavia no se sabe", que no es lo mismo que gratis. */}
+                <Field label="Precio de compra">
+                  {article.cost == null ? '—' : `Q ${Number(article.cost).toFixed(2)}`}
+                </Field>
+                <Field label="Precio de venta">Q {Number(article.price).toFixed(2)}</Field>
+                {/* El margen solo aparece cuando hay con que calcularlo. Es dato derivado,
+                    no se guarda: si cambia cualquiera de los dos precios, se recalcula solo. */}
+                {article.cost != null && (
+                  <Field label="Margen">
+                    <span className={margen < 0 ? 'text-red-500' : undefined}>
+                      Q {margen.toFixed(2)}
+                      {Number(article.price) > 0 && (
+                        <span className="ml-1 text-xs text-muted">
+                          ({((margen / Number(article.price)) * 100).toFixed(0)}%)
+                        </span>
+                      )}
+                    </span>
+                  </Field>
+                )}
                 <Field label="Marca">{article.brand || '—'}</Field>
                 <Field label="Modelo">{article.model || '—'}</Field>
                 <Field label="Ubicacion">{article.location || '—'}</Field>

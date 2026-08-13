@@ -30,13 +30,18 @@ export async function findById(id) {
   article.labor = await articleLaborRepository.findByArticleId(id);
   return article;
 }
-// Guarda un nuevo artículo en la base de datos y devuelve el registro ya creado.
-export async function create(data) {
+// Guarda un nuevo artículo y devuelve su **id** (no el registro completo: dentro de una
+// transacción, releerlo con findById iría por el pool y no vería lo que todavía no se ha
+// confirmado). Quien necesite el artículo armado lo pide con findById ya fuera.
+// El `executor` opcional es el pool para un alta suelta, o la conexión (`conn`) cuando
+// se está dentro de una transacción — al crear un artículo con existencia inicial, el
+// alta y su movimiento de apertura en el kardex tienen que ir juntos.
+export async function create(data, executor = pool) {
   const fields = Object.keys(data).join(', ');
   const placeholders = Object.keys(data).map(() => '?').join(', ');
   const values = Object.values(data);
-  const [result] = await pool.query('INSERT INTO articles (' + fields + ') VALUES (' + placeholders + ')', values);
-  return findById(result.insertId);
+  const [result] = await executor.query('INSERT INTO articles (' + fields + ') VALUES (' + placeholders + ')', values);
+  return result.insertId;
 }
 // Actualiza solo los datos indicados (patch) de un artículo existente.
 export async function update(id, patch) {
