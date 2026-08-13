@@ -52,7 +52,10 @@ export const NAV = [
         type: 'group', label: 'Post', icon: Search,
         items: [
           { to: '/post/ordenes',      label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'dashboard.view' },
-          { to: '/post/reportes',     label: 'Reportes de Trabajo', icon: Camera,        permission: 'work-reports.view' },
+          // Reportes de Trabajo NO se repite aqui: la pantalla de /reportes lista los
+          // reportes de los dos flujos sin distinguirlos (no filtra por flow_type), asi
+          // que una entrada propia de Post llevaria exactamente a la misma lista. Mismo
+          // criterio que Facturacion, que tampoco se repite por flujo.
           { to: '/post/cotizaciones', label: 'Cotizaciones',        icon: FileText,      permission: 'dashboard.view' },
         ],
       },
