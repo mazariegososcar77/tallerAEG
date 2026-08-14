@@ -93,4 +93,7 @@ router.post('/:id/certify', requirePermission('billing.certify'), validate(certi
 // Descargar el PDF de la factura.
 router.get('/:id/pdf', requirePermission('billing.view'), invoiceController.pdf);
 
+// Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
+router.get('/:id/document-flow', requirePermission('billing.view'), invoiceController.documentFlow);
+
 export default router;

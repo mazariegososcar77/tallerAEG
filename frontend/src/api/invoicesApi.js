@@ -8,4 +8,6 @@ export const invoicesApi = {
   certify: (id, email)  => client.post(`/invoices/${id}/certify`, { email }).then(r => r.data),
   // Flujo Post: genera a mano la factura de una orden ya cotizada y aprobada (no hay factura automatica como en Pre).
   createFromWorkOrder: (workOrderId) => client.post(`/invoices/from-work-order/${workOrderId}`).then(r => r.data),
+  // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
+  getDocumentFlow: (id) => client.get(`/invoices/${id}/document-flow`).then(r => r.data),
 };

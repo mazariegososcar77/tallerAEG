@@ -1,6 +1,7 @@
 // Este archivo recibe las peticiones web relacionadas a ÓRDENES DE TRABAJO: verlas,
 // crearlas, editarlas, cambiar su estado, borrarlas y descargar el PDF.
 import * as workOrderService from '../services/workOrderService.js';
+import * as documentFlowService from '../services/documentFlowService.js';
 import { generarOrdenTrabajoPDF } from '../utils/pdfGenerator.js';
 import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -34,6 +35,12 @@ export const updateStatus = asyncHandler(async (req, res) => {
 export const remove = asyncHandler(async (req, res) => {
   await workOrderService.remove(req.params.id);
   res.status(204).end();
+});
+
+// Mapa de Relaciones: la cadena de documentos (Cotizacion -> Orden -> Reporte ->
+// Factura) de esta orden.
+export const documentFlow = asyncHandler(async (req, res) => {
+  res.json(await documentFlowService.getForWorkOrder(req.params.id));
 });
 
 // Cuando el usuario descarga el PDF de una orden de trabajo, esto genera el archivo y se lo envía.

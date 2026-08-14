@@ -9,6 +9,8 @@ export const workOrdersApi = {
   // Cambia solo el estado de la orden (recibido, en_proceso, listo, entregado o cancelado).
   updateStatus: (id, status)  => client.patch(`/work-orders/${id}/status`, { status }).then(r => r.data),
   remove:       (id)       => client.delete(`/work-orders/${id}`).then(r => r.data),
+  // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
+  getDocumentFlow: (id) => client.get(`/work-orders/${id}/document-flow`).then(r => r.data),
 
   // --- Documentos adjuntos (papeleria de terceros: factura del torneador,
   // certificados, cotizaciones de proveedores) ---

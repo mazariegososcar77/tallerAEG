@@ -22,7 +22,8 @@ import Combobox from '../../components/ui/Combobox.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import CertifyInvoiceModal from './CertifyInvoiceModal.jsx';
-import { Receipt, Search, Download, Eye, ShieldCheck } from 'lucide-react';
+import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
+import { Receipt, Search, Download, Eye, ShieldCheck, Network } from 'lucide-react';
 
 const STATUS_LABELS = {
   pendiente_certificacion: { label: 'Pendiente de Certificar', color: '#f59e0b' },
@@ -43,6 +44,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [toCertify, setToCertify] = useState(null);
   const [pdfInvoice, setPdfInvoice] = useState(null); // factura que se esta viendo en el visor de PDF
+  const [flowSource, setFlowSource] = useState(null); // { type: 'invoice', id } para el Mapa de Relaciones
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Vuelve a traer la lista de facturas desde el servidor (se usa al cargar
@@ -163,6 +165,7 @@ export default function InvoicesPage() {
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(inv.total).toFixed(2)}</span>
+                    <button onClick={() => setFlowSource({ type: 'invoice', id: inv.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
                     <button onClick={() => setPdfInvoice(inv)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(inv)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     {inv.status === 'pendiente_certificacion' && hasPermission('billing.certify') && (
@@ -177,6 +180,8 @@ export default function InvoicesPage() {
           })}
         </div>
       )}
+
+      <DocumentFlowModal open={flowSource != null} onClose={() => setFlowSource(null)} source={flowSource} />
 
       {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
       <PdfViewerModal

@@ -19,7 +19,8 @@ import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import WorkOrderViewModal from './WorkOrderViewModal.jsx';
 import WorkOrderDocumentsModal from '../../components/workOrders/WorkOrderDocumentsModal.jsx';
-import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch, Paperclip } from 'lucide-react';
+import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
+import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch, Paperclip, Network } from 'lucide-react';
 
 const STATUS_LABELS = {
   recibido:   { label: 'Recibido',   color: '#3b82f6' },
@@ -43,6 +44,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
   const [generatingInvoiceId, setGeneratingInvoiceId] = useState(null);
   const [docsOrder, setDocsOrder] = useState(null);      // orden cuya seccion de documentos se esta viendo
   const [docsStepOrder, setDocsStepOrder] = useState(null); // orden detenida en el paso previo a facturar
+  const [flowSource, setFlowSource] = useState(null); // { type: 'work_order', id } para el Mapa de Relaciones
   const navigate = useNavigate();
 
   // Abre el Reporte de Trabajo (fotos + notas) de esta orden. Si la orden todavia
@@ -125,7 +127,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
       setOrders(prev => prev.filter(o => o.id !== toDelete.id));
       notify.success('Orden No. ' + toDelete.number + ' eliminada');
     } catch(e) {
-      notify.error('No se pudo eliminar la orden');
+      notify.error(e.response?.data?.error || e.message || 'No se pudo eliminar la orden');
     } finally {
       setToDelete(null);
     }
@@ -203,6 +205,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                     {isPost && order.quote_id && order.quote_status === 'aprobada' && !order.invoice_id && hasPermission('billing.create') && (
                       <button onClick={() => handleGenerateInvoice(order)} disabled={generatingInvoiceId === order.id} title="Generar factura" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#f97316', opacity: generatingInvoiceId === order.id ? 0.6 : 1 }}><Receipt size={16} /></button>
                     )}
+                    <button onClick={() => setFlowSource({ type: 'work_order', id: order.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
                     <button onClick={() => setPdfOrder(order)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#0ea5e9' }}><FileSearch size={16} /></button>
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate(basePath + '/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
@@ -214,6 +217,8 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
           })}
         </div>
       )}
+
+      <DocumentFlowModal open={flowSource != null} onClose={() => setFlowSource(null)} source={flowSource} />
 
       <WorkOrderViewModal
         open={viewId != null}

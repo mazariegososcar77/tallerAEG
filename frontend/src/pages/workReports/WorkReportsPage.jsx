@@ -10,7 +10,8 @@ import { workReportsApi } from '../../api/workReportsApi.js';
 import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
-import { Camera, Search, Pencil, Eye, Download } from 'lucide-react';
+import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
+import { Camera, Search, Pencil, Eye, Download, Network } from 'lucide-react';
 
 const STATUS_LABELS = {
   en_progreso: { label: 'En Progreso', color: '#f59e0b' },
@@ -23,6 +24,7 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [pdfReport, setPdfReport] = useState(null); // reporte que se esta viendo en el visor de PDF
+  const [flowSource, setFlowSource] = useState(null); // { type: 'work_report', id } para el Mapa de Relaciones
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -98,6 +100,11 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>Orden No. {report.work_order_number}</p>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    {/* Solo tiene sentido para reportes de Orden de Trabajo: los de Orden de
+                        Servicio no tienen cotizacion ni factura detras (nunca facturan). */}
+                    {report.order_kind === 'work_order' && (
+                      <button onClick={() => setFlowSource({ type: 'work_report', id: report.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
+                    )}
                     <button onClick={() => setPdfReport(report)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(report)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate('/reportes/' + report.id + '/editar')} title="Ver / Editar reporte" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
@@ -108,6 +115,8 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
           })}
         </div>
       )}
+
+      <DocumentFlowModal open={flowSource != null} onClose={() => setFlowSource(null)} source={flowSource} />
 
       {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
       <PdfViewerModal

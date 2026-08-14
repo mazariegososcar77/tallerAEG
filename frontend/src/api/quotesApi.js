@@ -9,4 +9,6 @@ export const quotesApi = {
   // Cambia solo el estado de la cotizacion (por ejemplo, a "aprobada" o "rechazada").
   updateStatus: (id, status)  => client.patch(`/quotes/${id}/status`, { status }).then(r => r.data),
   remove:       (id)          => client.delete(`/quotes/${id}`).then(r => r.data),
+  // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden(es) -> Reporte -> Factura).
+  getDocumentFlow: (id) => client.get(`/quotes/${id}/document-flow`).then(r => r.data),
 };
