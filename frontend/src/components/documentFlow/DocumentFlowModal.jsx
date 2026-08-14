@@ -11,9 +11,10 @@
 // que este componente no necesita saber nada especial segun el origen.
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, ClipboardList, Camera, Receipt, ArrowRight, ArrowDown, MapPin } from 'lucide-react';
+import { FileText, ClipboardList, Camera, Receipt, ArrowRight, ArrowDown, MapPin, Paperclip } from 'lucide-react';
 import Modal from '../ui/Modal.jsx';
 import Spinner from '../ui/Spinner.jsx';
+import WorkOrderDocumentsModal from '../workOrders/WorkOrderDocumentsModal.jsx';
 import { notify } from '../../lib/toast.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { quotesApi } from '../../api/quotesApi.js';
@@ -74,8 +75,10 @@ const STATUS_LABELS = {
 // Una tarjeta del mapa: icono + tipo, numero, subtitulo (cliente/equipo) y
 // estado. `current` es el documento desde el que se abrio el mapa (no navega, se
 // marca "Estás aquí"); `pending` es un paso que todavia no existe (borde
-// punteado, sin numero ni clic).
-function FlowNode({ type, node, current, pending, onNavigate }) {
+// punteado, sin numero ni clic). `actions` (opcional): botones chicos extra en
+// la esquina de la tarjeta -- ej. "Documentos adjuntos" en la orden -- cada uno
+// con su propio onClick que NUNCA dispara la navegacion de la tarjeta.
+function FlowNode({ type, node, current, pending, onNavigate, actions }) {
   const cfg = NODE_TYPES[type];
   const Icon = cfg.icon;
   const st = !pending && node ? (STATUS_LABELS[type][node.status] || null) : null;
@@ -101,11 +104,26 @@ function FlowNode({ type, node, current, pending, onNavigate }) {
         <span style={{ fontSize: 10, fontWeight: 800, color: cfg.color, textTransform: 'uppercase', letterSpacing: '.4px' }}>
           {cfg.label}
         </span>
-        {current && (
-          <span title="Estás viendo este documento" style={{ marginLeft: 'auto', display: 'flex' }}>
-            <MapPin size={12} color={cfg.color} />
-          </span>
-        )}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {!pending && actions?.map((action, i) => (
+            <button
+              key={i}
+              type="button"
+              title={action.title}
+              onClick={(e) => { e.stopPropagation(); action.onClick(); }}
+              style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--c-muted)', display: 'flex' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = cfg.color; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--c-muted)'; }}
+            >
+              <action.icon size={12} />
+            </button>
+          ))}
+          {current && (
+            <span title="Estás viendo este documento" style={{ display: 'flex' }}>
+              <MapPin size={12} color={cfg.color} />
+            </span>
+          )}
+        </span>
       </div>
       {pending ? (
         <p style={{ margin: 0, fontSize: 12, color: 'var(--c-muted)', fontStyle: 'italic' }}>Todavía no existe</p>
@@ -141,11 +159,15 @@ function Connector({ vertical }) {
 
 // Una rama del arbol: Orden -> Reporte -> Factura (o placeholders "pendiente"
 // para lo que todavia no existe en esa rama).
-function OrderChain({ order, viewing, isMobile, onNavigate }) {
+function OrderChain({ order, viewing, isMobile, onNavigate, onOpenDocuments }) {
   const dir = isMobile ? 'column' : 'row';
   return (
     <div style={{ display: 'flex', flexDirection: dir, alignItems: isMobile ? 'stretch' : 'center', gap: 10 }}>
-      <FlowNode type="work_order" node={order} current={viewing.type === 'work_order' && viewing.id === order.id} onNavigate={onNavigate} />
+      <FlowNode
+        type="work_order" node={order} current={viewing.type === 'work_order' && viewing.id === order.id}
+        onNavigate={onNavigate}
+        actions={[{ icon: Paperclip, title: 'Documentos adjuntos de la orden', onClick: () => onOpenDocuments(order) }]}
+      />
       <Connector vertical={isMobile} />
       <FlowNode
         type="work_report" node={order.report} pending={!order.report}
@@ -168,6 +190,7 @@ export default function DocumentFlowModal({ open, onClose, source }) {
   const [flow, setFlow] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [docsOrder, setDocsOrder] = useState(null); // orden cuyos documentos adjuntos se estan viendo
 
   useEffect(() => {
     if (!open || !source) return;
@@ -186,6 +209,7 @@ export default function DocumentFlowModal({ open, onClose, source }) {
   };
 
   return (
+    <>
     <Modal open={open} onClose={onClose} title="Mapa de Relaciones" size="xl">
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
@@ -211,7 +235,7 @@ export default function DocumentFlowModal({ open, onClose, source }) {
             {flow.orders.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {flow.orders.map((order) => (
-                  <OrderChain key={order.id} order={order} viewing={flow.viewing} isMobile={isMobile} onNavigate={handleNavigate} />
+                  <OrderChain key={order.id} order={order} viewing={flow.viewing} isMobile={isMobile} onNavigate={handleNavigate} onOpenDocuments={setDocsOrder} />
                 ))}
               </div>
             ) : (
@@ -226,9 +250,18 @@ export default function DocumentFlowModal({ open, onClose, source }) {
           </div>
           <p style={{ margin: '18px 0 0', fontSize: 11, color: 'var(--c-muted)' }}>
             Haz clic en cualquier documento para abrirlo. Las tarjetas punteadas son pasos que todavía no existen.
+            El ícono <Paperclip size={10} style={{ verticalAlign: 'middle' }} /> de la orden abre sus documentos adjuntos.
           </p>
         </div>
       )}
     </Modal>
+
+    {/* Documentos adjuntos de la orden (papeleria de terceros): mismo modal que
+        usa WorkOrdersPage, reusado aqui para no duplicar la logica de subir/
+        ver/descargar/eliminar. Hermano de <Modal>, no hijo -- adentro, su
+        posicionamiento "fixed" quedaria atado a la animacion de entrada del
+        modal padre (translateY) en vez de a la pantalla. */}
+    <WorkOrderDocumentsModal open={docsOrder != null} order={docsOrder} onClose={() => setDocsOrder(null)} />
+    </>
   );
 }

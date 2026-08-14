@@ -42,6 +42,9 @@ function toOrderNode(order) {
     flow_type: order.flow_type,
     client_name: order.client_name,
     equipment_name: order.equipment_name,
+    // Lo necesita WorkOrderDocumentsModal (que el mapa abre para esta orden)
+    // para saber si ya se marco la revision de documentos previos a facturar.
+    documents_reviewed_at: order.documents_reviewed_at,
     report: order.report_id
       ? { id: order.report_id, number: order.report_number, status: order.report_status }
       : null,

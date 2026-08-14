@@ -11,7 +11,7 @@
 //    convierte en "Confirmar y continuar", que es lo que deja constancia de que
 //    alguien revisó los documentos y destraba la facturación de esa orden.
 import { useState, useEffect, useRef } from 'react';
-import { FileText, Upload, Trash2, Download, X, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { FileText, Upload, Trash2, Download, Eye, X, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { notify } from '../../lib/toast.js';
@@ -20,6 +20,13 @@ import Button from '../ui/Button.jsx';
 import Input from '../ui/Input.jsx';
 import Spinner from '../ui/Spinner.jsx';
 import ConfirmDialog from '../ui/ConfirmDialog.jsx';
+import PdfViewerModal from '../ui/PdfViewerModal.jsx';
+
+// El adjunto puede ser cualquier formato (Word, Excel, imagen); solo cuando es
+// PDF tiene sentido ofrecer "ver aqui" en vez de abrirlo aparte.
+function isPdf(doc) {
+  return doc.mime_type === 'application/pdf' || /\.pdf$/i.test(doc.original_name || doc.title || '');
+}
 
 // Lo que el navegador ofrece al abrir el selector de archivos. Es la misma lista
 // que valida el backend (upload.middleware.js): si aquí se agrega algo, allá
@@ -43,6 +50,7 @@ export default function WorkOrderDocumentsModal({ open, onClose, order, stepMode
   const [uploading, setUploading] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [toDelete, setToDelete] = useState(null);
+  const [viewing, setViewing] = useState(null); // documento PDF que se esta viendo en el visor
   const fileInput = useRef(null);
 
   const canManage = hasPermission('work-order-documents.manage');
@@ -202,14 +210,25 @@ export default function WorkOrderDocumentsModal({ open, onClose, order, stepMode
                     {d.uploaded_by_name && ` · ${d.uploaded_by_name}`}
                   </p>
                 </div>
-                {/* Se abre en otra pestaña porque un adjunto puede ser cualquier cosa
-                    (Word, Excel, texto): el visor de PDF de la app solo sabe PDF, y
-                    aquí lo que se quiere es entregar el archivo tal como llegó. */}
+                {/* Si es PDF, se puede ver dentro de la app (como el resto del sistema,
+                    nunca en otra pestaña). Cualquier otro formato (Word, Excel, imagen)
+                    no tiene visor propio aqui, asi que ese boton abre/descarga tal
+                    como llego. */}
+                {isPdf(d) && (
+                  <button
+                    type="button"
+                    onClick={() => setViewing(d)}
+                    title="Ver PDF"
+                    className="shrink-0 rounded p-2 text-navy-700 hover:bg-surface2"
+                  >
+                    <Eye size={16} />
+                  </button>
+                )}
                 <a
                   href={d.file_url}
                   target="_blank"
                   rel="noreferrer"
-                  title="Abrir o descargar"
+                  title={isPdf(d) ? 'Descargar' : 'Abrir o descargar'}
                   className="shrink-0 rounded p-2 text-navy-700 hover:bg-surface2"
                 >
                   <Download size={16} />
@@ -237,6 +256,14 @@ export default function WorkOrderDocumentsModal({ open, onClose, order, stepMode
         title="Eliminar documento"
         message={`Se va a eliminar "${toDelete?.title}". Esta accion no se puede deshacer.`}
         confirmText="Eliminar"
+      />
+
+      <PdfViewerModal
+        open={viewing != null}
+        onClose={() => setViewing(null)}
+        url={viewing?.file_url}
+        fileName={viewing?.title || 'documento'}
+        title={viewing?.title}
       />
     </>
   );
