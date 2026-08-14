@@ -8,7 +8,7 @@ import * as workReportController from '../controllers/workReportController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
-import { uploadReportPhoto } from '../middleware/upload.middleware.js';
+import { uploadReportPhoto, uploadReportVideo } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -136,6 +136,34 @@ router.delete('/:id/photos/:photoId', requirePermission('work-reports.update'), 
 
 /**
  * @openapi
+ * /work-reports/{id}/video:
+ *   post:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Subir (o reemplazar) el video final de prueba del reporte (multipart, campo "video")
+ *     description: >
+ *       Solo aplica a reportes con el esquema de fotos nuevo (8 categorias). El video se
+ *       mide con ffprobe (se rechaza si excede 30 segundos) y se comprime con ffmpeg antes
+ *       de guardarse; el archivo crudo que subio el celular nunca se conserva.
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: Reporte con el video guardado }
+ *       400: { description: Video invalido o mayor a 30 segundos }
+ *   delete:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Quitar el video final de prueba del reporte
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: Reporte sin el video }
+ */
+// Subir/reemplazar el video final de prueba del reporte.
+router.post('/:id/video', requirePermission('work-reports.update'), uploadReportVideo, workReportController.setVideo);
+// Quitar el video final de prueba del reporte.
+router.delete('/:id/video', requirePermission('work-reports.update'), workReportController.removeVideo);
+
+/**
+ * @openapi
  * /work-reports/{id}/items:
  *   get:
  *     tags: [Reportes de Trabajo]
@@ -162,6 +190,9 @@ router.delete('/:id/photos/:photoId', requirePermission('work-reports.update'), 
  *       201: { description: Material agregado }
  *       409: { description: El reporte ya esta finalizado }
  */
+// Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
+router.get('/:id/document-flow', requirePermission('work-reports.view'), workReportController.documentFlow);
+
 // Ver el material usado en el reporte.
 router.get('/:id/items', requirePermission('work-reports.view'), workReportController.listItems);
 // Agregar material usado (solo con el reporte en borrador).

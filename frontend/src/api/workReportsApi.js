@@ -21,6 +21,14 @@ export const workReportsApi = {
     return client.post(`/work-reports/${id}/photos`, form).then(r => r.data);
   },
   removePhoto: (id, photoId) => client.delete(`/work-reports/${id}/photos/${photoId}`).then(r => r.data),
+  // Sube (o reemplaza) el video final de prueba del reporte. El servidor lo comprime
+  // con ffmpeg y rechaza cualquiera que dure mas de 30 segundos.
+  uploadVideo: (id, file) => {
+    const form = new FormData();
+    form.append('video', file);
+    return client.post(`/work-reports/${id}/video`, form).then(r => r.data);
+  },
+  removeVideo: (id) => client.delete(`/work-reports/${id}/video`).then(r => r.data),
   // Sube la imagen de una firma (tecnico o cliente que recibe) capturada en pantalla.
   setSignature: (id, file, role, name) => {
     const form = new FormData();
@@ -32,6 +40,8 @@ export const workReportsApi = {
   // Genera (o recupera) el enlace publico de firma remota del cliente, para
   // entregas con mensajero (el cliente no esta en el taller). Devuelve { token }.
   getSigningLink: (id) => client.post(`/work-reports/${id}/signing-link`).then(r => r.data),
+  // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
+  getDocumentFlow: (id) => client.get(`/work-reports/${id}/document-flow`).then(r => r.data),
 };
 
 // Funciones PUBLICAS (sin sesion iniciada) para la pantalla de firma remota

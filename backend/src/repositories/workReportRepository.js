@@ -176,3 +176,24 @@ export async function removePhoto(photoId) {
   const [result] = await pool.query('DELETE FROM work_report_photos WHERE id = ?', [photoId]);
   return result.affectedRows > 0;
 }
+
+// Guarda (o reemplaza) el video final de prueba de un reporte -- una sola
+// ranura por reporte, igual patron que las firmas. `data` trae las 3 columnas
+// juntas porque siempre se escriben las 3 a la vez (nunca la url sin la
+// duracion/tamaño que le corresponden).
+export async function setVideo(id, { final_video_url, final_video_duration_seconds, final_video_size_bytes }) {
+  await pool.query(
+    'UPDATE work_reports SET final_video_url = ?, final_video_duration_seconds = ?, final_video_size_bytes = ? WHERE id = ?',
+    [final_video_url, final_video_duration_seconds, final_video_size_bytes, id]
+  );
+  return findById(id);
+}
+
+// Quita el video final de un reporte (las 3 columnas juntas, mismo criterio que setVideo).
+export async function removeVideo(id) {
+  await pool.query(
+    'UPDATE work_reports SET final_video_url = NULL, final_video_duration_seconds = NULL, final_video_size_bytes = NULL WHERE id = ?',
+    [id]
+  );
+  return findById(id);
+}

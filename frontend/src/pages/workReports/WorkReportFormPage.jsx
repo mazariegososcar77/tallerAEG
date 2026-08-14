@@ -1,10 +1,14 @@
 // PANTALLA: Reporte de Trabajo de una orden. Aquí el técnico documenta con
-// fotos y notas cómo fue el trabajo, en 4 etapas fijas: antes de desarmar,
-// desarmado + piezas nuevas, piezas instaladas + piezas usadas, y armado final.
-// Cada etapa necesita al menos una foto y una nota. Al final se capturan dos
-// firmas (quien entrega el equipo y quien lo recibe) dibujándolas con el dedo
-// o el mouse. El reporte no nace vacío: se crea automáticamente al presionar
-// el botón de cámara en la orden de trabajo correspondiente.
+// fotos y notas cómo fue el trabajo. Hay dos esquemas según cuándo se creó el
+// reporte (report.photo_schema_version, ver workReportService.js): los viejos
+// (1) siguen mostrando las 4 etapas fijas de siempre; los nuevos (2) muestran
+// las 8 categorías reales del manual de Abdías, cada una con un MÍNIMO de
+// fotos (sin tope máximo) más un video final de prueba (máx. 30s, se
+// comprime en el servidor). En ambos esquemas, cada categoría necesita
+// también su nota. Al final se capturan dos firmas (quien entrega el equipo y
+// quien lo recibe) dibujándolas con el dedo o el mouse. El reporte no nace
+// vacío: se crea automáticamente al presionar el botón de cámara en la orden
+// de trabajo correspondiente.
 //
 // El botón "Finalizar Reporte" NO se puede usar si falta algo (foto, nota o
 // firma) — se deshabilita y se muestra abajo la lista de lo que falta. Esto es
@@ -20,15 +24,37 @@ import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import PhotoStageGallery from '../../components/reports/PhotoStageGallery.jsx';
+import VideoField from '../../components/reports/VideoField.jsx';
 import SignaturePad from '../../components/reports/SignaturePad.jsx';
 import WorkOrderDocumentsModal from '../../components/workOrders/WorkOrderDocumentsModal.jsx';
 
-// Las 4 etapas fijas del reporte, en orden. Cada una necesita fotos + una nota.
+// Esquema viejo (photo_schema_version=1): las 4 etapas fijas con las que
+// nacio este modulo. Un reporte que ya existia al desplegar las categorias
+// nuevas se queda para siempre en este esquema (ver workReportService.js) --
+// por eso conviven ambas listas y nunca se tocan las fotos/notas viejas.
+// `min` queda sin definir a proposito: PhotoStageGallery solo muestra el
+// indicador de minimo cuando se le pasa un numero.
 const STAGES = [
   { key: 'antes',          title: 'Antes de Desarmar',                    hint: 'Estado del equipo antes de intervenirlo.' },
   { key: 'desarmado',      title: 'Desarmado + Piezas Nuevas',             hint: 'Equipo desarmado, junto a las piezas nuevas a colocar.' },
   { key: 'piezas_nuevas',  title: 'Piezas Instaladas + Piezas Usadas',     hint: 'Piezas nuevas ya instaladas, junto a las piezas usadas retiradas.' },
   { key: 'armado_final',   title: 'Armado Final',                         hint: 'Equipo armado con las piezas cambiadas y el mantenimiento realizado.' },
+];
+
+// Esquema nuevo (photo_schema_version=2): las 8 categorias reales del manual
+// de Abdias. `min` es el MINIMO de fotos exigido -- nunca un tope maximo, el
+// tecnico puede subir mas. Mismas llaves/minimos que
+// workReportService.PHOTO_CATEGORIES (backend) -- si se cambia uno hay que
+// cambiar el otro.
+const PHOTO_CATEGORIES = [
+  { key: 'ingreso',            title: 'Ingreso de Equipo',                  hint: 'Condiciones físicas, accesorios y posición en que llegó el equipo.', min: 1 },
+  { key: 'placa_datos',        title: 'Placa de Datos',                     hint: 'Placa con los datos técnicos del equipo, legible.', min: 1 },
+  { key: 'mediciones_ingreso', title: 'Mediciones Eléctricas de Ingreso',   hint: 'Megaohms, ohms y amperaje, tomados al recibir el equipo.', min: 3 },
+  { key: 'desarme',            title: 'Proceso de Desarme',                 hint: 'Estator, rotor, tapaderas y accesorios durante el desarme.', min: 4 },
+  { key: 'mantenimiento',      title: 'Mantenimiento o Rebobinado',         hint: 'Estator empapelado/rebobinado, barniz rojo, eje, cojinetes nuevos, tapaderas, trabajos de torno y repuestos.', min: 7 },
+  { key: 'repuestos',          title: 'Repuestos',                          hint: 'Repuestos nuevos empaquetados y ya instalados.', min: 2 },
+  { key: 'armado',             title: 'Equipo Armado',                      hint: 'Equipo ya armado, listo para entregar.', min: 1 },
+  { key: 'mediciones_finales', title: 'Mediciones Eléctricas Finales',      hint: 'Mediciones eléctricas tomadas al terminar el trabajo.', min: 1 },
 ];
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
@@ -81,31 +107,70 @@ export default function WorkReportFormPage() {
   const canEdit = hasPermission('work-reports.update');
   const canForceEdit = hasPermission('work-reports.force-edit');
   const readOnly = !canEdit || (isFinal && !canForceEdit);
+  const isLegacy = report.photo_schema_version === 1;
+  const categories = isLegacy ? STAGES : PHOTO_CATEGORIES;
   const photosByStage = (stage) => report.photos.filter(p => p.stage === stage);
 
-  // Espejo de la validacion del backend (workReportService.finalize), pero
-  // sobre el estado actual del formulario (incluye notas aun no guardadas)
+  // Espejo de la validacion del backend (workReportService.getMissingRequirements),
+  // pero sobre el estado actual del formulario (incluye notas aun no guardadas)
   // para que el checklist/boton reaccionen sin esperar un "Guardar Notas".
+  // Se ramifica igual que el backend: esquema viejo exige exactamente 1 foto
+  // por etapa, el nuevo exige el MINIMO de cada categoria (nunca un tope) +
+  // el video final.
   const missingRequirements = isFinal ? [] : [
-    ...STAGES.flatMap(stage => {
+    ...categories.flatMap(cat => {
       const items = [];
-      if (photosByStage(stage.key).length === 0) items.push(`foto de la etapa "${stage.title}"`);
-      if (!stageNotes[stage.key]?.trim()) items.push(`nota de la etapa "${stage.title}"`);
+      const count = photosByStage(cat.key).length;
+      const min = cat.min || 1;
+      if (count < min) {
+        items.push(isLegacy ? `foto de la etapa "${cat.title}"` : `fotos de "${cat.title}" (tiene ${count}, mínimo ${min})`);
+      }
+      if (!stageNotes[cat.key]?.trim()) items.push(`nota de "${cat.title}"`);
       return items;
     }),
+    ...(!isLegacy && !report.final_video_url ? ['video de prueba final (máximo 30 segundos)'] : []),
     ...(!report.tech_signature_url ? ['firma del técnico que entrega'] : []),
     ...(!report.client_signature_url ? ['firma de quien recibe'] : []),
   ];
 
-  // Sube una foto a la etapa indicada.
+  // Sube una foto a la etapa indicada. Actualiza SOLO la lista de fotos en el
+  // estado local (no vuelve a pedir el reporte completo con load()): las notas
+  // por etapa son responsabilidad de "Guardar Notas", no de esto. Un load() aca
+  // pisaria con lo ultimo guardado en la base cualquier nota que el tecnico ya
+  // haya escrito en pantalla pero todavia no haya guardado, en las 4 etapas (no
+  // solo en la de la foto nueva) -- ese fue el bug.
   const handleAddPhoto = async (stage, file) => {
-    await workReportsApi.addPhoto(id, file, { stage });
-    load();
+    const photo = await workReportsApi.addPhoto(id, file, { stage });
+    setReport(prev => ({ ...prev, photos: [...prev.photos, photo] }));
   };
-  // Quita una foto ya subida.
+  // Quita una foto ya subida. Mismo criterio que handleAddPhoto: solo toca
+  // report.photos en el estado local, nunca stageNotes/generalNotes.
   const handleRemovePhoto = async (photoId) => {
     await workReportsApi.removePhoto(id, photoId);
-    load();
+    setReport(prev => ({ ...prev, photos: prev.photos.filter(p => p.id !== photoId) }));
+  };
+
+  // Sube (o reemplaza) el video final de prueba. Mismo criterio que
+  // handleAddPhoto: el servidor devuelve el reporte completo, pero aca solo
+  // se mergean los 3 campos del video al estado local -- nunca se pisa
+  // stageNotes/generalNotes con lo ultimo guardado en la base.
+  const handleUploadVideo = async (file) => {
+    const updated = await workReportsApi.uploadVideo(id, file);
+    setReport(prev => ({
+      ...prev,
+      final_video_url: updated.final_video_url,
+      final_video_duration_seconds: updated.final_video_duration_seconds,
+      final_video_size_bytes: updated.final_video_size_bytes,
+    }));
+  };
+  const handleRemoveVideo = async () => {
+    const updated = await workReportsApi.removeVideo(id);
+    setReport(prev => ({
+      ...prev,
+      final_video_url: updated.final_video_url,
+      final_video_duration_seconds: updated.final_video_duration_seconds,
+      final_video_size_bytes: updated.final_video_size_bytes,
+    }));
   };
 
   // Guarda la firma dibujada (del tecnico o de quien recibe) junto con el nombre de quien firma.
@@ -259,28 +324,31 @@ export default function WorkReportFormPage() {
             </ul>
           </div>
         )}
-        {/* Un bloque por cada una de las 4 etapas fijas, con sus fotos y su nota */}
-        {STAGES.map(stage => (
-          <div key={stage.key} style={sec}>
+        {/* Un bloque por cada etapa/categoria (las 4 de siempre o las 8 nuevas,
+            segun report.photo_schema_version), con sus fotos y su nota */}
+        {categories.map(cat => (
+          <div key={cat.key} style={sec}>
             <div style={secHdr}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span style={{ width:6, height:6, background:C.orange, borderRadius:'50%', display:'inline-block' }}></span>
-                <span style={{ fontSize:11, fontWeight:800, color:C.orange, letterSpacing:'1px', textTransform:'uppercase' }}>{stage.title}</span>
+                <span style={{ fontSize:11, fontWeight:800, color:C.orange, letterSpacing:'1px', textTransform:'uppercase' }}>{cat.title}</span>
+                {!isLegacy && <span style={{ fontSize:10, color:C.muted, fontWeight:600 }}>(mínimo {cat.min} foto{cat.min===1?'':'s'})</span>}
               </div>
-              <p style={{ margin:'2px 0 0 14px', fontSize:11, color:C.muted }}>{stage.hint}</p>
+              <p style={{ margin:'2px 0 0 14px', fontSize:11, color:C.muted }}>{cat.hint}</p>
             </div>
             <div style={secBody}>
               <PhotoStageGallery
-                photos={photosByStage(stage.key)}
-                onAdd={(file) => handleAddPhoto(stage.key, file)}
+                photos={photosByStage(cat.key)}
+                onAdd={(file) => handleAddPhoto(cat.key, file)}
                 onRemove={handleRemovePhoto}
                 disabled={readOnly}
+                min={isLegacy ? undefined : cat.min}
               />
               <div style={{ marginTop:10 }}>
                 <label style={lbl}>Nota de la etapa</label>
                 <textarea
-                  value={stageNotes[stage.key] || ''}
-                  onChange={e => setStageNotes(prev => ({ ...prev, [stage.key]: e.target.value }))}
+                  value={stageNotes[cat.key] || ''}
+                  onChange={e => setStageNotes(prev => ({ ...prev, [cat.key]: e.target.value }))}
                   rows={2}
                   disabled={readOnly}
                   style={inp}
@@ -289,6 +357,30 @@ export default function WorkReportFormPage() {
             </div>
           </div>
         ))}
+
+        {/* Video final de prueba: solo en el esquema nuevo (las 8 categorias). */}
+        {!isLegacy && (
+          <div style={sec}>
+            <div style={secHdr}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ width:6, height:6, background:C.orange, borderRadius:'50%', display:'inline-block' }}></span>
+                <span style={{ fontSize:11, fontWeight:800, color:C.orange, letterSpacing:'1px', textTransform:'uppercase' }}>Video de Prueba Final</span>
+                <span style={{ fontSize:10, color:C.muted, fontWeight:600 }}>(máx. 30 segundos)</span>
+              </div>
+              <p style={{ margin:'2px 0 0 14px', fontSize:11, color:C.muted }}>Equipo funcionando ya armado, como constancia final.</p>
+            </div>
+            <div style={secBody}>
+              <VideoField
+                videoUrl={report.final_video_url}
+                durationSeconds={report.final_video_duration_seconds}
+                sizeBytes={report.final_video_size_bytes}
+                disabled={readOnly}
+                onUpload={handleUploadVideo}
+                onRemove={handleRemoveVideo}
+              />
+            </div>
+          </div>
+        )}
 
         <div style={sec}>
           <div style={secHdr}>
