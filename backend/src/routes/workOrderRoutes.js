@@ -26,6 +26,8 @@ router.patch('/:id/status',  requirePermission('dashboard.view'), workOrderContr
 router.delete('/:id',        requirePermission('dashboard.view'), workOrderController.remove);
 // Descargar el PDF de la orden de trabajo.
 router.get('/:id/pdf',       requirePermission('dashboard.view'), workOrderController.pdf);
+// Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
+router.get('/:id/document-flow', requirePermission('dashboard.view'), workOrderController.documentFlow);
 
 // --- Documentos adjuntos de la orden (papeleria de terceros) ---
 // Estas rutas SI tienen permisos granulares propios, a diferencia del resto del

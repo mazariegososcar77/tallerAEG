@@ -5,6 +5,8 @@
 // (Cotizacion -> Orden de Trabajo -> Reporte de Trabajo -> Factura): al FINALIZAR
 // un reporte, el sistema genera automaticamente la factura correspondiente.
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs/promises';
 import { withTransaction } from '../lib/db.js';
 import * as workReportRepository from '../repositories/workReportRepository.js';
 import * as workReportItemRepository from '../repositories/workReportItemRepository.js';
@@ -14,12 +16,16 @@ import * as articleRepository from '../repositories/articleRepository.js';
 import * as invoiceService from './invoiceService.js';
 import * as inventoryService from './inventoryService.js';
 import * as workOrderDocumentService from './workOrderDocumentService.js';
+import { compressPhoto, processVideo, MAX_VIDEO_SECONDS } from '../lib/mediaProcessing.js';
+import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
 import { ApiError } from '../utils/ApiError.js';
 
-// Las 4 etapas fijas por las que pasa todo reporte de trabajo, en orden.
+// Version 1 (legado): las 4 etapas fijas con las que nacio este modulo. Todo
+// reporte que ya existia al desplegar las categorias nuevas se queda para
+// siempre en este esquema (photo_schema_version=1, ver
+// 037_work_report_photo_categories.sql) -- ni su UI ni esta validacion
+// cambian, asi las fotos/notas que ya tenia un reporte viejo no se rompen.
 export const STAGES = ['antes', 'desarmado', 'piezas_nuevas', 'armado_final'];
-
-// Nombres en espanol de cada etapa, para mostrar en los mensajes de "falta esto".
 const STAGE_LABELS = {
   antes: 'Antes de Desarmar',
   desarmado: 'Desarmado + Piezas Nuevas',
@@ -27,20 +33,53 @@ const STAGE_LABELS = {
   armado_final: 'Armado Final',
 };
 
+// Version 2: las 8 categorias reales del manual de Abdias, cada una con un
+// MINIMO de fotos (nunca un tope maximo -- el tecnico puede subir mas de las
+// indicadas sin restriccion) + un video final de prueba obligatorio. Nace en
+// todo reporte creado de aqui en adelante (DEFAULT de la columna).
+export const PHOTO_CATEGORIES = [
+  { key: 'ingreso',             label: 'Ingreso de Equipo',                  min: 1 },
+  { key: 'placa_datos',         label: 'Placa de Datos',                     min: 1 },
+  { key: 'mediciones_ingreso',  label: 'Mediciones Eléctricas de Ingreso',   min: 3 },
+  { key: 'desarme',             label: 'Proceso de Desarme',                 min: 4 },
+  { key: 'mantenimiento',       label: 'Mantenimiento o Rebobinado',         min: 7 },
+  { key: 'repuestos',           label: 'Repuestos',                          min: 2 },
+  { key: 'armado',              label: 'Equipo Armado',                      min: 1 },
+  { key: 'mediciones_finales',  label: 'Mediciones Eléctricas Finales',      min: 1 },
+];
+
+// Etapas/categorias validas para un reporte, segun su esquema de fotos.
+function stageKeysFor(report) {
+  return report.photo_schema_version === 1 ? STAGES : PHOTO_CATEGORIES.map((c) => c.key);
+}
+
 /**
- * Revisa que requisitos le faltan a un reporte para poder finalizarse: cada una de
- * las 4 etapas necesita al menos una foto y una nota escrita, y hacen falta las
- * firmas del tecnico que entrega y de quien recibe. Esta regla existe para que no
- * se cierre (y facture) un trabajo sin dejar constancia completa de lo que se hizo.
- * Devuelve la lista de lo que falta (vacia si ya se puede finalizar).
+ * Revisa que requisitos le faltan a un reporte para poder finalizarse. Se
+ * ramifica segun `photo_schema_version`: los reportes viejos (1) siguen
+ * exigiendo exactamente lo de siempre (una foto + una nota por cada una de
+ * las 4 etapas); los nuevos (2) exigen alcanzar el MINIMO de fotos de cada
+ * una de las 8 categorias (no una cantidad exacta) + su nota, y ademas el
+ * video final. En ambos casos hacen falta las firmas del tecnico que entrega
+ * y de quien recibe. Esta regla existe para que no se cierre (y facture) un
+ * trabajo sin dejar constancia completa de lo que se hizo. Devuelve la lista
+ * de lo que falta (vacia si ya se puede finalizar).
  */
 function getMissingRequirements(report) {
   const missing = [];
   const stageNotes = report.stage_notes || {};
-  for (const stage of STAGES) {
-    const hasPhoto = report.photos.some((p) => p.stage === stage);
-    if (!hasPhoto) missing.push(`foto de la etapa "${STAGE_LABELS[stage]}"`);
-    if (!stageNotes[stage]?.trim()) missing.push(`nota de la etapa "${STAGE_LABELS[stage]}"`);
+  if (report.photo_schema_version === 1) {
+    for (const stage of STAGES) {
+      const hasPhoto = report.photos.some((p) => p.stage === stage);
+      if (!hasPhoto) missing.push(`foto de la etapa "${STAGE_LABELS[stage]}"`);
+      if (!stageNotes[stage]?.trim()) missing.push(`nota de la etapa "${STAGE_LABELS[stage]}"`);
+    }
+  } else {
+    for (const cat of PHOTO_CATEGORIES) {
+      const count = report.photos.filter((p) => p.stage === cat.key).length;
+      if (count < cat.min) missing.push(`fotos de "${cat.label}" (tiene ${count}, mínimo ${cat.min})`);
+      if (!stageNotes[cat.key]?.trim()) missing.push(`nota de "${cat.label}"`);
+    }
+    if (!report.final_video_url) missing.push(`video de prueba final (máximo ${MAX_VIDEO_SECONDS} segundos)`);
   }
   if (!report.tech_signature_url) missing.push('firma del tecnico que entrega');
   if (!report.client_signature_url) missing.push('firma de quien recibe');
@@ -107,17 +146,22 @@ export async function update(id, { general_notes, stage_notes }, canForceEdit = 
   return workReportRepository.update(id, data);
 }
 
-// Agrega una foto a una etapa del reporte. Respeta el mismo bloqueo de "reporte
-// finalizado" que las notas, valida que la etapa sea una de las 4 permitidas y
-// que realmente haya llegado un archivo.
+// Agrega una foto a una etapa/categoria del reporte. Respeta el mismo bloqueo
+// de "reporte finalizado" que las notas, valida que la etapa sea una de las
+// permitidas SEGUN el esquema de fotos de este reporte (las 4 de siempre para
+// uno viejo, las 8 categorias nuevas para uno nuevo) y que realmente haya
+// llegado un archivo. La foto se re-comprime en el disco antes de guardar su
+// registro (ver mediaProcessing.js) -- nunca se guarda el archivo tal como lo
+// mando el celular, para no llenar el disco ahora que no hay tope de fotos.
 export async function addPhoto(id, { stage, caption }, file, canForceEdit = false) {
   const report = await workReportRepository.findById(id);
   if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
   if (report.status === 'finalizado' && !canForceEdit) {
     throw new ApiError(409, 'El reporte ya esta finalizado');
   }
-  if (!STAGES.includes(stage)) throw new ApiError(400, 'Etapa invalida');
+  if (!stageKeysFor(report).includes(stage)) throw new ApiError(400, 'Etapa invalida');
   if (!file) throw new ApiError(400, 'No se recibio la foto');
+  await compressPhoto(file.path);
   const sortOrder = report.photos.filter((p) => p.stage === stage).length;
   const photoUrl = '/uploads/' + file.filename;
   return workReportRepository.addPhoto(id, { stage, photo_url: photoUrl, caption, sort_order: sortOrder });
@@ -135,6 +179,68 @@ export async function removePhoto(id, photoId, canForceEdit = false) {
   const photo = await workReportRepository.findPhotoById(photoId);
   if (!photo || photo.work_report_id !== Number(id)) throw new ApiError(404, 'Foto no encontrada');
   return workReportRepository.removePhoto(photoId);
+}
+
+// Borra del disco el archivo de video al que apunta una URL /uploads/... (si
+// existia). No falla si el archivo ya no esta ahi -- mismo criterio que el
+// resto del sistema con archivos subidos (ver pdfGenerator.js).
+async function deleteVideoFile(videoUrl) {
+  if (!videoUrl) return;
+  await fs.unlink(path.join(UPLOADS_DIR, path.basename(videoUrl))).catch(() => {});
+}
+
+/**
+ * Sube (o reemplaza) el video final de prueba del reporte: una sola ranura,
+ * mismo criterio que la firma. Solo tiene sentido en un reporte version 2
+ * (las 8 categorias nuevas) -- uno version 1 no tiene donde mostrarlo en su
+ * pantalla, asi que se rechaza antes de gastar CPU procesando nada.
+ *
+ * El archivo que sube el celular es el CRUDO (sin comprimir, puede pesar
+ * decenas de MB): `processVideo` lo mide (rechaza si excede
+ * MAX_VIDEO_SECONDS), lo transcodea a un MP4 chico, y aqui se borra el crudo
+ * y el video anterior (si habia) apenas termina -- nunca quedan dos videos
+ * ocupando disco por el mismo reporte.
+ */
+export async function setVideo(id, file, canForceEdit = false) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status === 'finalizado' && !canForceEdit) {
+    throw new ApiError(409, 'El reporte ya esta finalizado');
+  }
+  if (report.photo_schema_version === 1) {
+    throw new ApiError(400, 'Este reporte usa el esquema de fotos anterior, sin video de prueba final');
+  }
+  if (!file) throw new ApiError(400, 'No se recibio el video');
+
+  const filename = crypto.randomUUID() + '.mp4';
+  const outputPath = path.join(UPLOADS_DIR, filename);
+  try {
+    const { durationSeconds, sizeBytes } = await processVideo(file.path, outputPath);
+    await deleteVideoFile(report.final_video_url);
+    return workReportRepository.setVideo(id, {
+      final_video_url: '/uploads/' + filename,
+      final_video_duration_seconds: durationSeconds,
+      final_video_size_bytes: sizeBytes,
+    });
+  } catch (err) {
+    await fs.unlink(outputPath).catch(() => {});
+    throw err;
+  } finally {
+    // El archivo crudo que subio el celular nunca se guarda para siempre:
+    // solo existio mientras se procesaba.
+    await fs.unlink(file.path).catch(() => {});
+  }
+}
+
+// Quita el video final de un reporte (respetando el mismo bloqueo de "finalizado").
+export async function removeVideo(id, canForceEdit = false) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status === 'finalizado' && !canForceEdit) {
+    throw new ApiError(409, 'El reporte ya esta finalizado');
+  }
+  await deleteVideoFile(report.final_video_url);
+  return workReportRepository.removeVideo(id);
 }
 
 // Guarda la firma (dibujada a mano y convertida a imagen) del tecnico o del

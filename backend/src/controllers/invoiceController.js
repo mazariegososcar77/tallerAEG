@@ -1,6 +1,7 @@
 // Este archivo recibe las peticiones web relacionadas a FACTURACIÓN: ver facturas,
 // certificarlas y descargar el PDF de una factura.
 import * as invoiceService from '../services/invoiceService.js';
+import * as documentFlowService from '../services/documentFlowService.js';
 import { generarFacturaPDF } from '../utils/pdfGenerator.js';
 import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -27,6 +28,12 @@ export const createFromWorkOrder = asyncHandler(async (req, res) => {
 // no está integrada, ver felCertifier.js.
 export const certify = asyncHandler(async (req, res) => {
   res.json(await invoiceService.certify(req.params.id, req.body.email));
+});
+
+// Mapa de Relaciones: la cadena de documentos (Cotizacion -> Orden -> Reporte ->
+// Factura) de la orden que generó esta factura.
+export const documentFlow = asyncHandler(async (req, res) => {
+  res.json(await documentFlowService.getForInvoice(req.params.id));
 });
 
 // Cuando el usuario descarga el PDF de una factura, esto genera el archivo y se lo envía.

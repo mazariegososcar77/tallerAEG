@@ -100,6 +100,68 @@ export function uploadReportPhoto(req, res, next) {
 }
 
 // ---------------------------------------------------------------------------
+// Video final de prueba de un reporte de trabajo
+// ---------------------------------------------------------------------------
+// A diferencia de las fotos, el video CRUDO que sube el celular nunca se
+// guarda para siempre: aqui solo se recibe a una carpeta temporal, y
+// workReportService.setVideo lo comprime con ffmpeg a un MP4 chico (en
+// UPLOADS_DIR, ese si definitivo) y borra el crudo apenas termina -- por eso
+// vive en su propia subcarpeta, para que sea obvio que es basura de paso.
+const VIDEO_TMP_DIR = path.join(UPLOADS_DIR, 'tmp');
+fs.mkdirSync(VIDEO_TMP_DIR, { recursive: true });
+
+// Limite generoso: es el archivo CRUDO (un celular grabando 4K puede pesar
+// varias decenas de MB incluso en 30 segundos), no lo que queda guardado. La
+// duracion real se valida despues con ffprobe (workReportService.setVideo);
+// este limite solo evita que alguien llene el disco temporal con un archivo
+// gigante antes de que ffprobe alcance a rechazarlo.
+const MAX_VIDEO_SIZE_MB = 200;
+const ALLOWED_VIDEO_MIMES = new Set([
+  'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/3gpp2',
+  'video/x-msvideo', 'video/x-matroska',
+]);
+const ALLOWED_VIDEO_EXTS = /^\.(mp4|mov|webm|3gp|3g2|avi|mkv|m4v)$/;
+
+const videoStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, VIDEO_TMP_DIR),
+  filename: (_req, file, cb) => {
+    const ext = (path.extname(file.originalname) || '').toLowerCase();
+    const safeExt = ALLOWED_VIDEO_EXTS.test(ext) ? ext : '.bin';
+    cb(null, `${crypto.randomUUID()}${safeExt}`);
+  },
+});
+
+const videoFilter = (_req, file, cb) => {
+  const mime = (file.mimetype || '').toLowerCase();
+  const ext = (path.extname(file.originalname) || '').toLowerCase();
+  if (ALLOWED_VIDEO_MIMES.has(mime)) return cb(null, true);
+  const genericMime = !mime || mime === 'application/octet-stream' || mime === 'binary/octet-stream';
+  if (genericMime && ALLOWED_VIDEO_EXTS.test(ext)) return cb(null, true);
+  return cb(new ApiError(400, `Tipo de video no permitido: ${file.mimetype || 'desconocido'}`));
+};
+
+const singleVideo = multer({
+  storage: videoStorage,
+  limits: { fileSize: MAX_VIDEO_SIZE_MB * 1024 * 1024, files: 1 },
+  fileFilter: videoFilter,
+}).single('video');
+
+// Recibe el video final de prueba de un reporte (campo "video"), a la
+// carpeta temporal -- lo comprime y lo mueve a su lugar definitivo
+// workReportService.setVideo.
+export function uploadReportVideo(req, res, next) {
+  singleVideo(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError) {
+      const msg =
+        err.code === 'LIMIT_FILE_SIZE' ? `El video excede ${MAX_VIDEO_SIZE_MB} MB` : err.message;
+      return next(new ApiError(400, msg));
+    }
+    return next(err);
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Documentos adjuntos de una orden de trabajo
 // ---------------------------------------------------------------------------
 // Papeleria de terceros (la factura del torneador, un certificado, la cotizacion

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Upload, X, ImageOff, Camera, Images } from 'lucide-react';
+import { Upload, X, ImageOff, Camera, Images, CircleCheck, CircleAlert } from 'lucide-react';
 import { notify } from '../../lib/toast.js';
 import { prepareImageForUpload, IMAGE_ACCEPT } from '../../lib/image.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
@@ -31,24 +31,32 @@ function AddTile({ icon: Icon, label, capture, multiple, uploading, onFiles }) {
 }
 
 /**
- * Galeria de fotos de una etapa del reporte de trabajo. Controlado: `photos`
- * (array de {id, photo_url, caption}), `onAdd(file)` y `onRemove(photoId)`
- * (ambos async, llamados una vez por foto agregada/eliminada).
+ * Galeria de fotos de una etapa/categoria del reporte de trabajo. Controlado:
+ * `photos` (array de {id, photo_url, caption}), `onAdd(file)` y
+ * `onRemove(photoId)` (ambos async, llamados una vez por foto
+ * agregada/eliminada).
  *
- * Este componente muestra las fotos tomadas para una etapa del Reporte de
- * Trabajo (por ejemplo "Antes de desarmar" o "Armado final"), en forma de
- * cuadricula, y permite agregar fotos nuevas o borrar las que ya no sirven.
- * Se usa dentro del formulario de Reporte de Trabajo, una vez por cada etapa.
- * `disabled` bloquea agregar/quitar fotos (ej. cuando el reporte ya quedo
- * finalizado y no se puede seguir editando).
+ * Este componente muestra las fotos tomadas para una etapa/categoria del
+ * Reporte de Trabajo (por ejemplo "Antes de desarmar" o "Mediciones Eléctricas
+ * de Ingreso"), en forma de cuadricula, y permite agregar fotos nuevas o
+ * borrar las que ya no sirven. Se usa dentro del formulario de Reporte de
+ * Trabajo, una vez por cada etapa/categoria. `disabled` bloquea agregar/quitar
+ * fotos (ej. cuando el reporte ya quedo finalizado y no se puede seguir
+ * editando).
+ *
+ * `min` (opcional): cuando se indica, muestra abajo cuantas fotos faltan para
+ * llegar al minimo de esta categoria, o una confirmacion de que ya se
+ * alcanzo -- nunca bloquea seguir agregando mas, no hay tope maximo. Se deja
+ * `undefined` para las 4 etapas del esquema viejo (photo_schema_version=1),
+ * que no tienen minimo configurable y no muestran este indicador.
  *
  * En celular/tablet aparecen dos botones: "Tomar foto" (abre la camara
  * directamente) y "Galeria" (elige fotos ya guardadas en el dispositivo). En
  * computadora solo aparece el boton de seleccionar archivos. Cualquier formato
  * de imagen sirve: antes de subirse se convierte a JPG liviano
- * (ver lib/image.js).
+ * (ver lib/image.js) y el servidor la vuelve a comprimir por su cuenta.
  */
-export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled }) {
+export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled, min }) {
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false); // true mientras se estan subiendo fotos
   const [removingId, setRemovingId] = useState(null); // id de la foto que se esta borrando en este momento
@@ -127,6 +135,20 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled })
           </div>
         )}
       </div>
+
+      {/* Indicador de minimo (solo si se indica `min`, ver doc arriba). Nunca
+          bloquea seguir agregando fotos, solo informa. */}
+      {min != null && (
+        photos.length >= min ? (
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-emerald-600">
+            <CircleCheck size={13} /> Mínimo alcanzado ({photos.length}/{min}) — puedes agregar más si quieres
+          </p>
+        ) : (
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-amber-600">
+            <CircleAlert size={13} /> Faltan {min - photos.length} foto{min - photos.length === 1 ? '' : 's'} para el mínimo ({photos.length}/{min})
+          </p>
+        )
+      )}
     </div>
   );
 }

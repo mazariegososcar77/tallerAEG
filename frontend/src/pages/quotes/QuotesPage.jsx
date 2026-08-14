@@ -7,11 +7,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
-import { FileText, Plus, Search, Eye, Pencil, Trash2, Download, ClipboardList } from 'lucide-react';
+import { FileText, Plus, Search, Eye, Pencil, Trash2, Download, ClipboardList, Network } from 'lucide-react';
 import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
+import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
 
 const STATUS_LABELS = {
   borrador:  { label: 'Borrador',  color: '#94a3b8' },
@@ -27,6 +28,7 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const [pdfQuote, setPdfQuote] = useState(null); // cotizacion que se esta viendo en el visor de PDF
   const [toDelete, setToDelete] = useState(null); // cotizacion pendiente de confirmar su eliminacion
+  const [flowSource, setFlowSource] = useState(null); // { type: 'quote', id } para el Mapa de Relaciones
   const navigate = useNavigate();
 
   // Descarga el PDF de la cotizacion (lo pide al servidor y lo baja como archivo).
@@ -127,6 +129,7 @@ export default function QuotesPage() {
                         <ClipboardList size={15} /> Crear Orden
                       </button>
                     )}
+                    <button onClick={() => setFlowSource({ type: 'quote', id: q.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
                     <button onClick={() => setPdfQuote(q)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(q)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
@@ -138,6 +141,8 @@ export default function QuotesPage() {
           })}
         </div>
       )}
+
+      <DocumentFlowModal open={flowSource != null} onClose={() => setFlowSource(null)} source={flowSource} />
 
       {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
       <PdfViewerModal

@@ -29,9 +29,9 @@ function stringifyJsonFields(data) {
 // mostrar (Cotizacion / Generar Factura) sin hacer consultas aparte. Para el
 // flujo Pre estas columnas tambien se llenan si aplican, no hacen daño.
 const FLOW_STATUS_SELECT = `
-  wr.id AS report_id, wr.status AS report_status,
+  wr.id AS report_id, wr.number AS report_number, wr.status AS report_status,
   q.status AS quote_status,
-  inv.id AS invoice_id, inv.status AS invoice_status
+  inv.id AS invoice_id, inv.number AS invoice_number, inv.status AS invoice_status
 `;
 const FLOW_STATUS_JOIN = `
   LEFT JOIN work_reports wr ON wr.work_order_id = wo.id
@@ -81,6 +81,28 @@ export async function findById(id) {
   const [items] = await pool.query('SELECT * FROM work_order_items WHERE work_order_id = ?', [id]);
   order.items = items;
   return order;
+}
+
+// Trae todas las ordenes de trabajo que nacieron de una cotizacion (una cotizacion
+// con varios equipos genera una orden por equipo -- ver CLAUDE.md). La usa el mapa
+// de relaciones (Flujo de Documentos) para mostrar, desde una cotizacion, cada
+// orden a la que dio origen con su reporte y su factura (si ya los tienen).
+export async function findByQuoteId(quoteId) {
+  const [rows] = await pool.query(`
+    SELECT wo.*,
+      CASE
+        WHEN c.last_name IS NOT NULL AND c.last_name != ''
+          THEN CONCAT(c.first_name, ' ', c.last_name)
+        ELSE c.first_name
+      END as client_name,
+      ${FLOW_STATUS_SELECT}
+    FROM work_orders wo
+    LEFT JOIN clients c ON wo.client_id = c.id
+    ${FLOW_STATUS_JOIN}
+    WHERE wo.quote_id = ?
+    ORDER BY wo.created_at
+  `, [quoteId]);
+  return rows.map(parseJsonFields);
 }
 
 // Calcula el siguiente número correlativo de orden de trabajo (busca el número más alto

@@ -2,6 +2,7 @@
 // documentación fotográfica de una orden (fotos y notas por etapa, firmas del técnico y del
 // cliente, finalizarlo y descargar su PDF).
 import * as workReportService from '../services/workReportService.js';
+import * as documentFlowService from '../services/documentFlowService.js';
 import { generarReportePDF } from '../utils/pdfGenerator.js';
 import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -47,6 +48,20 @@ export const removePhoto = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
+// Cuando el usuario sube (o reemplaza) el video final de prueba del reporte, esto lo comprime y lo guarda.
+export const setVideo = asyncHandler(async (req, res) => {
+  const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
+  const report = await workReportService.setVideo(req.params.id, req.file, canForceEdit);
+  res.json(report);
+});
+
+// Cuando el usuario quita el video final de prueba del reporte, esto lo elimina.
+export const removeVideo = asyncHandler(async (req, res) => {
+  const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
+  const report = await workReportService.removeVideo(req.params.id, canForceEdit);
+  res.json(report);
+});
+
 // Cuando el técnico o el cliente firman en la pantalla (dibujando su firma), esto la guarda junto con su nombre.
 export const setSignature = asyncHandler(async (req, res) => {
   const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
@@ -61,6 +76,13 @@ export const setSignature = asyncHandler(async (req, res) => {
 export const getSigningLink = asyncHandler(async (req, res) => {
   const token = await workReportService.getSigningLink(req.params.id);
   res.json({ token });
+});
+
+// Mapa de Relaciones: la cadena de documentos (Cotizacion -> Orden -> Reporte ->
+// Factura) de la orden que documenta este reporte. 400 si el reporte es de una
+// Orden de Servicio (no tiene cotizacion ni factura detras).
+export const documentFlow = asyncHandler(async (req, res) => {
+  res.json(await documentFlowService.getForWorkReport(req.params.id));
 });
 
 // Trae el material (repuestos e insumos) cargado en un reporte.

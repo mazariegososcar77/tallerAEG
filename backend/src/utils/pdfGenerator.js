@@ -923,8 +923,9 @@ export function generarFacturaPDF(invoice, settings) {
   return doc;
 }
 
-// Nombres en español, para mostrar en el PDF, de las 4 etapas fijas en las
-// que se documenta un reporte de trabajo con fotos y notas.
+// Nombres en español, para mostrar en el PDF, de las 4 etapas fijas con las
+// que nacio este modulo (reportes con photo_schema_version=1 -- ver
+// workReportService.js/037_work_report_photo_categories.sql).
 const STAGE_LABELS = {
   antes: 'Antes de Desarmar',
   desarmado: 'Desarmado + Piezas Nuevas',
@@ -932,13 +933,29 @@ const STAGE_LABELS = {
   armado_final: 'Armado Final',
 };
 
-// Arma el PDF de un REPORTE DE TRABAJO: la informacion general de la orden,
-// y para cada una de las 4 etapas del trabajo (antes de desarmar, desarmado
-// + piezas nuevas, piezas instaladas + usadas, armado final) su nota y las
-// fotos que se subieron, mas las firmas del tecnico y del cliente al final.
-// Las fotos y firmas se insertan leyendo el archivo real desde la carpeta
-// de "uploads" del servidor; si algun archivo ya no existe en disco, se
-// dibuja un recuadro gris en su lugar en vez de fallar.
+// Las 8 categorias nuevas (photo_schema_version=2), mismas llaves y orden que
+// PHOTO_CATEGORIES en workReportService.js (se duplica aqui a proposito, como
+// ya pasaba con STAGE_LABELS: este archivo no depende de los services).
+const PHOTO_CATEGORY_LABELS = {
+  ingreso: 'Ingreso de Equipo',
+  placa_datos: 'Placa de Datos',
+  mediciones_ingreso: 'Mediciones Eléctricas de Ingreso',
+  desarme: 'Proceso de Desarme',
+  mantenimiento: 'Mantenimiento o Rebobinado',
+  repuestos: 'Repuestos',
+  armado: 'Equipo Armado',
+  mediciones_finales: 'Mediciones Eléctricas Finales',
+};
+
+// Arma el PDF de un REPORTE DE TRABAJO: la informacion general de la orden, y
+// por cada etapa/categoria de fotos (las 4 de siempre o las 8 nuevas, segun
+// report.photo_schema_version) su nota y las fotos que se subieron; en los
+// reportes nuevos tambien la duracion del video de prueba final (un PDF no
+// puede reproducirlo, solo deja constancia de que existe); y las firmas del
+// tecnico y del cliente al final. Las fotos y firmas se insertan leyendo el
+// archivo real desde la carpeta de "uploads" del servidor; si algun archivo
+// ya no existe en disco, se dibuja un recuadro gris en su lugar en vez de
+// fallar.
 export function generarReportePDF(report, settings) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
@@ -983,18 +1000,23 @@ export function generarReportePDF(report, settings) {
   }
   y += 8;
 
-  // ── ETAPAS: nota + fotos ──────────────────────────────────
+  // ── ETAPAS/CATEGORIAS: nota + fotos ────────────────────────
+  // Version 1 (reportes viejos) imprime las 4 etapas de siempre; version 2
+  // (las 8 categorias nuevas del manual de Abdias) imprime esas -- mismo
+  // criterio de compatibilidad que el resto del modulo (ver
+  // workReportService.js).
+  const stageLabels = report.photo_schema_version === 1 ? STAGE_LABELS : PHOTO_CATEGORY_LABELS;
   const stageNotes = report.stage_notes || {};
   const photosByStage = (stage) => (report.photos || []).filter((p) => p.stage === stage);
   const THUMB = 100, GAP = 8;
   const perRow = Math.max(1, Math.floor((CW + GAP) / (THUMB + GAP)));
 
-  Object.keys(STAGE_LABELS).forEach((stageKey) => {
+  Object.keys(stageLabels).forEach((stageKey) => {
     if (y > 690) { doc.addPage({ margin: 0 }); y = 40; }
 
     doc.rect(L, y, CW, 20).fill(NARANJA);
     doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold')
-       .text(STAGE_LABELS[stageKey].toUpperCase(), L + 8, y + 6);
+       .text(stageLabels[stageKey].toUpperCase(), L + 8, y + 6);
     y += 26;
 
     const note = stageNotes[stageKey];
@@ -1029,6 +1051,26 @@ export function generarReportePDF(report, settings) {
     }
     y += 4;
   });
+
+  // ── VIDEO DE PRUEBA FINAL (solo reportes version 2) ────────
+  // Un PDF no puede reproducir video: se imprime su duracion/tamaño como
+  // constancia de que existe, y el archivo real se ve/descarga desde el
+  // sistema (GET /uploads/<archivo>).
+  if (report.photo_schema_version !== 1) {
+    if (y > 690) { doc.addPage({ margin: 0 }); y = 40; }
+    doc.rect(L, y, CW, 20).fill(NARANJA);
+    doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold')
+       .text('VIDEO DE PRUEBA FINAL', L + 8, y + 6);
+    y += 26;
+    if (report.final_video_url) {
+      const size = report.final_video_size_bytes ? (report.final_video_size_bytes / (1024 * 1024)).toFixed(1) + ' MB' : '';
+      doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
+         .text(`Duración: ${report.final_video_duration_seconds || '-'}s${size ? ' · ' + size : ''} (disponible en el sistema)`, L, y);
+    } else {
+      doc.fillColor(GRIS).fontSize(8).font('Helvetica-Oblique').text('Sin video.', L, y);
+    }
+    y += 22;
+  }
 
   // ── FIRMAS ─────────────────────────────────────────────────
   if (y > 630) { doc.addPage({ margin: 0 }); y = 40; }

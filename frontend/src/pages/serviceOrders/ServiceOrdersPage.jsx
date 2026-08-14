@@ -53,7 +53,7 @@ export default function ServiceOrdersPage() {
       setOrders(prev => prev.filter(o => o.id !== toDelete.id));
       notify.success('Orden No. ' + toDelete.number + ' eliminada');
     } catch(e) {
-      notify.error('No se pudo eliminar la orden');
+      notify.error(e.response?.data?.error || e.message || 'No se pudo eliminar la orden');
     } finally {
       setToDelete(null);
     }

@@ -1,6 +1,7 @@
 // Este archivo recibe las peticiones web relacionadas a COTIZACIONES: verlas, crearlas,
 // editarlas, cambiar su estado, borrarlas y descargar el PDF.
 import * as quoteService from '../services/quoteService.js';
+import * as documentFlowService from '../services/documentFlowService.js';
 import { generarCotizacionPDF } from '../utils/pdfGenerator.js';
 import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -34,6 +35,12 @@ export const updateStatus = asyncHandler(async (req, res) => {
 export const remove = asyncHandler(async (req, res) => {
   await quoteService.remove(req.params.id);
   res.status(204).end();
+});
+
+// Mapa de Relaciones: la cadena de documentos (Cotizacion -> Orden(es) de
+// Trabajo -> Reporte -> Factura) que nacieron de esta cotizacion.
+export const documentFlow = asyncHandler(async (req, res) => {
+  res.json(await documentFlowService.getForQuote(req.params.id));
 });
 
 // Cuando el usuario descarga el PDF de una cotización, esto genera el archivo y se lo envía.

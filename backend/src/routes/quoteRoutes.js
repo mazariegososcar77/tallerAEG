@@ -23,5 +23,7 @@ router.patch('/:id/status',  requirePermission('dashboard.view'), quoteControlle
 router.delete('/:id',        requirePermission('dashboard.view'), quoteController.remove);
 // Descargar el PDF de la cotizacion.
 router.get('/:id/pdf',       requirePermission('dashboard.view'), quoteController.pdf);
+// Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden(es) -> Reporte -> Factura).
+router.get('/:id/document-flow', requirePermission('dashboard.view'), quoteController.documentFlow);
 
 export default router;
