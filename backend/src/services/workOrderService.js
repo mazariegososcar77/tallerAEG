@@ -4,6 +4,7 @@
 // entregado, o cancelado). Es el segundo paso del flujo del taller, despues de la
 // Cotizacion y antes del Reporte de Trabajo.
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
+import * as invoiceRepository from '../repositories/invoiceRepository.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Devuelve la lista completa de ordenes de trabajo.
@@ -86,9 +87,17 @@ export async function updateStatus(id, status) {
   return workOrderRepository.update(id, { status });
 }
 
-// Elimina una orden de trabajo.
+// Elimina una orden de trabajo. Se rechaza con un motivo explicito si tiene una
+// factura asociada (fk_invoices_order es RESTRICT a proposito: una orden facturada
+// tiene historial fiscal real detras y no debe poder borrarse). El resto de las
+// tablas hijas (items, reporte y sus fotos/material, documentos adjuntos) cascadean
+// solas al hacer el DELETE, asi que no hace falta revisarlas aqui.
 export async function remove(id) {
   const existing = await workOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de trabajo no encontrada');
+  if (existing.invoice_id) {
+    const invoice = await invoiceRepository.findById(existing.invoice_id);
+    throw new ApiError(409, `No se puede eliminar la orden: tiene la factura No. ${invoice.number} asociada.`);
+  }
   return workOrderRepository.remove(id);
 }
