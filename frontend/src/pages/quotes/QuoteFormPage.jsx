@@ -229,10 +229,14 @@ export default function QuoteFormPage() {
     if (!form.date) return notify.error('Ingresa la fecha');
     setSaving(true);
     try {
+      // Descarta las filas que quedaron sin llenar (descripcion vacia, la que trae
+      // cada equipo/boton "+ Agregar linea" por defecto): guardarlas como items
+      // reales con descripcion "" pasa el guardado pero rompe la certificacion FEL
+      // cuando la factura llega a Digifact (el NUC exige descripcion en cada item).
       const items = [];
       const equipment_data = equipments.map((eq,ei) => {
-        eq.labor.forEach(l => items.push({...l, equipment_index:ei, item_type:'labor'}));
-        eq.parts.forEach(p => items.push({...p, equipment_index:ei, item_type:'part'}));
+        eq.labor.filter(l => l.description?.trim()).forEach(l => items.push({...l, equipment_index:ei, item_type:'labor'}));
+        eq.parts.filter(p => p.description?.trim()).forEach(p => items.push({...p, equipment_index:ei, item_type:'part'}));
         return { name:eq.name, brand:eq.brand, model:eq.model, serial:eq.serial, machine_id:eq.machine_id||null };
       });
       const payload = { ...form, items, equipment_data, subtotal:grandSubtotal, total:grandTotal };
