@@ -41,6 +41,14 @@ services:
       DB_NAME: ${MYSQL_DATABASE:-talleraeg}
       DB_USER: ${MYSQL_USER:-aeg_user}
       DB_PASSWORD: ${MYSQL_PASSWORD}
+      # Almacenamiento de archivos en Google Cloud Storage. Es la UNICA variable
+      # nueva: no hay llave JSON ni secreto que agregar. La VM tiene adjunta la
+      # service account talleraeg-storage, asi que la libreria consigue las
+      # credenciales sola por el metadata server y firma las URLs con la API de
+      # IAM. Vacia = el sistema sigue guardando en el disco del contenedor, como
+      # antes (ver backend/src/lib/gcsStorage.js).
+      # prod: talleraeg-media-prod   dev: talleraeg-media-dev
+      GCS_BUCKET: ${GCS_BUCKET:-}
       # Facturacion electronica (Digifact FEL). Vacias = felCertifier sigue en modo simulador.
       DIGIFACT_ENV: ${DIGIFACT_ENV:-test}
       DIGIFACT_NIT: ${DIGIFACT_NIT:-}
@@ -60,6 +68,11 @@ services:
       DIGIFACT_EMISOR_EMAIL: ${DIGIFACT_EMISOR_EMAIL:-}
     volumes:
       - backend_data:/app/src/data
+      # Sigue montado aunque los archivos nuevos ya vayan a Google Cloud Storage:
+      # aqui viven los que se subieron ANTES de la migracion (el backend sabe
+      # servir los dos formatos) y es donde ffmpeg trabaja el video mientras lo
+      # comprime. Se puede quitar recien cuando no quede ninguna fila apuntando a
+      # /uploads/ -- ver docs/integracion-gcp-storage.md.
       - backend_uploads:/app/uploads
     networks:
       - talleraeg

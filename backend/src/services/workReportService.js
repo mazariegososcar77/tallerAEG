@@ -5,6 +5,7 @@
 // (Cotizacion -> Orden de Trabajo -> Reporte de Trabajo -> Factura): al FINALIZAR
 // un reporte, el sistema genera automaticamente la factura correspondiente.
 import crypto from 'crypto';
+import os from 'os';
 import path from 'path';
 import fs from 'fs/promises';
 import { withTransaction } from '../lib/db.js';
@@ -16,7 +17,9 @@ import * as articleRepository from '../repositories/articleRepository.js';
 import * as invoiceService from './invoiceService.js';
 import * as inventoryService from './inventoryService.js';
 import * as workOrderDocumentService from './workOrderDocumentService.js';
+import * as uploadService from './uploadService.js';
 import { compressPhoto, processVideo, MAX_VIDEO_SECONDS } from '../lib/mediaProcessing.js';
+import * as gcs from '../lib/gcsStorage.js';
 import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -146,30 +149,46 @@ export async function update(id, { general_notes, stage_notes }, canForceEdit = 
   return workReportRepository.update(id, data);
 }
 
-// Agrega una foto a una etapa/categoria del reporte. Respeta el mismo bloqueo
-// de "reporte finalizado" que las notas, valida que la etapa sea una de las
-// permitidas SEGUN el esquema de fotos de este reporte (las 4 de siempre para
-// uno viejo, las 8 categorias nuevas para uno nuevo) y que realmente haya
-// llegado un archivo. La foto se re-comprime en el disco antes de guardar su
-// registro (ver mediaProcessing.js) -- nunca se guarda el archivo tal como lo
-// mando el celular, para no llenar el disco ahora que no hay tope de fotos.
-export async function addPhoto(id, { stage, caption }, file, canForceEdit = false) {
+/**
+ * Agrega una foto a una etapa/categoria del reporte. Respeta el mismo bloqueo
+ * de "reporte finalizado" que las notas y valida que la etapa sea una de las
+ * permitidas SEGUN el esquema de fotos de este reporte (las 4 de siempre para
+ * uno viejo, las 8 categorias nuevas para uno nuevo).
+ *
+ * La foto puede llegar de dos maneras, y las dos siguen vivas a proposito:
+ * - `object_path`: el navegador ya la subio DIRECTO a Google Cloud Storage con
+ *   una URL firmada, y aqui solo se guarda la ruta. Es el camino normal: la
+ *   foto nunca pasa por el servidor.
+ * - `file`: la subida multipart de siempre, cuando el almacenamiento en la nube
+ *   no esta configurado. En ese caso la foto se re-comprime en el disco antes
+ *   de guardar su registro (ver mediaProcessing.js), para no llenar el disco
+ *   ahora que no hay tope de fotos por reporte.
+ */
+export async function addPhoto(id, { stage, caption, object_path }, file, canForceEdit = false) {
   const report = await workReportRepository.findById(id);
   if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
   if (report.status === 'finalizado' && !canForceEdit) {
     throw new ApiError(409, 'El reporte ya esta finalizado');
   }
   if (!stageKeysFor(report).includes(stage)) throw new ApiError(400, 'Etapa invalida');
-  if (!file) throw new ApiError(400, 'No se recibio la foto');
-  await compressPhoto(file.path);
+
+  let photoUrl;
+  if (object_path) {
+    photoUrl = await uploadService.confirmarRuta(object_path, 'reportes');
+  } else {
+    if (!file) throw new ApiError(400, 'No se recibio la foto');
+    await compressPhoto(file.path);
+    photoUrl = '/uploads/' + file.filename;
+  }
   const sortOrder = report.photos.filter((p) => p.stage === stage).length;
-  const photoUrl = '/uploads/' + file.filename;
   return workReportRepository.addPhoto(id, { stage, photo_url: photoUrl, caption, sort_order: sortOrder });
 }
 
 // Elimina una foto de un reporte (respetando el mismo bloqueo de "finalizado").
 // Verifica que la foto realmente pertenezca a este reporte, para que no se pueda
-// borrar por error la foto de otro reporte.
+// borrar por error la foto de otro reporte. Si la foto vivia en la nube, tambien
+// se borra el archivo: dejarlo ahi solo hace crecer la factura del bucket con
+// algo que ya nadie puede alcanzar.
 export async function removePhoto(id, photoId, canForceEdit = false) {
   const report = await workReportRepository.findById(id);
   if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
@@ -178,14 +197,20 @@ export async function removePhoto(id, photoId, canForceEdit = false) {
   }
   const photo = await workReportRepository.findPhotoById(photoId);
   if (!photo || photo.work_report_id !== Number(id)) throw new ApiError(404, 'Foto no encontrada');
-  return workReportRepository.removePhoto(photoId);
+  const eliminada = await workReportRepository.removePhoto(photoId);
+  await gcs.borrarObjeto(photo.photo_url);
+  return eliminada;
 }
 
-// Borra del disco el archivo de video al que apunta una URL /uploads/... (si
-// existia). No falla si el archivo ya no esta ahi -- mismo criterio que el
-// resto del sistema con archivos subidos (ver pdfGenerator.js).
+// Borra el archivo de un video que ya no se usa, este donde este: un objeto en
+// la nube o el archivo viejo en el disco del servidor. No falla si ya no existe
+// -- mismo criterio que el resto del sistema con archivos subidos.
 async function deleteVideoFile(videoUrl) {
   if (!videoUrl) return;
+  if (gcs.esRutaObjeto(videoUrl)) {
+    await gcs.borrarObjeto(videoUrl);
+    return;
+  }
   await fs.unlink(path.join(UPLOADS_DIR, path.basename(videoUrl))).catch(() => {});
 }
 
@@ -200,6 +225,12 @@ async function deleteVideoFile(videoUrl) {
  * MAX_VIDEO_SECONDS), lo transcodea a un MP4 chico, y aqui se borra el crudo
  * y el video anterior (si habia) apenas termina -- nunca quedan dos videos
  * ocupando disco por el mismo reporte.
+ *
+ * ES EL UNICO ARCHIVO QUE TODAVIA PASA POR EL SERVIDOR, y no es un descuido:
+ * ffmpeg trabaja sobre archivos, asi que el crudo tiene que aterrizar en algun
+ * disco para poder medirlo y comprimirlo. Lo que si cambia con la nube es el
+ * destino final: el MP4 ya comprimido (unos pocos MB) se sube al bucket y los
+ * dos archivos locales se borran, asi que el disco de la VM deja de crecer.
  */
 export async function setVideo(id, file, canForceEdit = false) {
   const report = await workReportRepository.findById(id);
@@ -212,13 +243,21 @@ export async function setVideo(id, file, canForceEdit = false) {
   }
   if (!file) throw new ApiError(400, 'No se recibio el video');
 
+  const enLaNube = gcs.estaConfigurado();
   const filename = crypto.randomUUID() + '.mp4';
-  const outputPath = path.join(UPLOADS_DIR, filename);
+  // Con la nube encendida el comprimido es de paso (se sube y se borra), asi
+  // que se escribe en el temporal del sistema y no en el volumen de uploads.
+  const outputPath = path.join(enLaNube ? os.tmpdir() : UPLOADS_DIR, filename);
   try {
     const { durationSeconds, sizeBytes } = await processVideo(file.path, outputPath);
+    let videoUrl = '/uploads/' + filename;
+    if (enLaNube) {
+      videoUrl = gcs.construirRutaObjeto('videos', 'mp4');
+      await gcs.subirArchivo(outputPath, videoUrl, 'video/mp4');
+    }
     await deleteVideoFile(report.final_video_url);
     return workReportRepository.setVideo(id, {
-      final_video_url: '/uploads/' + filename,
+      final_video_url: videoUrl,
       final_video_duration_seconds: durationSeconds,
       final_video_size_bytes: sizeBytes,
     });
@@ -227,8 +266,10 @@ export async function setVideo(id, file, canForceEdit = false) {
     throw err;
   } finally {
     // El archivo crudo que subio el celular nunca se guarda para siempre:
-    // solo existio mientras se procesaba.
+    // solo existio mientras se procesaba. El comprimido tampoco, si ya se subio
+    // al bucket.
     await fs.unlink(file.path).catch(() => {});
+    if (enLaNube) await fs.unlink(outputPath).catch(() => {});
   }
 }
 
@@ -244,20 +285,33 @@ export async function removeVideo(id, canForceEdit = false) {
 }
 
 // Guarda la firma (dibujada a mano y convertida a imagen) del tecnico o del
-// cliente en el reporte. Respeta el mismo bloqueo de "finalizado".
-export async function setSignature(id, role, name, file, canForceEdit = false) {
+// cliente en el reporte. Respeta el mismo bloqueo de "finalizado". Igual que
+// las fotos, la firma puede venir ya subida a la nube (`objectPath`) o como
+// archivo multipart, segun este configurado el almacenamiento.
+export async function setSignature(id, role, name, file, canForceEdit = false, objectPath = null) {
   const report = await workReportRepository.findById(id);
   if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
   if (report.status === 'finalizado' && !canForceEdit) {
     throw new ApiError(409, 'El reporte ya esta finalizado');
   }
   if (!['tech', 'client'].includes(role)) throw new ApiError(400, 'Rol de firma invalido');
-  if (!file) throw new ApiError(400, 'No se recibio la firma');
-  const url = '/uploads/' + file.filename;
+
+  let url;
+  if (objectPath) {
+    url = await uploadService.confirmarRuta(objectPath, 'firmas');
+  } else {
+    if (!file) throw new ApiError(400, 'No se recibio la firma');
+    url = '/uploads/' + file.filename;
+  }
+  const anterior = role === 'tech' ? report.tech_signature_url : report.client_signature_url;
   const data = role === 'tech'
     ? { tech_signature_url: url, tech_signature_name: name || null }
     : { client_signature_url: url, client_signature_name: name || null };
-  return workReportRepository.update(id, data);
+  const guardado = await workReportRepository.update(id, data);
+  // Firmar de nuevo reemplaza la firma anterior: la que quedo suelta se borra
+  // del bucket para no acumular archivos que ya nadie referencia.
+  if (anterior && anterior !== url) await gcs.borrarObjeto(anterior);
+  return guardado;
 }
 
 /**
@@ -274,6 +328,16 @@ export async function getSigningLink(id) {
   const token = crypto.randomBytes(24).toString('base64url');
   await workReportRepository.update(id, { client_signature_token: token });
   return token;
+}
+
+/**
+ * ¿El token de firma remota corresponde a un reporte real? Lo usa el endpoint que
+ * entrega la URL firmada de subida en el enlace publico: ahi no hay sesion ni
+ * permisos que revisar, asi que confirmar el token ANTES de firmar nada es lo unico
+ * que impide que cualquiera consiga permisos de escritura sobre el bucket.
+ */
+export async function existePorTokenPublico(token) {
+  return Boolean(await workReportRepository.findByPublicToken(token));
 }
 
 /**
@@ -301,10 +365,10 @@ export async function getPublicByToken(token) {
 // setSignature de siempre (mismas reglas: si el reporte ya esta finalizado,
 // queda bloqueado igual que para un usuario con sesion sin permiso de forzar
 // edicion).
-export async function setPublicClientSignature(token, name, file) {
+export async function setPublicClientSignature(token, name, file, objectPath = null) {
   const report = await workReportRepository.findByPublicToken(token);
   if (!report) throw new ApiError(404, 'Enlace invalido o vencido');
-  return setSignature(report.id, 'client', name, file, false);
+  return setSignature(report.id, 'client', name, file, false, objectPath);
 }
 
 // ---------------------------------------------------------------------------

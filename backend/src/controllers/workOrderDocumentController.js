@@ -2,17 +2,24 @@
 // una orden de trabajo: verlos, subir uno nuevo, borrarlo y confirmar que ya se
 // revisaron (el paso obligatorio antes de facturar).
 import * as workOrderDocumentService from '../services/workOrderDocumentService.js';
+import { resolverCampos } from '../lib/mediaUrl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+
+// El archivo puede estar en la nube o en el disco de siempre; esto lo deja como una
+// direccion que el navegador pueda abrir (ver lib/mediaUrl.js).
+const conArchivo = (datos) => resolverCampos(datos, ['file_url']);
 
 // Cuando el usuario abre la seccion "Documentos" de una orden, esto trae la lista.
 export const list = asyncHandler(async (req, res) => {
-  res.json(await workOrderDocumentService.list(req.params.id));
+  res.json(await conArchivo(await workOrderDocumentService.list(req.params.id)));
 });
 
-// Cuando el usuario adjunta un archivo con su titulo, esto lo guarda.
+// Cuando el usuario adjunta un archivo con su titulo, esto lo guarda. El archivo llega
+// ya subido a la nube (el body trae su ruta) o como multipart, segun este configurado
+// el almacenamiento -- ver workOrderDocumentService.add.
 export const add = asyncHandler(async (req, res) => {
   const doc = await workOrderDocumentService.add(req.params.id, req.body, req.file, req.user.id);
-  res.status(201).json(doc);
+  res.status(201).json(await conArchivo(doc));
 });
 
 // Cuando un administrador quita un documento ya subido.

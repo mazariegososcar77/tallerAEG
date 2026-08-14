@@ -10,7 +10,7 @@ import { Router } from 'express';
 import * as serviceOrderController from '../controllers/serviceOrderController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
-import { uploadReportPhoto } from '../middleware/upload.middleware.js';
+import { uploadReportPhoto, soloSiEsMultipart } from '../middleware/upload.middleware.js';
 
 const router = Router();
 router.use(authenticate);
@@ -67,7 +67,7 @@ router.delete('/:id',        requirePermission('service-orders.delete'), service
 router.patch('/:id/status',  requirePermission('service-orders.update'), serviceOrderController.updateStatus);
 
 // Guardar la firma (dibujada a mano) del tecnico o del cliente.
-router.post('/:id/signature', requirePermission('service-orders.update'), uploadReportPhoto, serviceOrderController.setSignature);
+router.post('/:id/signature', requirePermission('service-orders.update'), soloSiEsMultipart(uploadReportPhoto), serviceOrderController.setSignature);
 
 // Generar/recuperar el token del enlace publico de firma remota.
 router.post('/:id/signing-link', requirePermission('service-orders.update'), serviceOrderController.getSigningLink);

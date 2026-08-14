@@ -6,7 +6,7 @@ import * as workOrderController from '../controllers/workOrderController.js';
 import * as workOrderDocumentController from '../controllers/workOrderDocumentController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
-import { uploadDocument } from '../middleware/upload.middleware.js';
+import { uploadDocument, soloSiEsMultipart } from '../middleware/upload.middleware.js';
 
 const router = Router();
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
@@ -61,7 +61,7 @@ router.get('/:id/document-flow', requirePermission('dashboard.view'), workOrderC
  *       201: { description: Documento adjuntado }
  */
 router.get('/:id/documents',  requirePermission('work-order-documents.view'),   workOrderDocumentController.list);
-router.post('/:id/documents', requirePermission('work-order-documents.manage'), uploadDocument, workOrderDocumentController.add);
+router.post('/:id/documents', requirePermission('work-order-documents.manage'), soloSiEsMultipart(uploadDocument), workOrderDocumentController.add);
 
 /**
  * @openapi

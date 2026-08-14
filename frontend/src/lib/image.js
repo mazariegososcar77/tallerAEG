@@ -17,11 +17,24 @@
 // pantalla y para el PDF, que las imprime como miniaturas).
 const MAX_SIDE = 1800;
 const JPEG_QUALITY = 0.85;
+// WebP pesa bastante menos que JPG con la misma calidad a la vista, asi que se
+// puede subir un poco la calidad y aun asi mandar un archivo mas liviano.
+const WEBP_QUALITY = 0.85;
 
-/** Reemplaza la extension del archivo por `.jpg` (mantiene el nombre original). */
-function withJpgExtension(name) {
+// OJO CON EL FORMATO DE SALIDA: solo las imagenes que NO se imprimen en un PDF
+// pueden ir en WebP. `pdfkit` (el que arma los PDF en el backend) unicamente
+// sabe embeber JPEG y PNG: una foto de reporte en WebP saldria como un
+// recuadro gris en el PDF del reporte. Por eso la foto de un articulo va en
+// WebP (no entra a ningun PDF) y las de reporte siguen en JPG.
+const FORMATOS = {
+  jpg:  { mime: 'image/jpeg', extension: 'jpg',  calidad: JPEG_QUALITY },
+  webp: { mime: 'image/webp', extension: 'webp', calidad: WEBP_QUALITY },
+};
+
+/** Reemplaza la extension del archivo por la del formato de salida (mantiene el nombre). */
+function conExtension(name, extension) {
   const base = (name || 'foto').replace(/\.[^.]+$/, '');
-  return `${base}.jpg`;
+  return `${base}.${extension}`;
 }
 
 /** Carga el archivo como imagen que el navegador ya sepa dibujar. */
@@ -42,16 +55,20 @@ function loadImage(file) {
 }
 
 /**
- * Convierte la imagen a un JPG mas liviano. Si algo falla (un navegador viejo,
- * o un formato que ni el navegador puede abrir) devuelve el archivo original
- * tal cual, para que el servidor decida si lo acepta — asi este paso nunca
- * bloquea una subida que antes si funcionaba.
+ * Convierte la imagen a un archivo mas liviano (JPG por defecto, WebP si se
+ * pide). Si algo falla (un navegador viejo, o un formato que ni el navegador
+ * puede abrir) devuelve el archivo original tal cual, para que el servidor
+ * decida si lo acepta — asi este paso nunca bloquea una subida que antes si
+ * funcionaba.
  *
  * @param {File} file archivo elegido por el usuario
+ * @param {'jpg'|'webp'} formato formato de salida (ver FORMATOS arriba: WebP
+ *        solo para imagenes que NO se imprimen en un PDF)
  * @returns {Promise<File>} el archivo listo para subir
  */
-export async function prepareImageForUpload(file) {
+export async function prepareImageForUpload(file, formato = 'jpg') {
   if (!file) throw new Error('No se selecciono ninguna imagen');
+  const salida = FORMATOS[formato] || FORMATOS.jpg;
   // Los PNG chicos (p.ej. las firmas dibujadas) se dejan igual: ya son
   // livianos y el PNG conserva el fondo transparente.
   if (file.type === 'image/png' && file.size <= 1024 * 1024) return file;
@@ -72,9 +89,16 @@ export async function prepareImageForUpload(file) {
     ctx.fillRect(0, 0, width, height);
     ctx.drawImage(img, 0, 0, width, height);
 
-    const jpg = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY));
-    if (!jpg) return file;
-    return new File([jpg], withJpgExtension(file.name), { type: 'image/jpeg' });
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, salida.mime, salida.calidad));
+    if (!blob) return file;
+    // Un navegador que no sepa exportar el formato pedido no avisa: devuelve un
+    // PNG con otro tipo. Si eso pasa se reintenta en JPG, que sabe hacer
+    // cualquiera -- lo importante es que el archivo que se sube sea realmente
+    // del tipo que se le declara al servidor al pedir la URL firmada.
+    if (blob.type !== salida.mime) {
+      return salida.mime === 'image/jpeg' ? file : prepareImageForUpload(file, 'jpg');
+    }
+    return new File([blob], conExtension(file.name, salida.extension), { type: salida.mime });
   } catch (e) {
     return file;
   }

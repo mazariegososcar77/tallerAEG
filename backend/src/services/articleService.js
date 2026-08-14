@@ -7,7 +7,24 @@ import * as articleRepository from '../repositories/articleRepository.js';
 import * as articlePieceRepository from '../repositories/articlePieceRepository.js';
 import * as articleLaborRepository from '../repositories/articleLaborRepository.js';
 import * as inventoryService from './inventoryService.js';
+import * as gcs from '../lib/gcsStorage.js';
 import { ApiError } from '../utils/ApiError.js';
+
+/**
+ * `image_url` es el unico campo de imagen que el usuario escribe directo (el
+ * ImagePicker deja subir un archivo o pegar un enlace externo). Si lo que llega
+ * tiene forma de ruta de objeto de la nube, se exige que sea del prefijo de
+ * articulos: sin esta revision, alguien con sesion podria escribir ahi la ruta
+ * del documento confidencial de otra orden y conseguir que el sistema se la
+ * firme y se la muestre.
+ */
+function validarImagen(data) {
+  const valor = data?.image_url;
+  if (!valor || !gcs.esRutaObjeto(valor)) return;
+  if (!gcs.validarRutaObjeto(valor, 'articulos')) {
+    throw new ApiError(400, 'La ruta de la imagen no es valida');
+  }
+}
 
 // Devuelve todos los articulos, o solo los de un tipo si se indica typeId (ej: solo "repuestos").
 export async function list(typeId = null) {
@@ -39,6 +56,7 @@ export async function create({ pieces, labor, quantity, ...data }, userId = null
   // de cero es otra cosa. Hace falta aqui ademas del schema porque la carga masiva por
   // Excel entra por este mismo camino sin pasar por el (sus filas se validan aparte).
   if (data.cost === '' || data.cost === undefined) data.cost = null;
+  validarImagen(data);
 
   const initialQuantity = Number(quantity) || 0;
   const articleId = await withTransaction(async (conn) => {
@@ -73,6 +91,7 @@ export async function update(id, { pieces, labor, quantity, ...patch }) {
   const existing = await articleRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Articulo no encontrado');
   if (patch.cost === '') patch.cost = null;
+  validarImagen(patch);
   if (Object.keys(patch).length > 0) await articleRepository.update(id, patch);
   if (pieces !== undefined) await articlePieceRepository.replaceForArticle(id, pieces);
   if (labor !== undefined) await articleLaborRepository.replaceForArticle(id, labor);

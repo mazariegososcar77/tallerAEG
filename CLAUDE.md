@@ -110,6 +110,13 @@ Credenciales por defecto (creadas por `002_seed.sql`): **admin@talleraeg.com / A
 - **Avisos y confirmaciones:** nunca se usan los diálogos del navegador (`alert`/`confirm`/`prompt`).
   Los avisos van por toast (`frontend/src/lib/toast.js`) y las confirmaciones por
   `components/ui/ConfirmDialog`.
+- **Archivos (fotos, firmas, videos, adjuntos):** viven en **Google Cloud Storage**, en un bucket
+  privado por entorno (`talleraeg-media-prod` / `talleraeg-media-dev`). El navegador los sube **directo
+  al bucket** con una URL firmada — no pasan por el backend — y en MySQL solo se guarda la ruta del
+  objeto; la URL de lectura se firma en cada respuesta y nunca se guarda. Única variable:
+  `GCS_BUCKET` (sin llave JSON: la VM tiene adjunta la service account). Vacía = se guarda en el disco
+  del servidor como antes. Los archivos subidos antes de la migración siguen funcionando sin cambios.
+  Ver [docs/integracion-gcp-storage.md](docs/integracion-gcp-storage.md).
 - **PDF:** los genera el backend con `pdfkit` en endpoints protegidos y el frontend los muestra
   **dentro de la app** con `components/ui/PdfViewerModal` (nunca en otra pestaña); descargar es
   `downloadPdf()` de `frontend/src/lib/pdf.js`.

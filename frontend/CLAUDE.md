@@ -46,12 +46,27 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   botón de descarga). **No abras PDF en otra pestaña** (`window.open`) — la única excepción es el
   botón de escape que `PdfViewerModal` muestra solo en móvil, para los navegadores de celular que no
   saben dibujar un PDF embebido.
-- **Subir imágenes:** pasa el archivo por `prepareImageForUpload()` de `src/lib/image.js` antes de
-  mandarlo al backend (lo redibuja a JPG ≤1800px con canvas) y usa `IMAGE_ACCEPT` en el `accept` del
-  `<input type="file">`. Esto es lo que permite aceptar cualquier formato que el navegador sepa leer
-  (HEIC de iPhone, WEBP, BMP, TIFF…) y que el PDF de reportes pueda imprimir la foto — `pdfkit` solo
-  sabe embeber JPEG/PNG. En móvil, ofrece cámara (`capture="environment"`) y galería como dos
-  entradas distintas, igual que `components/reports/PhotoStageGallery`.
+- **Subir archivos:** ya **no** viajan al backend — van directo a Google Cloud Storage.
+  1. Prepara la imagen con `prepareImageForUpload(file, formato)` de `src/lib/image.js` (la redibuja
+     ≤1800px con canvas) y usa `IMAGE_ACCEPT` en el `accept` del `<input type="file">`. Esto es lo que
+     permite aceptar cualquier formato que el navegador sepa leer (HEIC de iPhone, WEBP, BMP, TIFF…).
+     **`'webp'` solo para la imagen de artículo**; las fotos de reporte van en `'jpg'` (el default)
+     porque se imprimen en el PDF y `pdfkit` solo sabe embeber JPEG/PNG.
+  2. Súbelo con `subirArchivo()` de `src/lib/upload.js`, que pide la URL firmada y hace el PUT con
+     `XMLHttpRequest` — **no** con el cliente Axios, porque su interceptor pega `Authorization` y Google
+     rechaza una URL firmada que además traiga esa cabecera. Devuelve la ruta del objeto, o `null` si el
+     sistema todavía guarda en el disco del servidor (y ahí se usa el multipart de siempre). Los módulos
+     de `src/api/` ya encapsulan los dos caminos: llama `articlesApi.uploadImage(file, onProgress)`,
+     `workReportsApi.addPhoto(id, file, { stage, onProgress })`, etc.
+  3. Muestra el avance: `onProgress` recibe 0–100. Con la señal de un taller una foto tarda varios
+     segundos y sin ese aviso parece que la app se colgó.
+  En móvil, ofrece cámara (`capture="environment"`) y galería como dos entradas distintas, igual que
+  `components/reports/PhotoStageGallery`.
+- **Mostrar imágenes:** lo que devuelve la API en los campos de media ya es una URL firmada temporal
+  (vence en 1 hora), así que se usa como `src` directo. **Excepción importante:** en artículos el campo
+  `image_url` es el valor **guardado** (una ruta interna) y `image_display_url` es la dirección para
+  mostrar. El formulario reenvía `image_url` al guardar; si ahí llegara la URL firmada, se escribiría en
+  la base y la imagen se rompería al vencer.
 - **Estilos:** solo clases de Tailwind con los tokens de marca `navy` y `orange`
   (`tailwind.config.js`). Animaciones discretas (`animate-fade-in`, `animate-slide-up`).
 - **Colores de marca configurables:** las escalas `navy`/`orange` de `tailwind.config.js` resuelven a
@@ -144,11 +159,13 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
 - `public/logo.png` — logo de marca (copia de `Propuesta 2.png`).
 - `public/img/carrusel/` — slides del login. Son placeholders de marca; reemplázalos por las
   imágenes definitivas conservando los nombres o ajusta la lista en `ImageCarousel`.
-- Imágenes de artículos: se suben al backend y se referencian como `/api/uploads/<archivo>`
-  (o una URL externa). El `<img>` resuelve esa ruta vía el proxy de Vite en dev.
+- Imágenes de artículos: se suben directo a Google Cloud Storage y se guardan como la ruta del objeto
+  (o una URL externa). Para mostrarlas se usa `image_display_url`, que el backend firma al vuelo. Los
+  archivos subidos **antes** de la migración siguen siendo `/uploads/<archivo>` y se resuelven vía el
+  proxy de Vite en dev — el backend sabe servir los dos formatos.
 - **Todo lo que se sube pasa por `lib/image.js`** (`prepareImageForUpload`): el navegador redibuja la
-  imagen en un `<canvas>` y la reexporta como JPG ≤1800px / calidad 0.85. Así se acepta cualquier
-  formato que el navegador sepa decodificar (HEIC del iPhone incluido) y el archivo llega liviano. Si
-  el navegador no puede leerlo, se sube el original tal cual y decide el backend (ver
-  `backend/src/middleware/upload.middleware.js`). Los PNG de ≤1 MB (las firmas) se dejan intactos para
-  no perder la transparencia.
+  imagen en un `<canvas>` y la reexporta ≤1800px / calidad 0.85, en JPG o WebP según el destino (ver
+  "Subir archivos" arriba). Así se acepta cualquier formato que el navegador sepa decodificar (HEIC del
+  iPhone incluido) y el archivo llega liviano. Si el navegador no puede leerlo, se sube el original tal
+  cual y decide el backend. Los PNG de ≤1 MB (las firmas) se dejan intactos para no perder la
+  transparencia.

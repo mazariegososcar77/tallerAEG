@@ -12,11 +12,11 @@ import Spinner from '../ui/Spinner.jsx';
  * React no vuelva a crear el input en cada redibujado (si lo hiciera, podria
  * perderse la foto que el usuario acaba de elegir).
  */
-function AddTile({ icon: Icon, label, capture, multiple, uploading, onFiles }) {
+function AddTile({ icon: Icon, label, capture, multiple, uploading, aviso, onFiles }) {
   return (
     <label className="flex h-28 cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-500">
       {uploading ? <Spinner size={18} /> : <Icon size={18} />}
-      <span className="text-[11px]">{uploading ? 'Subiendo...' : label}</span>
+      <span className="text-[11px]">{uploading ? (aviso || 'Subiendo...') : label}</span>
       <input
         type="file"
         accept={IMAGE_ACCEPT}
@@ -53,30 +53,44 @@ function AddTile({ icon: Icon, label, capture, multiple, uploading, onFiles }) {
  * En celular/tablet aparecen dos botones: "Tomar foto" (abre la camara
  * directamente) y "Galeria" (elige fotos ya guardadas en el dispositivo). En
  * computadora solo aparece el boton de seleccionar archivos. Cualquier formato
- * de imagen sirve: antes de subirse se convierte a JPG liviano
- * (ver lib/image.js) y el servidor la vuelve a comprimir por su cuenta.
+ * de imagen sirve: antes de subirse se convierte a JPG liviano (ver
+ * lib/image.js) y de ahi va directo a Google Cloud Storage, sin pasar por el
+ * servidor. JPG y no WebP a proposito: estas fotos se imprimen en el PDF del
+ * reporte, y el generador de PDF solo sabe embeber JPEG y PNG.
  */
 export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled, min }) {
   const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false); // true mientras se estan subiendo fotos
+  const [avance, setAvance] = useState(''); // texto de avance: "2/5 · 40%"
   const [removingId, setRemovingId] = useState(null); // id de la foto que se esta borrando en este momento
 
   // Se ejecuta cuando el usuario elige una o varias fotos (o toma una con la
   // camara): las convierte a JPG y las sube una por una llamando a onAdd.
+  //
+  // El avance se muestra siempre, y mas ahora que la foto sube desde el propio
+  // telefono al bucket: con la señal de un taller, una foto puede tardar varios
+  // segundos y sin este aviso parece que la aplicacion se colgo.
   const handleFiles = async (e) => {
     const files = Array.from(e.target.files || []);
     e.target.value = '';
     if (!files.length) return;
     setUploading(true);
+    setAvance('');
     try {
-      for (const file of files) {
-        await onAdd(await prepareImageForUpload(file));
+      for (const [i, file] of files.entries()) {
+        const cuantas = files.length > 1 ? `${i + 1}/${files.length} · ` : '';
+        setAvance(`${cuantas}0%`);
+        await onAdd(
+          await prepareImageForUpload(file),
+          (porcentaje) => setAvance(`${cuantas}${porcentaje}%`),
+        );
       }
       notify.success(files.length > 1 ? 'Fotos agregadas' : 'Foto agregada');
     } catch (err) {
       notify.error(err.message || 'Error al subir la foto');
     } finally {
       setUploading(false);
+      setAvance('');
     }
   };
 
@@ -119,13 +133,13 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled, m
         {/* En celular: camara y galeria por separado. En computadora: un solo
             boton para elegir archivos. */}
         {!disabled && isMobile && (
-          <AddTile icon={Camera} label="Tomar foto" capture uploading={uploading} onFiles={handleFiles} />
+          <AddTile icon={Camera} label="Tomar foto" capture uploading={uploading} aviso={avance} onFiles={handleFiles} />
         )}
         {!disabled && isMobile && (
-          <AddTile icon={Images} label="Galeria" multiple uploading={uploading} onFiles={handleFiles} />
+          <AddTile icon={Images} label="Galeria" multiple uploading={uploading} aviso={avance} onFiles={handleFiles} />
         )}
         {!disabled && !isMobile && (
-          <AddTile icon={Upload} label="Agregar foto(s)" multiple uploading={uploading} onFiles={handleFiles} />
+          <AddTile icon={Upload} label="Agregar foto(s)" multiple uploading={uploading} aviso={avance} onFiles={handleFiles} />
         )}
 
         {disabled && photos.length === 0 && (

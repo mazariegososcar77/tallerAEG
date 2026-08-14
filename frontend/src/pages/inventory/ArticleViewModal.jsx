@@ -94,9 +94,9 @@ export default function ArticleViewModal({ open, onClose, article }) {
           <div className="grid gap-6 sm:grid-cols-[260px_1fr]">
             {/* Imagen del articulo (si no tiene o no carga, se muestra un icono generico) */}
             <div className="flex h-64 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-              {article.image_url && !broken ? (
+              {article.image_display_url && !broken ? (
                 <img
-                  src={article.image_url}
+                  src={article.image_display_url}
                   alt={article.name}
                   className="h-full w-full object-contain"
                   onError={() => setBroken(true)}

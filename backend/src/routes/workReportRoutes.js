@@ -8,7 +8,7 @@ import * as workReportController from '../controllers/workReportController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
 import { validate } from '../middleware/validate.middleware.js';
-import { uploadReportPhoto, uploadReportVideo } from '../middleware/upload.middleware.js';
+import { uploadReportPhoto, uploadReportVideo, soloSiEsMultipart } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -116,7 +116,7 @@ router.delete('/:id', requirePermission('work-reports.delete'), workReportContro
  *       201: { description: Foto agregada }
  */
 // Agregar una foto a una etapa del reporte.
-router.post('/:id/photos', requirePermission('work-reports.update'), uploadReportPhoto, workReportController.addPhoto);
+router.post('/:id/photos', requirePermission('work-reports.update'), soloSiEsMultipart(uploadReportPhoto), workReportController.addPhoto);
 
 /**
  * @openapi
@@ -247,7 +247,7 @@ router.delete('/:id/items/:itemId', requirePermission('work-report-items.manage'
  *       200: { description: Reporte con la firma guardada }
  */
 // Guardar la firma (dibujada a mano y subida como imagen) del tecnico o del cliente.
-router.post('/:id/signature', requirePermission('work-reports.update'), uploadReportPhoto, workReportController.setSignature);
+router.post('/:id/signature', requirePermission('work-reports.update'), soloSiEsMultipart(uploadReportPhoto), workReportController.setSignature);
 
 /**
  * @openapi
