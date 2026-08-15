@@ -1,5 +1,12 @@
 // Este archivo maneja los "reportes de trabajo" (la documentacion fotografica de una reparacion, en 4 etapas).
+//
+// Las fotos y las firmas ya NO viajan al servidor: se suben directo a Google Cloud
+// Storage con una URL firmada (ver lib/upload.js) y al backend solo se le manda la
+// ruta con la que quedaron guardadas. Si el sistema todavia guarda en el disco del
+// servidor, `subirArchivo` devuelve null y se usa el envio multipart de siempre --
+// por eso cada funcion tiene los dos caminos.
 import { client } from './client.js';
+import { subirArchivo } from '../lib/upload.js';
 
 export const workReportsApi = {
   list:         ()         => client.get('/work-reports').then(r => r.data),
@@ -13,7 +20,13 @@ export const workReportsApi = {
   finalize:     (id)       => client.post(`/work-reports/${id}/finalize`).then(r => r.data),
   remove:       (id)       => client.delete(`/work-reports/${id}`).then(r => r.data),
   // Sube una foto de una etapa del reporte, con su nota (caption) opcional.
-  addPhoto: (id, file, { stage, caption }) => {
+  // `onProgress` recibe el avance de 0 a 100 mientras la foto sube al bucket.
+  addPhoto: async (id, file, { stage, caption, onProgress } = {}) => {
+    const rutaObjeto = await subirArchivo(file, { entidad: 'reportes', onProgress });
+    if (rutaObjeto) {
+      return client.post(`/work-reports/${id}/photos`, { stage, caption, object_path: rutaObjeto })
+        .then(r => r.data);
+    }
     const form = new FormData();
     form.append('photo', file);
     form.append('stage', stage);
@@ -21,8 +34,12 @@ export const workReportsApi = {
     return client.post(`/work-reports/${id}/photos`, form).then(r => r.data);
   },
   removePhoto: (id, photoId) => client.delete(`/work-reports/${id}/photos/${photoId}`).then(r => r.data),
-  // Sube (o reemplaza) el video final de prueba del reporte. El servidor lo comprime
-  // con ffmpeg y rechaza cualquiera que dure mas de 30 segundos.
+  // Sube (o reemplaza) el video final de prueba del reporte.
+  //
+  // Es el UNICO archivo que sigue viajando al servidor, y a proposito: alla se mide
+  // con ffprobe (se rechaza si pasa de 30 segundos) y se comprime con ffmpeg antes
+  // de guardarlo. Lo que si cambia es donde termina: el MP4 ya comprimido se sube al
+  // bucket, no al disco de la VM.
   uploadVideo: (id, file) => {
     const form = new FormData();
     form.append('video', file);
@@ -30,7 +47,12 @@ export const workReportsApi = {
   },
   removeVideo: (id) => client.delete(`/work-reports/${id}/video`).then(r => r.data),
   // Sube la imagen de una firma (tecnico o cliente que recibe) capturada en pantalla.
-  setSignature: (id, file, role, name) => {
+  setSignature: async (id, file, role, name) => {
+    const rutaObjeto = await subirArchivo(file, { entidad: 'firmas' });
+    if (rutaObjeto) {
+      return client.post(`/work-reports/${id}/signature`, { role, name, object_path: rutaObjeto })
+        .then(r => r.data);
+    }
     const form = new FormData();
     form.append('photo', file);
     form.append('role', role);
@@ -50,7 +72,16 @@ export const workReportsApi = {
 // que es seguro llamarlas desde una pantalla sin login.
 export const publicWorkReportsApi = {
   get: (token) => client.get(`/public/work-reports/${token}`).then(r => r.data),
-  setSignature: (token, file, name) => {
+  // Aqui no hay sesion: la subida se autoriza con el mismo token del enlace, por eso
+  // pide la URL firmada a su propio endpoint publico y no al general.
+  setSignature: async (token, file, name) => {
+    const rutaObjeto = await subirArchivo(file, {
+      endpoint: `/public/work-reports/${token}/signature/signed-url`,
+    });
+    if (rutaObjeto) {
+      return client.post(`/public/work-reports/${token}/signature`, { name, object_path: rutaObjeto })
+        .then(r => r.data);
+    }
     const form = new FormData();
     form.append('photo', file);
     form.append('name', name);

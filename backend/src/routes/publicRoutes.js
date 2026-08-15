@@ -8,12 +8,23 @@ import { Router } from 'express';
 import { z } from 'zod';
 import * as publicController from '../controllers/publicController.js';
 import { validate } from '../middleware/validate.middleware.js';
-import { uploadReportPhoto } from '../middleware/upload.middleware.js';
+import { uploadReportPhoto, soloSiEsMultipart } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
 const signatureSchema = z.object({
   name: z.string().trim().min(2, 'Escribe el nombre de quien recibe'),
+  // Ruta del objeto que el navegador ya subio a Google Cloud Storage. Va vacia
+  // cuando el almacenamiento en la nube no esta configurado y la firma llega
+  // como archivo multipart, igual que antes.
+  object_path: z.string().max(500).optional(),
+});
+
+// Datos que necesita el backend para firmar la subida de la firma. La
+// autorizacion es el token de la URL, no una sesion (ver publicController).
+const subidaSchema = z.object({
+  content_type: z.string().min(3, 'Falta el tipo de archivo'),
+  size_bytes: z.coerce.number().int().positive('Falta el tamano del archivo'),
 });
 
 /**
@@ -49,7 +60,24 @@ router.get('/work-reports/:token', publicController.getWorkReportByToken);
  *       404: { description: Enlace invalido o vencido }
  *       409: { description: El reporte ya esta finalizado }
  */
-router.post('/work-reports/:token/signature', uploadReportPhoto, validate(signatureSchema), publicController.setWorkReportSignature);
+router.post('/work-reports/:token/signature', soloSiEsMultipart(uploadReportPhoto), validate(signatureSchema), publicController.setWorkReportSignature);
+
+/**
+ * @openapi
+ * /public/work-reports/{token}/signature/signed-url:
+ *   post:
+ *     tags: [Enlace publico de firma]
+ *     summary: URL firmada para subir la firma directo a Google Cloud Storage (sin sesion)
+ *     description: >
+ *       Autoriza por el token del enlace, no por sesion. Devuelve `{ modo: 'local' }` si el
+ *       sistema todavia guarda en el disco del servidor, y en ese caso el navegador manda la
+ *       firma como multipart al endpoint de arriba.
+ *     parameters: [{ in: path, name: token, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: URL firmada (o modo local) }
+ *       404: { description: Enlace invalido o vencido }
+ */
+router.post('/work-reports/:token/signature/signed-url', validate(subidaSchema), publicController.crearSubidaFirmaReporte);
 
 /**
  * @openapi
@@ -83,6 +111,19 @@ router.get('/service-orders/:token', publicController.getServiceOrderByToken);
  *       200: { description: Firma guardada }
  *       404: { description: Enlace invalido o vencido }
  */
-router.post('/service-orders/:token/signature', uploadReportPhoto, validate(signatureSchema), publicController.setServiceOrderSignature);
+router.post('/service-orders/:token/signature', soloSiEsMultipart(uploadReportPhoto), validate(signatureSchema), publicController.setServiceOrderSignature);
+
+/**
+ * @openapi
+ * /public/service-orders/{token}/signature/signed-url:
+ *   post:
+ *     tags: [Enlace publico de firma]
+ *     summary: URL firmada para subir la firma de una orden de servicio (sin sesion)
+ *     parameters: [{ in: path, name: token, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: URL firmada (o modo local) }
+ *       404: { description: Enlace invalido o vencido }
+ */
+router.post('/service-orders/:token/signature/signed-url', validate(subidaSchema), publicController.crearSubidaFirmaOrdenServicio);
 
 export default router;

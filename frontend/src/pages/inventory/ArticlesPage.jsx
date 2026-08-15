@@ -122,7 +122,7 @@ export default function ArticlesPage() {
             </div>
           ) : filtered.map(a => (
             <div key={a.id} style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
-              <div><Thumb url={a.image_url} name={a.name} /></div>
+              <div><Thumb url={a.image_display_url} name={a.name} /></div>
               <span style={{ fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</span>
               <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
               <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
@@ -151,7 +151,7 @@ export default function ArticlesPage() {
             </div>
           ) : filtered.map(a => (
             <div key={a.id} style={{ display:'flex', gap:12, padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
-              <Thumb url={a.image_url} name={a.name} />
+              <Thumb url={a.image_display_url} name={a.name} />
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
                 <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>

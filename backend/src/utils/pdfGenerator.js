@@ -49,6 +49,27 @@ const EMPRESA_FALLBACK = {
 
 const empresa = (settings) => ({ ...EMPRESA_FALLBACK, ...(settings || {}) });
 
+// ── ARCHIVOS QUE SE EMBEBEN EN EL PDF ─────────────────────────────────
+/**
+ * Devuelve la ruta EN DISCO de una foto o firma, que es lo unico que `pdfkit`
+ * sabe embeber (no sabe abrir una URL).
+ *
+ * `locales` es el mapa que arma `lib/mediaUrl.js#prepararLocales` antes de
+ * llamar al generador: trae ya bajadas a un temporal las imagenes que viven en
+ * Google Cloud Storage, y resueltas contra la carpeta de siempre las que aun
+ * viven en el disco del servidor. Si un archivo no esta (se borro, fallo la
+ * bajada), se devuelve null y quien dibuja pinta el recuadro gris de siempre en
+ * vez de romper el PDF entero.
+ */
+function archivoLocal(valor, locales) {
+  if (!valor) return null;
+  if (locales && locales.has(valor)) return locales.get(valor);
+  if (typeof valor === 'string' && valor.startsWith('/uploads/')) {
+    return join(UPLOADS_DIR, valor.replace('/uploads/', ''));
+  }
+  return null;
+}
+
 // Dibuja el bloque de datos del taller dentro de la banda azul del encabezado
 // (la misma en los 5 PDF). Los datos vacios simplemente no se imprimen, y las
 // lineas se van acomodando hacia abajo segun cuantos haya.
@@ -595,7 +616,7 @@ const ADDITIONAL_SPEC_FIELDS = [
 // cliente) -- datos del cliente, fuente de energía, mediciones eléctricas,
 // condiciones del equipo, componentes instalados, especificaciones
 // adicionales, reporte técnico y firmas del técnico y del cliente.
-export function generarOrdenServicioPDF(order, settings) {
+export function generarOrdenServicioPDF(order, settings, locales = null) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -772,9 +793,9 @@ export function generarOrdenServicioPDF(order, settings) {
   const sigX2 = L + sigW + 30;
   const drawSignature = (x, url, name, label) => {
     doc.rect(x, y, sigW, sigH).lineWidth(0.7).strokeColor('#cbd5e1').stroke();
-    if (url) {
+    const filePath = archivoLocal(url, locales);
+    if (filePath) {
       try {
-        const filePath = join(UPLOADS_DIR, url.replace('/uploads/', ''));
         doc.image(filePath, x + 5, y + 5, { fit: [sigW - 10, sigH - 10], align: 'center', valign: 'center' });
       } catch(e) {}
     }
@@ -956,7 +977,7 @@ const PHOTO_CATEGORY_LABELS = {
 // archivo real desde la carpeta de "uploads" del servidor; si algun archivo
 // ya no existe en disco, se dibuja un recuadro gris en su lugar en vez de
 // fallar.
-export function generarReportePDF(report, settings) {
+export function generarReportePDF(report, settings, locales = null) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -1036,9 +1057,11 @@ export function generarReportePDF(report, settings) {
         if (y > 650) { doc.addPage({ margin: 0 }); y = 40; }
         const x = L + col * (THUMB + GAP);
         try {
-          const filePath = join(UPLOADS_DIR, p.photo_url.replace('/uploads/', ''));
+          const filePath = archivoLocal(p.photo_url, locales);
           doc.rect(x, y, THUMB, THUMB).fill('#f1f5f9');
-          doc.image(filePath, x, y, { fit: [THUMB, THUMB], align: 'center', valign: 'center' });
+          if (filePath) {
+            doc.image(filePath, x, y, { fit: [THUMB, THUMB], align: 'center', valign: 'center' });
+          }
         } catch(e) {
           doc.rect(x, y, THUMB, THUMB).fill('#f1f5f9');
         }
@@ -1086,9 +1109,9 @@ export function generarReportePDF(report, settings) {
 
   const drawSignature = (x, url, name, label) => {
     doc.rect(x, y, sigW, sigH).lineWidth(0.7).strokeColor('#cbd5e1').stroke();
-    if (url) {
+    const filePath = archivoLocal(url, locales);
+    if (filePath) {
       try {
-        const filePath = join(UPLOADS_DIR, url.replace('/uploads/', ''));
         doc.image(filePath, x + 5, y + 5, { fit: [sigW - 10, sigH - 10], align: 'center', valign: 'center' });
       } catch(e) {}
     }

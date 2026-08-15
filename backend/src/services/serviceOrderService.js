@@ -4,6 +4,8 @@
 // especificaciones, reporte técnico y firmas del técnico y del cliente.
 import crypto from 'crypto';
 import * as serviceOrderRepository from '../repositories/serviceOrderRepository.js';
+import * as uploadService from './uploadService.js';
+import * as gcs from '../lib/gcsStorage.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Campos de fecha/hora opcionales: si llegan vacios ('') se guardan como "sin dato", porque
@@ -43,11 +45,24 @@ export async function create(data) {
   return serviceOrderRepository.create({ ...data, number });
 }
 
-// Edita una orden de servicio existente, con la misma limpieza de vacios que al crear.
-// Se descartan client_name (no es una columna real, la agrega el repositorio solo para
-// mostrarla) y created_at/updated_at (fechas que MySQL controla solas; reenviarlas tal
-// como las mando el servidor rompe el guardado por el formato).
-export async function update(id, { client_name, created_at, updated_at, ...data }) {
+/**
+ * Edita una orden de servicio existente, con la misma limpieza de vacios que al crear.
+ * Se descartan client_name (no es una columna real, la agrega el repositorio solo para
+ * mostrarla) y created_at/updated_at (fechas que MySQL controla solas; reenviarlas tal
+ * como las mando el servidor rompe el guardado por el formato).
+ *
+ * Las FIRMAS tambien se descartan aqui, y eso importa: el formulario recibe la orden
+ * completa y la manda de vuelta entera al guardar, pero lo que recibio en esos campos
+ * es una direccion temporal para poder mostrar la imagen (ver lib/mediaUrl.js), no lo
+ * que esta guardado. Sin este descarte, guardar la orden escribiria esa direccion
+ * temporal en la base y la firma se veria rota en cuanto venciera. Las firmas solo se
+ * cambian por su propio endpoint (POST /service-orders/:id/signature).
+ */
+export async function update(id, {
+  client_name, created_at, updated_at,
+  tech_signature_url, client_signature_url, client_signature_token,
+  ...data
+}) {
   const existing = await serviceOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de servicio no encontrada');
   normalize(data);
@@ -70,16 +85,25 @@ export async function remove(id) {
 
 // Guarda la firma (dibujada a mano y convertida a imagen) del tecnico o del cliente en la
 // orden. Mismo patron que workReportService.setSignature.
-export async function setSignature(id, role, name, file) {
+export async function setSignature(id, role, name, file, objectPath = null) {
   const order = await serviceOrderRepository.findById(id);
   if (!order) throw new ApiError(404, 'Orden de servicio no encontrada');
   if (!['tech', 'client'].includes(role)) throw new ApiError(400, 'Rol de firma invalido');
-  if (!file) throw new ApiError(400, 'No se recibio la firma');
-  const url = '/uploads/' + file.filename;
+
+  let url;
+  if (objectPath) {
+    url = await uploadService.confirmarRuta(objectPath, 'firmas');
+  } else {
+    if (!file) throw new ApiError(400, 'No se recibio la firma');
+    url = '/uploads/' + file.filename;
+  }
+  const anterior = role === 'tech' ? order.tech_signature_url : order.client_signature_url;
   const data = role === 'tech'
     ? { tech_signature_url: url, tech_signature_name: name || null }
     : { client_signature_url: url, client_signature_name: name || null };
-  return serviceOrderRepository.update(id, data);
+  const guardada = await serviceOrderRepository.update(id, data);
+  if (anterior && anterior !== url) await gcs.borrarObjeto(anterior);
+  return guardada;
 }
 
 /**
@@ -95,6 +119,13 @@ export async function getSigningLink(id) {
   const token = crypto.randomBytes(24).toString('base64url');
   await serviceOrderRepository.update(id, { client_signature_token: token });
   return token;
+}
+
+// ¿El token de firma remota corresponde a una orden real? Mismo criterio que en
+// workReportService.existePorTokenPublico: es lo unico que autoriza a firmar una URL de
+// subida desde el enlace publico, donde no hay sesion.
+export async function existePorTokenPublico(token) {
+  return Boolean(await serviceOrderRepository.findByPublicToken(token));
 }
 
 // Version publica (sin sesion) para la pantalla que abre el cliente desde el enlace de
@@ -114,8 +145,8 @@ export async function getPublicByToken(token) {
 
 // Guarda la firma del cliente desde el enlace publico (sin sesion): resuelve la orden a
 // partir del token y reutiliza setSignature.
-export async function setPublicClientSignature(token, name, file) {
+export async function setPublicClientSignature(token, name, file, objectPath = null) {
   const order = await serviceOrderRepository.findByPublicToken(token);
   if (!order) throw new ApiError(404, 'Enlace invalido o vencido');
-  return setSignature(order.id, 'client', name, file);
+  return setSignature(order.id, 'client', name, file, objectPath);
 }

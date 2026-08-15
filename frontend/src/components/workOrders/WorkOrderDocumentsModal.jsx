@@ -48,6 +48,7 @@ export default function WorkOrderDocumentsModal({ open, onClose, order, stepMode
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [progreso, setProgreso] = useState(0); // avance de la subida al bucket, 0 a 100
   const [confirming, setConfirming] = useState(false);
   const [toDelete, setToDelete] = useState(null);
   const [viewing, setViewing] = useState(null); // documento PDF que se esta viendo en el visor
@@ -74,8 +75,12 @@ export default function WorkOrderDocumentsModal({ open, onClose, order, stepMode
     if (!file) return notify.error('Elegí un archivo para adjuntar');
     if (!title.trim()) return notify.error('Ponele un título al documento');
     setUploading(true);
+    setProgreso(0);
     try {
-      const created = await workOrdersApi.addDocument(order.id, file, title.trim());
+      // El archivo sube directo al bucket; `progreso` es lo unico que ve el
+      // usuario mientras tanto (un adjunto puede pesar 20 MB y con la señal de
+      // un celular eso no es instantaneo).
+      const created = await workOrdersApi.addDocument(order.id, file, title.trim(), setProgreso);
       setDocs((prev) => [created, ...prev]);
       setTitle('');
       setFile(null);
@@ -185,7 +190,8 @@ export default function WorkOrderDocumentsModal({ open, onClose, order, stepMode
               </p>
             </div>
             <Button onClick={handleUpload} loading={uploading} disabled={!file || !title.trim()}>
-              <Upload size={16} /> Adjuntar
+              <Upload size={16} />
+              {uploading && progreso > 0 && progreso < 100 ? `Subiendo ${progreso}%` : 'Adjuntar'}
             </Button>
           </div>
         )}

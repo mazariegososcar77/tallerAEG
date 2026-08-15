@@ -17,6 +17,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
+/**
+ * Envuelve un middleware de subida para que solo actue cuando la peticion trae
+ * de verdad un archivo (multipart).
+ *
+ * Desde que los archivos se suben directo a Google Cloud Storage, el navegador
+ * ya no manda el archivo: manda un JSON con la RUTA del objeto que acaba de
+ * subir. Ese JSON no debe pasar por multer (lo rechazaria por no ser
+ * multipart), pero la subida vieja tiene que seguir funcionando mientras el
+ * almacenamiento en la nube no este configurado -- de ahi que el mismo endpoint
+ * acepte las dos formas.
+ */
+export function soloSiEsMultipart(middleware) {
+  return (req, res, next) => {
+    const tipo = req.headers['content-type'] || '';
+    if (tipo.toLowerCase().startsWith('multipart/form-data')) return middleware(req, res, next);
+    return next();
+  };
+}
+
 // El frontend ya convierte las fotos a JPG liviano antes de subirlas
 // (frontend/src/lib/image.js), pero si el navegador del usuario no pudo leer el
 // formato manda el archivo original: por eso aqui se aceptan tambien los

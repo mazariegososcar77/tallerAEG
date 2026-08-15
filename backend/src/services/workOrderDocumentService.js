@@ -10,6 +10,8 @@ import fs from 'fs';
 import path from 'path';
 import * as workOrderDocumentRepository from '../repositories/workOrderDocumentRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
+import * as uploadService from './uploadService.js';
+import * as gcs from '../lib/gcsStorage.js';
 import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
 import { ApiError } from '../utils/ApiError.js';
 
@@ -30,20 +32,40 @@ export async function list(workOrderId) {
  * Adjunta un documento a la orden. El titulo es obligatorio a proposito: el nombre
  * con que llega el archivo casi nunca dice nada util ("scan_0012.pdf"), y en una
  * lista de cinco adjuntos eso no le sirve a nadie.
+ *
+ * El archivo puede llegar de dos maneras (ver workReportService.addPhoto, es el
+ * mismo criterio): ya subido a la nube, y entonces el body trae `object_path` mas
+ * los datos del archivo que el backend ya no puede leer solo (nombre original,
+ * tipo y tamano); o como subida multipart de siempre, cuando el almacenamiento en
+ * la nube no esta configurado.
  */
-export async function add(workOrderId, { title }, file, userId = null) {
+export async function add(workOrderId, datos, file, userId = null) {
   await getOrder(workOrderId);
-  if (!file) throw new ApiError(400, 'No se recibio el documento');
-  const cleanTitle = (title || '').trim();
+  const cleanTitle = (datos.title || '').trim();
   if (!cleanTitle) throw new ApiError(400, 'El documento necesita un titulo');
+
+  let archivo;
+  if (datos.object_path) {
+    archivo = {
+      file_url: await uploadService.confirmarRuta(datos.object_path, 'documentos'),
+      original_name: datos.original_name || null,
+      mime_type: datos.mime_type || null,
+      size_bytes: datos.size_bytes || null,
+    };
+  } else {
+    if (!file) throw new ApiError(400, 'No se recibio el documento');
+    archivo = {
+      file_url: '/uploads/' + file.filename,
+      original_name: file.originalname || null,
+      mime_type: file.mimetype || null,
+      size_bytes: file.size || null,
+    };
+  }
 
   return workOrderDocumentRepository.create({
     work_order_id: Number(workOrderId),
     title: cleanTitle,
-    file_url: '/uploads/' + file.filename,
-    original_name: file.originalname || null,
-    mime_type: file.mimetype || null,
-    size_bytes: file.size || null,
+    ...archivo,
     uploaded_by: userId,
   });
 }
@@ -65,6 +87,10 @@ export async function remove(workOrderId, documentId) {
     throw new ApiError(404, 'Documento no encontrado');
   }
   await workOrderDocumentRepository.remove(documentId);
+  if (gcs.esRutaObjeto(doc.file_url)) {
+    await gcs.borrarObjeto(doc.file_url);
+    return true;
+  }
   try {
     fs.unlinkSync(path.join(UPLOADS_DIR, path.basename(doc.file_url)));
   } catch {

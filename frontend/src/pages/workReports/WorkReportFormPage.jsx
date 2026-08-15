@@ -139,8 +139,8 @@ export default function WorkReportFormPage() {
   // pisaria con lo ultimo guardado en la base cualquier nota que el tecnico ya
   // haya escrito en pantalla pero todavia no haya guardado, en las 4 etapas (no
   // solo en la de la foto nueva) -- ese fue el bug.
-  const handleAddPhoto = async (stage, file) => {
-    const photo = await workReportsApi.addPhoto(id, file, { stage });
+  const handleAddPhoto = async (stage, file, onProgress) => {
+    const photo = await workReportsApi.addPhoto(id, file, { stage, onProgress });
     setReport(prev => ({ ...prev, photos: [...prev.photos, photo] }));
   };
   // Quita una foto ya subida. Mismo criterio que handleAddPhoto: solo toca
@@ -339,7 +339,7 @@ export default function WorkReportFormPage() {
             <div style={secBody}>
               <PhotoStageGallery
                 photos={photosByStage(cat.key)}
-                onAdd={(file) => handleAddPhoto(cat.key, file)}
+                onAdd={(file, onProgress) => handleAddPhoto(cat.key, file, onProgress)}
                 onRemove={handleRemovePhoto}
                 disabled={readOnly}
                 min={isLegacy ? undefined : cat.min}

@@ -1,5 +1,6 @@
 // Este archivo maneja las "ordenes de trabajo" (el equipo que un cliente deja en el taller para reparacion).
 import { client } from './client.js';
+import { subirArchivo, tipoDeArchivo } from '../lib/upload.js';
 
 export const workOrdersApi = {
   list:         ()         => client.get('/work-orders').then(r => r.data),
@@ -15,7 +16,20 @@ export const workOrdersApi = {
   // --- Documentos adjuntos (papeleria de terceros: factura del torneador,
   // certificados, cotizaciones de proveedores) ---
   documents:       (id) => client.get(`/work-orders/${id}/documents`).then(r => r.data),
-  addDocument:     (id, file, title) => {
+  // El archivo va directo al bucket y al servidor solo se le manda la ruta mas los
+  // datos que ya no puede leer solo (nombre original, tipo y tamano), que son los
+  // que despues se ven en la lista de adjuntos. Ver lib/upload.js.
+  addDocument:     async (id, file, title, onProgress) => {
+    const rutaObjeto = await subirArchivo(file, { entidad: 'documentos', onProgress });
+    if (rutaObjeto) {
+      return client.post(`/work-orders/${id}/documents`, {
+        title,
+        object_path: rutaObjeto,
+        original_name: file.name,
+        mime_type: tipoDeArchivo(file),
+        size_bytes: file.size,
+      }).then(r => r.data);
+    }
     const form = new FormData();
     form.append('document', file);
     form.append('title', title);

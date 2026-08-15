@@ -26,6 +26,40 @@ Todos los repositorios usan el pool de `mysql2` en [src/lib/db.js](src/lib/db.js
 `npm run dev`. `src/lib/jsonStore.js` y `src/data/*.json` solo los usa `npm run seed`, que quedó de
 antes de la migración a MySQL — no lo confundas con la inicialización real de datos.
 
+## Archivos y Google Cloud Storage
+
+Fotos, firmas, videos y documentos adjuntos **ya no se guardan en el disco del servidor**: el navegador
+los sube directo a un bucket privado de GCS con una URL firmada, y en MySQL solo queda la ruta del
+objeto (`reportes/2026/08/<uuid>.jpg`). Guía completa y rollout en
+[docs/integracion-gcp-storage.md](../docs/integracion-gcp-storage.md).
+
+- **Única variable de entorno:** `GCS_BUCKET` (`talleraeg-media-prod` / `talleraeg-media-dev`). **No hay
+  llave JSON** ni `GOOGLE_APPLICATION_CREDENTIALS`: la VM tiene adjunta la service account
+  `talleraeg-storage` y la librería consigue credenciales por ADC, firmando las URLs vía IAM `signBlob`.
+  Si la variable está **vacía**, todo el sistema vuelve a guardar en `uploads/` como antes — mismo
+  criterio que el stub de Digifact. Es lo que permite trabajar sin credenciales de Google.
+- [src/lib/gcsStorage.js](src/lib/gcsStorage.js) es el **único** punto que habla con GCS (cliente
+  singleton + caché de URLs firmadas: sin llave local cada firma es una llamada de red a IAM, y sin
+  caché abrir un reporte de 30 fotos serían 30 llamadas).
+- [src/lib/mediaUrl.js](src/lib/mediaUrl.js) hace la **lectura dual**: un valor `/uploads/…` se devuelve
+  igual que siempre, uno `https://…` también (URL externa de `articles.image_url`), y una ruta de objeto
+  se firma al vuelo. Los tres formatos conviven indefinidamente. **Nunca se guarda una URL firmada en la
+  base.**
+- **Escritura:** `POST /api/uploads/signed-url` ([uploadService.js](src/services/uploadService.js))
+  entrega la URL firmada; después el endpoint de siempre recibe `object_path` en un body JSON. El
+  middleware `soloSiEsMultipart()` deja convivir ese JSON con la subida multipart vieja.
+- **Cuidado al agregar campos:** si el frontend reenvía un campo de media al guardar (pasa con
+  `articles.image_url` y con la orden de servicio completa), **no** puede recibir la URL firmada en ese
+  mismo campo o se escribiría en MySQL. Por eso `articles` expone `image_display_url` aparte y
+  `serviceOrderService.update` descarta las firmas.
+- **PDF:** `pdfkit` embebe archivos, no URLs. Los controllers de PDF usan el registro **sin resolver** y
+  llaman `prepararLocales()`/`limpiarLocales()`, que bajan los objetos a un temporal en streaming. Es el
+  único punto donde los bytes de una imagen vuelven a pasar por el backend.
+- **El video es la excepción:** sigue viajando al backend porque `ffprobe`/`ffmpeg` trabajan sobre
+  archivos; lo que cambió es que el MP4 comprimido se sube al bucket y los locales se borran.
+- **Migración de lo que ya existía:** `node scripts/migrate-uploads-to-gcs.mjs --dry-run` (lotes,
+  reanudable, idempotente, no borra nada).
+
 ## Arquitectura por capas
 
 El flujo de una petición es **route → middleware → controller → service → repository → MySQL**.
@@ -165,9 +199,11 @@ runtime, solo los escribe `npm run seed`.
   `024_part_categories_management.sql`, permisos `part-categories.*`). Si alguna vez esos catálogos
   quedan vacíos o esos ids fijos no existen, esta pantalla vuelve a fallar con
   `ER_NO_REFERENCED_ROW` ("Uno de los datos seleccionados ya no existe").
-- **Imágenes:** `upload-image` usa `multer` ([middleware/upload.middleware.js](src/middleware/upload.middleware.js)),
-  guarda en `uploads/` (gitignored) y devuelve `{ url: '/api/uploads/<archivo>' }`. Se sirven con
-  `express.static` en `/api/uploads` (cubierto por el proxy de Vite en dev). Una URL externa se guarda tal cual.
+- **Imágenes:** ver "Archivos y Google Cloud Storage" abajo — la subida normal ya no pasa por el
+  backend. `upload-image` (multer a `uploads/`) sigue existiendo como camino de respaldo cuando
+  `GCS_BUCKET` está vacío, y devuelve `{ url: '/uploads/<archivo>' }`. Los archivos viejos se siguen
+  sirviendo con `express.static` en `/api/uploads` (cubierto por el proxy de Vite en dev). Una URL
+  externa se guarda tal cual.
   El filtro acepta los formatos de cámara/celular (JPEG, PNG, WEBP, GIF, BMP, TIFF, HEIC/HEIF, AVIF) y,
   si el celular manda un mime genérico (`application/octet-stream` o vacío), decide por la extensión;
   límite 12 MB. **SVG queda fuera a propósito** (se sirve desde el mismo dominio y puede llevar scripts).

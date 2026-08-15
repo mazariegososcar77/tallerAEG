@@ -77,6 +77,8 @@ export default function ArticleFormPage() {
           location: a.location,
           description: a.description,
           image_url: a.image_url,
+          // Solo para la vista previa: es una direccion temporal, no se guarda.
+          image_display_url: a.image_display_url,
           is_active: a.is_active,
           pieces: (a.pieces || []).map((p) => p.name),
           labor: (a.labor || []).map((l) => l.name),
@@ -246,7 +248,11 @@ export default function ArticleFormPage() {
 
           {/* Foto del articulo y si esta activo (visible para usarse) o no */}
           <Card className="flex flex-col gap-4 p-6">
-            <ImagePicker value={form.image_url} onChange={setValue('image_url')} />
+            <ImagePicker
+              value={form.image_url}
+              previewUrl={form.image_display_url}
+              onChange={setValue('image_url')}
+            />
             <Checkbox label="Articulo activo" checked={form.is_active} onChange={setValue('is_active')} />
           </Card>
         </div>

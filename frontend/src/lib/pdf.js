@@ -12,9 +12,18 @@ import { getToken } from './authStorage.js';
 /**
  * Pide el PDF al servidor y lo devuelve como blob (archivo en memoria).
  * `url` es la ruta del endpoint, p.ej. `/api/invoices/12/pdf`.
+ *
+ * El token SOLO se manda a nuestro propio servidor. Desde que los documentos
+ * adjuntos viven en Google Cloud Storage, esta misma funcion recibe a veces una
+ * URL firmada de Google: esa ya lleva su propia autorizacion en la direccion, y
+ * Google rechaza la peticion si ademas le llega una cabecera `Authorization`
+ * ("solo se permite un mecanismo de autenticacion").
  */
 export async function fetchPdfBlob(url) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
+  const esExterna = /^https?:\/\//i.test(url);
+  const res = await fetch(url, {
+    headers: esExterna ? undefined : { Authorization: `Bearer ${getToken()}` },
+  });
   if (!res.ok) throw new Error('No se pudo generar el PDF');
   const blob = await res.blob();
   // Algunos navegadores devuelven el blob sin tipo; forzarlo a PDF es lo que

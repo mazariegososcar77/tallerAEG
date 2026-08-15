@@ -1,5 +1,11 @@
 name: CI/CD Deploy
 
+# Las imagenes se construyen AQUI (el runner de GitHub tiene 16 GB) y se publican
+# en GHCR. La VM ya no compila nada: solo descarga la imagen y levanta los
+# contenedores. Antes hacia `docker compose up --build` en la maquina, y con 1.9 GB
+# de RAM sosteniendo dos MySQL + n8n el `vite build` se quedaba colgado por falta
+# de memoria (y de paso ponia en riesgo a prod, que vive en la misma VM).
+
 on:
   push:
     branches:
@@ -9,18 +15,82 @@ on:
   # sin tener que pushear un commit vacio solo para redesplegar.
   workflow_dispatch:
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configurar SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+# Dos deploys del mismo entorno no deben pisarse. No se cancela el que va
+# corriendo: si ya esta tocando la VM, cortarlo a media faena deja el stack
+# en un estado raro -- mejor que el nuevo espere su turno.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
 
-      - name: Definir entorno según rama
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Construir y publicar las imagenes en GHCR
+  # ---------------------------------------------------------------------------
+  build:
+    name: Construir ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      # Si una imagen falla, que la otra termine igual: asi el log muestra los
+      # dos resultados de una vez en vez de esconder el segundo error.
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            context: ./backend
+          - service: frontend
+            context: ./frontend
+    steps:
+      - name: Descargar el codigo
+        uses: actions/checkout@v4
+
+      - name: Nombre del owner en minusculas
+        id: owner
+        # GHCR exige el owner en minusculas; el de GitHub puede traer mayusculas.
+        run: echo "name=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - name: Preparar Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login en GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Construir y publicar
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          # Dos etiquetas: el SHA es inmutable y es la que fija el deploy (asi se
+          # despliega exactamente lo que se acaba de construir, sin carreras con
+          # otro build que este publicando al mismo tiempo). La de entorno
+          # (dev/prod) se mueve y sirve para levantar a mano "lo ultimo".
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.name }}/talleraeg-${{ matrix.service }}:${{ github.sha }}
+            ghcr.io/${{ steps.owner.outputs.name }}/talleraeg-${{ matrix.service }}:${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          # Cache entre corridas: sin esto cada deploy reinstalaria node_modules
+          # desde cero. El scope separa backend de frontend y dev de prod para
+          # que no se pisen la cache entre si.
+          cache-from: type=gha,scope=${{ matrix.service }}-${{ github.ref_name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ github.ref_name }}
+
+  # ---------------------------------------------------------------------------
+  # 2. Desplegar en la VM (solo pull + up, sin compilar)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Desplegar en la VM
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Definir entorno segun rama
         id: env
         run: |
           if [ "${{ github.ref_name }}" = "main" ]; then
@@ -32,15 +102,46 @@ jobs:
             echo "project=talleraeg-dev" >> $GITHUB_OUTPUT
             echo "branch=developer" >> $GITHUB_OUTPUT
           fi
+          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+      - name: Configurar SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
 
       - name: Desplegar en la VM
         run: |
           ssh -i ~/.ssh/deploy_key ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} << EOF
             set -e
+            # El checkout sigue haciendo falta: de ahi salen docker-compose.yml y
+            # los scripts que el contenedor de MySQL monta.
             cd ${{ steps.env.outputs.path }}
             git fetch origin ${{ steps.env.outputs.branch }}
             git reset --hard origin/${{ steps.env.outputs.branch }}
             cd docker
-            docker compose -p ${{ steps.env.outputs.project }} up -d --build
+
+            # GITHUB_TOKEN alcanza para leer los paquetes de este mismo repo y se
+            # vence al terminar el job, asi que no queda una credencial permanente
+            # guardada en la VM (por eso el logout del final).
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Se despliega por SHA, no por la etiqueta de entorno: es la unica forma
+            # de garantizar que sube exactamente el commit que disparo este deploy.
+            export IMAGE_PREFIX=ghcr.io/${{ steps.env.outputs.owner }}
+            export IMAGE_TAG=${{ github.sha }}
+
+            docker compose -p ${{ steps.env.outputs.project }} pull
+            # --no-build es un seguro: si alguien vuelve a meter un "build:" en el
+            # compose, el deploy falla en vez de ponerse a compilar en la VM.
+            docker compose -p ${{ steps.env.outputs.project }} up -d --no-build
+
+            docker logout ghcr.io
+            # Las imagenes viejas se acumulan rapido ahora que cada deploy trae una
+            # etiqueta nueva por SHA; sin esto se llena el disco.
             docker image prune -f
+
+            echo "--- Estado de los contenedores ---"
+            docker compose -p ${{ steps.env.outputs.project }} ps
           EOF

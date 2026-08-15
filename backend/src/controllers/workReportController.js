@@ -5,16 +5,18 @@ import * as workReportService from '../services/workReportService.js';
 import * as documentFlowService from '../services/documentFlowService.js';
 import { generarReportePDF } from '../utils/pdfGenerator.js';
 import * as settingsService from '../services/settingsService.js';
+import { resolverCampos, resolverReporte, prepararLocales, limpiarLocales, valoresMediaReporte } from '../lib/mediaUrl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
 // Cuando el usuario abre la pantalla de Reportes, esto trae la lista completa.
 export const list = asyncHandler(async (_req, res) => {
-  res.json(await workReportService.list());
+  const reportes = await workReportService.list();
+  res.json(await resolverCampos(reportes, ['tech_signature_url', 'client_signature_url', 'final_video_url']));
 });
 
 // Trae los datos completos de un reporte de trabajo en particular.
 export const getById = asyncHandler(async (req, res) => {
-  res.json(await workReportService.getById(req.params.id));
+  res.json(await resolverReporte(await workReportService.getById(req.params.id)));
 });
 
 // Cuando el usuario presiona el botón "Reporte" de una orden de trabajo o de servicio,
@@ -34,11 +36,13 @@ export const update = asyncHandler(async (req, res) => {
   res.json(await workReportService.update(req.params.id, req.body, canForceEdit));
 });
 
-// Cuando el usuario sube una foto a una etapa del reporte, esto la guarda.
+// Cuando el usuario sube una foto a una etapa del reporte, esto la guarda. La foto
+// llega ya subida a la nube (el body trae su ruta) o como archivo multipart, segun
+// este configurado el almacenamiento -- ver workReportService.addPhoto.
 export const addPhoto = asyncHandler(async (req, res) => {
   const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
   const photo = await workReportService.addPhoto(req.params.id, req.body, req.file, canForceEdit);
-  res.status(201).json(photo);
+  res.status(201).json(await resolverCampos(photo, ['photo_url']));
 });
 
 // Cuando el usuario borra una foto del reporte, esto la elimina.
@@ -52,23 +56,23 @@ export const removePhoto = asyncHandler(async (req, res) => {
 export const setVideo = asyncHandler(async (req, res) => {
   const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
   const report = await workReportService.setVideo(req.params.id, req.file, canForceEdit);
-  res.json(report);
+  res.json(await resolverReporte(report));
 });
 
 // Cuando el usuario quita el video final de prueba del reporte, esto lo elimina.
 export const removeVideo = asyncHandler(async (req, res) => {
   const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
   const report = await workReportService.removeVideo(req.params.id, canForceEdit);
-  res.json(report);
+  res.json(await resolverReporte(report));
 });
 
 // Cuando el técnico o el cliente firman en la pantalla (dibujando su firma), esto la guarda junto con su nombre.
 export const setSignature = asyncHandler(async (req, res) => {
   const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
   const report = await workReportService.setSignature(
-    req.params.id, req.body.role, req.body.name, req.file, canForceEdit
+    req.params.id, req.body.role, req.body.name, req.file, canForceEdit, req.body.object_path
   );
-  res.json(report);
+  res.json(await resolverReporte(report));
 });
 
 // Genera (o devuelve el ya existente) el enlace publico de firma remota, para
@@ -113,13 +117,15 @@ export const removeItem = asyncHandler(async (req, res) => {
 // automáticamente la factura correspondiente. Se registra quién lo hizo, porque el
 // descuento de inventario queda a su nombre en el kardex.
 export const finalize = asyncHandler(async (req, res) => {
-  res.json(await workReportService.finalize(req.params.id, req.user.id));
+  const resultado = await workReportService.finalize(req.params.id, req.user.id);
+  res.json({ ...resultado, report: await resolverReporte(resultado.report) });
 });
 
 // Cuando un administrador reabre un reporte ya finalizado: lo devuelve a borrador y
 // regresa a bodega el material que se había descontado.
 export const reopen = asyncHandler(async (req, res) => {
-  res.json(await workReportService.reopen(req.params.id, req.user.id));
+  const resultado = await workReportService.reopen(req.params.id, req.user.id);
+  res.json({ ...resultado, report: await resolverReporte(resultado.report) });
 });
 
 // Cuando el usuario borra un reporte, esto lo elimina.
@@ -128,12 +134,23 @@ export const remove = asyncHandler(async (req, res) => {
   res.status(204).end();
 });
 
-// Cuando el usuario descarga el PDF de un reporte, esto genera el archivo (con fotos y firmas) y se lo envía.
+/**
+ * Cuando el usuario descarga el PDF de un reporte, esto genera el archivo (con fotos
+ * y firmas) y se lo envía.
+ *
+ * Ojo con el orden: aqui se usa el reporte SIN resolver (con la ruta del objeto tal
+ * como esta en la base), porque `pdfkit` embebe archivos y no sabe abrir una URL. Las
+ * fotos que viven en la nube se bajan antes a un temporal del sistema -- en streaming,
+ * nunca a memoria -- y se borran apenas el PDF termina de armarse. Es el unico punto
+ * del sistema donde los bytes de una imagen vuelven a pasar por el servidor.
+ */
 export const pdf = asyncHandler(async (req, res) => {
   const report = await workReportService.getById(req.params.id);
-  const doc = generarReportePDF(report, await settingsService.getSettings());
+  const locales = await prepararLocales(valoresMediaReporte(report));
+  const doc = generarReportePDF(report, await settingsService.getSettings(), locales);
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="reporte-${report.number}.pdf"`);
   doc.pipe(res);
+  doc.on('end', () => limpiarLocales(locales));
   doc.end();
 });

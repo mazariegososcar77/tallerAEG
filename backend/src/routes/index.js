@@ -21,6 +21,7 @@ import workReportRoutes from './workReportRoutes.js';
 import invoiceRoutes from './invoiceRoutes.js';
 import serviceOrderRoutes from './serviceOrderRoutes.js';
 import settingsRoutes from './settingsRoutes.js';
+import uploadRoutes from './uploadRoutes.js';
 import publicRoutes from './publicRoutes.js';
 
 const router = Router();
@@ -65,6 +66,8 @@ router.use('/invoices', invoiceRoutes);
 router.use('/service-orders', serviceOrderRoutes);
 // Configuracion general del sistema (colores, tema por defecto, datos del taller).
 router.use('/settings', settingsRoutes);
+// Permiso de subida: entrega la URL firmada para subir un archivo directo a Google Cloud Storage.
+router.use('/uploads', uploadRoutes);
 // Rutas PUBLICAS (sin sesion) -- hoy solo el enlace de firma remota del cliente.
 router.use('/public', publicRoutes);
 
