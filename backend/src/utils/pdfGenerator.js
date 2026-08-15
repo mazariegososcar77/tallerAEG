@@ -38,10 +38,10 @@ const BLANCO = '#ffffff';
 // generador no se le pasa la configuracion, el PDF sale igual que siempre en vez
 // de salir con campos vacios.
 const EMPRESA_FALLBACK = {
-  company_name: 'TALLER AEG',
-  company_tagline: 'Taller de Embobinado Industrial',
+  company_name: 'CENTRO DE SERVICIO AEG',
+  company_tagline: 'CENTRO DE SERVICIOS INDUSTRIALES',
   company_address: 'Guatemala, Guatemala',
-  company_phone: '(+502) 0000-0000',
+  company_phone: '(+502) 5502-5055',
   company_email: '',
   company_nit: '',
   quote_valid_days: 15,
@@ -229,7 +229,7 @@ export function generarCotizacionPDF(quote, settings) {
      .text('Esta cotizacion tiene validez de ' + cfg.quote_valid_days + ' dias a partir de la fecha de emision.', L, pageH - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Gracias por su preferencia', L, pageH - 15, { width: CW, align: 'center' });
+     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH - 15, { width: CW, align: 'center' });
 
   return doc;
 }
@@ -561,7 +561,7 @@ export function generarOrdenTrabajoPDF(order, settings) {
      .text('Orden de Trabajo - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Gracias por su preferencia', L, pageH - 15, { width: CW, align: 'center' });
+     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH - 15, { width: CW, align: 'center' });
 
   return doc;
 }
@@ -918,7 +918,7 @@ export function generarFacturaPDF(invoice, settings) {
      .text('Factura interna - ' + cfg.company_name, L, pageH2 - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH2 - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Gracias por su preferencia', L, pageH2 - 15, { width: CW, align: 'center' });
+     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH2 - 15, { width: CW, align: 'center' });
 
   return doc;
 }
@@ -1109,7 +1109,7 @@ export function generarReportePDF(report, settings) {
      .text('Reporte de Trabajo - ' + cfg.company_name, L, pageH3 - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH3 - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Gracias por su preferencia', L, pageH3 - 15, { width: CW, align: 'center' });
+     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH3 - 15, { width: CW, align: 'center' });
 
   return doc;
 }
