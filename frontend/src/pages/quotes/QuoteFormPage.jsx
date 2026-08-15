@@ -18,6 +18,7 @@ import { loyaltyTiersApi } from '../../api/loyaltyTiersApi.js';
 import ClientFormModal from '../clients/ClientFormModal.jsx';
 import ArticleQuickModal from '../../components/quotes/ArticleQuickModal.jsx';
 import Combobox from '../../components/ui/Combobox.jsx';
+import AutocompleteInput from '../../components/ui/AutocompleteInput.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -53,10 +54,13 @@ const SaveIcon = () => (
 );
 
 // Tabla editable de lineas (se usa tanto para mano de obra como para repuestos).
-// Cada linea permite elegir un articulo del catalogo (Combobox por id ->
-// onPickArticle rellena descripcion y precio unitario, editable) o escribir una
-// descripcion libre. Cantidad, precio y subtotal (calculado solo: cantidad x
-// precio) van en columnas fijas, con un boton para eliminar la linea.
+// La descripcion es un solo campo de texto libre con autocompletado
+// (AutocompleteInput): sugiere articulos del catalogo mientras se escribe, y
+// al elegir uno rellena descripcion + precio unitario (editable despues, sin
+// quedar "atado" al articulo elegido) -- o se puede dejar el texto libre tal
+// cual si no esta en el catalogo. Cantidad, precio y subtotal (calculado
+// solo: cantidad x precio) van en columnas fijas, con un boton para eliminar
+// la linea.
 const ITEM_COLS = '1fr 68px 104px 92px 34px';
 
 function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal }) {
@@ -73,21 +77,17 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
         const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
         return (
           <div key={i} style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:10, alignItems:'start' }}>
-            <div style={{ display:'flex', flexDirection:'column', gap:5, minWidth:0 }}>
-              <Combobox
-                value={''}
-                onChange={v => {
-                  if (!v) return;
-                  const art = (articles||[]).find(a => String(a.id) === String(v));
-                  if (art) onPickArticle(i, art);
-                }}
-                options={(articles||[]).map(a => ({ value:a.id, label:`${a.name}${a.price>0 ? ' — Q'+Number(a.price).toFixed(2) : ''}${a.quantity===0 ? ' (sin stock)' : ''}`, keywords:a.name }))}
-                searchable
+            <div style={{ minWidth:0 }}>
+              <AutocompleteInput
+                value={item.description}
+                onChange={withUppercase(e => onChange(i,'description',e.target.value))}
+                articles={articles||[]}
+                onPick={art => onPickArticle(i, art)}
                 onCreateNew={onOpenModal}
                 createLabel="Crear y agregar nuevo"
-                placeholder="Buscar en catalogo..."
+                placeholder="Buscar en catalogo o escribe libre..."
+                style={{ ...inp, fontSize:11 }}
               />
-              <input value={item.description} onChange={withUppercase(e => onChange(i,'description',e.target.value))} placeholder="Descripcion (se llena al elegir; editable)" style={{ ...inp, fontSize:11 }} />
             </div>
             <input type="number" min="0" step="1" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={{ ...inp, textAlign:'right' }} />
             <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
