@@ -17,11 +17,14 @@ import Spinner from './Spinner.jsx';
  * - `url`       : endpoint del PDF, p.ej. `/api/invoices/12/pdf`.
  * - `fileName`  : nombre con el que se guarda si el usuario lo descarga.
  * - `title`     : texto del encabezado de la ventana.
+ * - `floatingAction` : opcional, `{ icon, label, onClick }` para un boton
+ *   flotante sobre el PDF (p.ej. "Certificar" en una factura pendiente). Solo
+ *   se muestra si el PDF ya cargo sin error.
  *
  * El PDF se pide al servidor con el token de la sesion y se muestra desde la
  * memoria del navegador (nunca queda en disco salvo que el usuario descargue).
  */
-export default function PdfViewerModal({ open, onClose, url, fileName = 'documento.pdf', title = 'Vista previa del PDF' }) {
+export default function PdfViewerModal({ open, onClose, url, fileName = 'documento.pdf', title = 'Vista previa del PDF', floatingAction }) {
   const isMobile = useIsMobile();
   const [blob, setBlob] = useState(null);
   const [blobUrl, setBlobUrl] = useState(null);
@@ -110,7 +113,7 @@ export default function PdfViewerModal({ open, onClose, url, fileName = 'documen
         </div>
 
         {/* Cuerpo: el PDF, la ruedita de carga, o el mensaje de error */}
-        <div className="flex flex-1 items-center justify-center overflow-hidden bg-app">
+        <div className="relative flex flex-1 items-center justify-center overflow-hidden bg-app">
           {error ? (
             <div className="flex flex-col items-center gap-2 p-6 text-center">
               <AlertTriangle size={32} className="text-red-500" />
@@ -128,6 +131,15 @@ export default function PdfViewerModal({ open, onClose, url, fileName = 'documen
               title={title}
               className="h-full w-full border-0 bg-white"
             />
+          )}
+          {floatingAction && blobUrl && !error && (
+            <button
+              type="button"
+              onClick={floatingAction.onClick}
+              className="absolute bottom-5 right-5 z-10 flex items-center gap-2 rounded-full bg-orange-500 px-5 py-3 text-sm font-bold text-white shadow-lg transition-colors hover:bg-orange-600"
+            >
+              <floatingAction.icon size={18} /> {floatingAction.label}
+            </button>
           )}
         </div>
       </div>

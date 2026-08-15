@@ -6,7 +6,8 @@
 //   - Buscar y filtrar facturas por cliente, rango de fechas o "solo
 //     pendientes de certificar".
 //   - Ver una vista previa del PDF (en una ventana dentro de la app) o descargarlo.
-//   - Certificar una factura pendiente (abre la ventana CertifyInvoiceModal).
+//   - Certificar una factura pendiente: se abre el PDF con un boton flotante
+//     "Certificar" encima, y al confirmar en un dialogo simple se certifica.
 // La certificación fiscal (FEL) real todavía no está integrada; certificar
 // aquí solo cambia el estado interno de la factura.
 // ============================================================================
@@ -21,7 +22,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
-import CertifyInvoiceModal from './CertifyInvoiceModal.jsx';
+import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
 import { Receipt, Search, Download, Eye, ShieldCheck, Network } from 'lucide-react';
 
@@ -42,7 +43,8 @@ export default function InvoicesPage() {
   const [dateTo, setDateTo] = useState('');
   const [onlyPending, setOnlyPending] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [toCertify, setToCertify] = useState(null);
+  const [certifyInvoice, setCertifyInvoice] = useState(null); // factura pendiente que se ve en el visor con el boton flotante "Certificar"
+  const [confirmCertify, setConfirmCertify] = useState(null); // factura para la que se esta confirmando la certificacion
   const [pdfInvoice, setPdfInvoice] = useState(null); // factura que se esta viendo en el visor de PDF
   const [flowSource, setFlowSource] = useState(null); // { type: 'invoice', id } para el Mapa de Relaciones
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,13 +62,13 @@ export default function InvoicesPage() {
 
   // Si se llega a esta pantalla con un enlace tipo "?invoice=123" (por
   // ejemplo, al terminar un Reporte de Trabajo que acaba de generar esa
-  // factura), se abre automáticamente la ventana de certificar para esa
-  // factura en particular.
+  // factura), se abre automáticamente el PDF con el boton de certificar para
+  // esa factura en particular.
   useEffect(() => {
     const invoiceId = searchParams.get('invoice');
     if (invoiceId && invoices.length) {
       const found = invoices.find(i => String(i.id) === invoiceId);
-      if (found && found.status === 'pendiente_certificacion') setToCertify(found);
+      if (found && found.status === 'pendiente_certificacion') setCertifyInvoice(found);
       setSearchParams({}, { replace: true });
     }
   }, [invoices, searchParams, setSearchParams]);
@@ -93,11 +95,16 @@ export default function InvoicesPage() {
     } catch (e) { notify.error('Error al generar PDF'); }
   };
 
-  // Se llama cuando la ventana de certificar confirma los datos: le pide al
-  // servidor que marque la factura como certificada y refresca la lista.
-  const handleCertified = async (id, email) => {
-    await invoicesApi.certify(id, email);
+  // Se llama al confirmar el dialogo "¿Está seguro de certificar...?": le
+  // pide al servidor que marque la factura como certificada (misma accion de
+  // siempre, invoicesApi.certify) y refresca la lista. El correo ya no se
+  // pide en este flujo: se usa el que ya tiene el cliente registrado.
+  const handleCertifyConfirmed = async () => {
+    if (!confirmCertify) return;
+    await invoicesApi.certify(confirmCertify.id, confirmCertify.client_default_email || '');
     notify.success('Factura certificada');
+    setConfirmCertify(null);
+    setCertifyInvoice(null);
     reload();
   };
 
@@ -169,7 +176,7 @@ export default function InvoicesPage() {
                     <button onClick={() => setPdfInvoice(inv)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(inv)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     {inv.status === 'pendiente_certificacion' && hasPermission('billing.certify') && (
-                      <button onClick={() => setToCertify(inv)} title="Certificar factura" style={{ background: '#E8551C', border: 'none', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
+                      <button onClick={() => setCertifyInvoice(inv)} title="Certificar factura" style={{ background: '#E8551C', border: 'none', borderRadius: 7, padding: '7px 12px', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 700 }}>
                         <ShieldCheck size={15} /> Certificar
                       </button>
                     )}
@@ -192,11 +199,29 @@ export default function InvoicesPage() {
         title={pdfInvoice ? `Factura No. ${pdfInvoice.number}` : ''}
       />
 
-      <CertifyInvoiceModal
-        open={toCertify != null}
-        invoice={toCertify}
-        onClose={() => setToCertify(null)}
-        onCertified={handleCertified}
+      {/* Certificar: muestra el PDF de la factura con un boton flotante
+          "Certificar" encima (solo si sigue pendiente de certificar). */}
+      <PdfViewerModal
+        open={certifyInvoice != null}
+        onClose={() => setCertifyInvoice(null)}
+        url={certifyInvoice ? `/api/invoices/${certifyInvoice.id}/pdf` : null}
+        fileName={certifyInvoice ? `factura-${certifyInvoice.number}.pdf` : ''}
+        title={certifyInvoice ? `Factura No. ${certifyInvoice.number}` : ''}
+        floatingAction={
+          certifyInvoice && certifyInvoice.status === 'pendiente_certificacion'
+            ? { icon: ShieldCheck, label: 'Certificar', onClick: () => setConfirmCertify(certifyInvoice) }
+            : null
+        }
+      />
+
+      <ConfirmDialog
+        open={confirmCertify != null}
+        onClose={() => setConfirmCertify(null)}
+        onConfirm={handleCertifyConfirmed}
+        title="Certificar factura"
+        confirmText="Confirmar"
+        variant="primary"
+        message={confirmCertify ? `¿Está seguro de certificar la factura de ${confirmCertify.client_name || 'este cliente'}, por Q ${Number(confirmCertify.total).toFixed(2)}, con fecha ${confirmCertify.date?.slice(0, 10)}?` : ''}
       />
     </div>
   );
