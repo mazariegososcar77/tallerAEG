@@ -149,7 +149,9 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
           {type === 'labor' && (
             <Input label="Precio base (Q)" type="number" value={form.price} onChange={e => set('price', e.target.value)} />
           )}
-          <Input label="Marca" value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Opcional" />
+          {type === 'part' && (
+            <Input label="Marca" value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Opcional" />
+          )}
         </div>
         <Input label="Descripcion" value={form.description} onChange={e => set('description', e.target.value)} placeholder="Opcional" />
       </div>
