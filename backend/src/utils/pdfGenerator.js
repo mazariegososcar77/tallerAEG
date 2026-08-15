@@ -111,7 +111,7 @@ export function generarCotizacionPDF(quote, settings) {
   doc.rect(0, 0, W, 110).fill(AZUL);
 
   try {
-    const logoPath = join(__dirname, '../assets/logo.png');
+    const logoPath = join(__dirname, '../assets/logo.jpeg');
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
@@ -329,7 +329,7 @@ export function generarOrdenTrabajoPDF(order, settings) {
   // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
-    const logoPath = join(__dirname, '../assets/logo.png');
+    const logoPath = join(__dirname, '../assets/logo.jpeg');
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
@@ -642,7 +642,7 @@ export function generarOrdenServicioPDF(order, settings, locales = null) {
   // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
-    const logoPath = join(__dirname, '../assets/logo.png');
+    const logoPath = join(__dirname, '../assets/logo.jpeg');
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
@@ -835,7 +835,7 @@ export function generarFacturaPDF(invoice, settings) {
   // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
-    const logoPath = join(__dirname, '../assets/logo.png');
+    const logoPath = join(__dirname, '../assets/logo.jpeg');
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
@@ -988,7 +988,7 @@ export function generarReportePDF(report, settings, locales = null) {
   // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
   try {
-    const logoPath = join(__dirname, '../assets/logo.png');
+    const logoPath = join(__dirname, '../assets/logo.jpeg');
     doc.image(logoPath, L, 15, { height: 75 });
   } catch(e) {}
 
