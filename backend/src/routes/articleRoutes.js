@@ -20,6 +20,11 @@ const createSchema = z.object({
   // Existencia inicial. Solo se acepta al CREAR: no se escribe directo en la columna,
   // se convierte en un movimiento 'saldo_inicial' del kardex (ver articleService.create).
   quantity: z.coerce.number().min(0).optional(),
+  // Punto de reorden: por debajo de este nivel el articulo se considera "stock
+  // bajo". 0 (el default de la columna) = sin alerta para ese articulo. A
+  // diferencia de `quantity`, este SI se puede editar despues de crear el
+  // articulo -- no es una existencia, es una regla de negocio sobre cuando avisar.
+  min_stock: z.coerce.number().min(0).optional(),
   unit: z.string().max(30).optional(),
   // Precio de VENTA (lo que se le cobra al cliente).
   price: z.coerce.number().min(0).optional(),
@@ -124,6 +129,24 @@ router.post('/upload-image', requirePermission('articles.create'), uploadImage, 
 router.get('/', requirePermission('articles.view'), articleController.list);
 // Crear un articulo nuevo.
 router.post('/', requirePermission('articles.create'), validate(createSchema), articleController.create);
+
+/**
+ * @openapi
+ * /articles/reports/top-consumed:
+ *   get:
+ *     tags: [Articulos]
+ *     summary: Articulos mas consumidos (salidas de kardex por reporte de trabajo) en un rango de fechas
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: query, name: from, schema: { type: string, format: date }, description: "Default: hace 30 dias" }
+ *       - { in: query, name: to, schema: { type: string, format: date }, description: "Default: hoy" }
+ *       - { in: query, name: orderBy, schema: { type: string, enum: [quantity, margin] }, description: "Default: quantity" }
+ *     responses:
+ *       200: { description: "Lista de articulos con cantidad consumida, costo real, ingreso estimado y margen" }
+ */
+// Reporte de articulos mas consumidos (para consumo de n8n / futuras pantallas).
+// Va ANTES de "/:id" a proposito: si no, Express interpretaria "reports" como un id.
+router.get('/reports/top-consumed', requirePermission('articles.view'), articleController.topConsumedReport);
 
 /**
  * @openapi

@@ -258,3 +258,25 @@ export async function previewConsumption({ referenceType = 'work_report', refere
 export async function listMovements({ articleId = null, limit = 200 } = {}) {
   return stockMovementRepository.getAll({ articleId, limit });
 }
+
+// Formatea una fecha como YYYY-MM-DD (para el default del reporte de abajo).
+const toDateStr = (d) => d.toISOString().slice(0, 10);
+
+/**
+ * Reporte de articulos mas consumidos (ver stockMovementRepository.getTopConsumed
+ * para el detalle de que calcula cada columna). Aqui solo se ponen los valores
+ * por defecto y se valida `orderBy` -- la consulta en si vive en el repositorio.
+ */
+export async function topConsumedReport({ from, to, orderBy = 'quantity' } = {}) {
+  if (!['quantity', 'margin'].includes(orderBy)) {
+    throw new ApiError(400, 'orderBy debe ser "quantity" o "margin"');
+  }
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  return stockMovementRepository.getTopConsumed({
+    from: from || toDateStr(thirtyDaysAgo),
+    to: to || toDateStr(today),
+    orderBy,
+  });
+}

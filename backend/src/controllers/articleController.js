@@ -1,6 +1,7 @@
 // Este archivo recibe las peticiones web relacionadas a ARTÍCULOS del inventario:
 // verlos, crearlos, editarlos, borrarlos, subirlos en lote desde Excel y subir su imagen.
 import * as articleService from '../services/articleService.js';
+import * as inventoryService from '../services/inventoryService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import path from 'path';
 
@@ -41,6 +42,12 @@ export const bulkCreate = asyncHandler(async (req, res) => {
     }
   }
   res.status(201).json(results);
+});
+// Reporte de articulos mas consumidos en un rango de fechas (para n8n / futuras
+// pantallas). from/to en formato YYYY-MM-DD; sin ellos, ultimos 30 dias.
+export const topConsumedReport = asyncHandler(async (req, res) => {
+  const { from, to, orderBy } = req.query;
+  res.json(await inventoryService.topConsumedReport({ from, to, orderBy }));
 });
 // Cuando el usuario sube una foto para un artículo, esto guarda el archivo y devuelve
 // la dirección (URL) donde quedó guardada la imagen.

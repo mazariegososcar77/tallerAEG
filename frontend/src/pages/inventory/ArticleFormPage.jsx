@@ -28,6 +28,7 @@ const emptyForm = {
   type_id: '',
   warehouse_id: '',
   quantity: 0,
+  min_stock: 0,
   cost: '',
   unit: 'unidad',
   price: 0,
@@ -67,6 +68,7 @@ export default function ArticleFormPage() {
           type_id: a.type_id,
           warehouse_id: a.warehouse_id,
           quantity: a.quantity,
+          min_stock: a.min_stock,
           cost: a.cost ?? '',
           unit: a.unit,
           price: a.price,
@@ -114,6 +116,7 @@ export default function ArticleFormPage() {
       type_id: Number(form.type_id),
       warehouse_id: Number(form.warehouse_id),
       price: Number(form.price) || 0,
+      min_stock: Number(form.min_stock) || 0,
       // El precio de compra en blanco viaja como null ("todavia no se ha capturado"),
       // que no es lo mismo que un costo real de Q0.00. Si mandaramos 0 estariamos
       // diciendo que el articulo no cuesta nada.
@@ -221,6 +224,19 @@ export default function ArticleFormPage() {
                   cliente. Confundirlos deja el costo de los trabajos mal calculado. */}
               <Input label="Precio de compra (Q)" type="number" min="0" step="any" value={form.cost} onChange={setField('cost')} error={errors.cost} placeholder="Sin capturar" />
               <Input label="Precio de venta (Q)" type="number" min="0" step="any" value={form.price} onChange={setField('price')} error={errors.price} />
+              {/* Punto de reorden: por debajo de este nivel el articulo se considera
+                  "stock bajo". A diferencia de la existencia, esto si se puede editar
+                  despues de crear el articulo -- no es un saldo, es una regla de aviso. */}
+              <div>
+                <Input
+                  label="Existencia minima (punto de reorden)"
+                  type="number" min="0" step="any"
+                  value={form.min_stock}
+                  onChange={setField('min_stock')}
+                  error={errors.min_stock}
+                />
+                <p className="mt-1 text-xs text-muted">0 = sin alerta de stock bajo para este articulo.</p>
+              </div>
               <Input label="Marca" value={form.brand} onChange={setField('brand')} error={errors.brand} />
               <Input label="Modelo" value={form.model} onChange={setField('model')} error={errors.model} />
               <Input label="Ubicacion" value={form.location} onChange={setField('location')} error={errors.location} />

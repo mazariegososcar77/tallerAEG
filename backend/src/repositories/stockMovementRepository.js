@@ -74,6 +74,54 @@ export async function getLastOutCostByReference(referenceType, referenceId, exec
   return new Map(rows.map((r) => [Number(r.article_id), Number(r.unit_cost)]));
 }
 
+/**
+ * Reporte de articulos mas consumidos: agrupa las SALIDAS de reportes de
+ * trabajo (reference_type='work_report') por articulo, en un rango de
+ * fechas. Es la base que va a consultar n8n (u otra pantalla, a futuro) para
+ * saber que se esta gastando mas y que tan rentable es.
+ *
+ * El costo sale del unit_cost HISTORICO de cada movimiento (lo que costo en
+ * ese momento), no del costo actual del catalogo -- si despues se compro mas
+ * caro o mas barato, el consumo pasado no debe recalcularse solo. El ingreso,
+ * en cambio, es ESTIMADO a precio de catalogo VIGENTE (articles.price de
+ * hoy), porque no existe un "precio historico de venta" que registrar; se
+ * deja explicito en el nombre del campo (estimated_revenue) para que quien lo
+ * consuma no lo confunda con un ingreso real facturado.
+ */
+export async function getTopConsumed({ from, to, orderBy = 'quantity' } = {}) {
+  const orderCol = orderBy === 'margin' ? 'margin' : 'quantity_consumed';
+  const [rows] = await pool.query(`
+    SELECT
+      sm.article_id,
+      a.code AS article_code,
+      a.name AS article_name,
+      a.unit AS article_unit,
+      SUM(sm.quantity) AS quantity_consumed,
+      SUM(sm.unit_cost * sm.quantity) AS total_cost,
+      a.price AS current_price,
+      (a.price * SUM(sm.quantity)) AS estimated_revenue,
+      (a.price * SUM(sm.quantity)) - SUM(sm.unit_cost * sm.quantity) AS margin
+    FROM stock_movements sm
+    JOIN articles a ON a.id = sm.article_id
+    WHERE sm.type = 'salida'
+      AND sm.reference_type = 'work_report'
+      AND DATE(sm.created_at) BETWEEN ? AND ?
+    GROUP BY sm.article_id, a.code, a.name, a.unit, a.price
+    ORDER BY ${orderCol} DESC
+  `, [from, to]);
+  return rows.map((r) => ({
+    article_id: Number(r.article_id),
+    article_code: r.article_code,
+    article_name: r.article_name,
+    unit: r.article_unit,
+    quantity_consumed: Number(r.quantity_consumed),
+    total_cost: Number(r.total_cost),
+    current_price: Number(r.current_price),
+    estimated_revenue: Number(r.estimated_revenue),
+    margin: Number(r.margin),
+  }));
+}
+
 // Guarda un movimiento del kardex. No toca articles.quantity: de eso se encarga
 // inventoryService, que es el unico que coordina las dos cosas juntas.
 export async function create(data, executor = pool) {
