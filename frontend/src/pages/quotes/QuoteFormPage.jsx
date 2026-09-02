@@ -62,38 +62,69 @@ const SaveIcon = () => (
 // solo: cantidad x precio) van en columnas fijas, con un boton para eliminar
 // la linea.
 const ITEM_COLS = '1fr 68px 104px 92px 34px';
+const ITEM_COLS_MOBILE = '1fr 1fr 1fr';
 
-function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal }) {
+function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal, isMobile }) {
   return (
     <div>
-      <div style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:6 }}>
-        <span style={{ ...lbl, marginBottom:0 }}>Descripcion</span>
-        <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Cant.</span>
-        <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Precio Unit.</span>
-        <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Subtotal</span>
-        <span></span>
-      </div>
+      {!isMobile && (
+        <div style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:6 }}>
+          <span style={{ ...lbl, marginBottom:0 }}>Descripcion</span>
+          <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Cant.</span>
+          <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Precio Unit.</span>
+          <span style={{ ...lbl, marginBottom:0, textAlign:'right' }}>Subtotal</span>
+          <span></span>
+        </div>
+      )}
       {items.map((item, i) => {
         const sub = (parseFloat(item.quantity)||0) * (parseFloat(item.unit_price)||0);
+        const description = (
+          <AutocompleteInput
+            value={item.description}
+            onChange={withUppercase(e => onChange(i,'description',e.target.value))}
+            articles={articles||[]}
+            onPick={art => onPickArticle(i, art)}
+            onCreateNew={onOpenModal}
+            createLabel="Crear y agregar nuevo"
+            placeholder="Buscar en catalogo o escribe libre..."
+            style={{ ...inp, fontSize:11 }}
+          />
+        );
+        const removeBtn = (
+          <button onClick={() => onRemove(i)} disabled={items.length===1} type="button" title="Eliminar linea"
+            style={{ flexShrink:0, background:'#ef444422', border:'1px solid #ef444444', color:'#ef4444', borderRadius:6, cursor:items.length===1?'not-allowed':'pointer', opacity:items.length===1?0.3:1, width:34, height:34, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, lineHeight:1 }}>×</button>
+        );
+        if (isMobile) {
+          return (
+            <div key={i} style={{ background:C.card, border:'1px solid '+C.border, borderRadius:8, padding:10, marginBottom:8 }}>
+              <div style={{ display:'flex', gap:8, alignItems:'flex-start', marginBottom:8 }}>
+                <div style={{ minWidth:0, flex:1 }}>{description}</div>
+                {removeBtn}
+              </div>
+              <div style={{ display:'grid', gridTemplateColumns:ITEM_COLS_MOBILE, gap:8 }}>
+                <div>
+                  <span style={{ ...lbl, marginBottom:3, fontSize:9 }}>Cant.</span>
+                  <input type="number" min="0" step="1" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={{ ...inp, textAlign:'right' }} />
+                </div>
+                <div>
+                  <span style={{ ...lbl, marginBottom:3, fontSize:9 }}>Precio</span>
+                  <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
+                </div>
+                <div>
+                  <span style={{ ...lbl, marginBottom:3, fontSize:9 }}>Subtotal</span>
+                  <input readOnly tabIndex={-1} value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
+                </div>
+              </div>
+            </div>
+          );
+        }
         return (
           <div key={i} style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:10, alignItems:'start' }}>
-            <div style={{ minWidth:0 }}>
-              <AutocompleteInput
-                value={item.description}
-                onChange={withUppercase(e => onChange(i,'description',e.target.value))}
-                articles={articles||[]}
-                onPick={art => onPickArticle(i, art)}
-                onCreateNew={onOpenModal}
-                createLabel="Crear y agregar nuevo"
-                placeholder="Buscar en catalogo o escribe libre..."
-                style={{ ...inp, fontSize:11 }}
-              />
-            </div>
+            <div style={{ minWidth:0 }}>{description}</div>
             <input type="number" min="0" step="1" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={{ ...inp, textAlign:'right' }} />
             <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
             <input readOnly tabIndex={-1} value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
-            <button onClick={() => onRemove(i)} disabled={items.length===1} type="button" title="Eliminar linea"
-              style={{ background:'#ef444422', border:'1px solid #ef444444', color:'#ef4444', borderRadius:6, cursor:items.length===1?'not-allowed':'pointer', opacity:items.length===1?0.3:1, height:34, display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, lineHeight:1 }}>×</button>
+            {removeBtn}
           </div>
         );
       })}
@@ -373,14 +404,14 @@ export default function QuoteFormPage() {
                   <span style={{ fontSize:13 }}>Mano de Obra</span>
                   <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>Q {calcSub(eq.labor).toFixed(2)}</span>
                 </div>
-                <ItemsTable items={eq.labor} onChange={(li,k,v) => setLineField(ei,'labor',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'labor',li,art)} onAdd={() => addLine(ei,'labor')} onRemove={li => removeLine(ei,'labor',li)} color="#3b82f6" articles={laborArticles} onOpenModal={() => setArticleModal('labor')} />
+                <ItemsTable items={eq.labor} onChange={(li,k,v) => setLineField(ei,'labor',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'labor',li,art)} onAdd={() => addLine(ei,'labor')} onRemove={li => removeLine(ei,'labor',li)} color="#3b82f6" articles={laborArticles} onOpenModal={() => setArticleModal('labor')} isMobile={isMobile} />
               </div>
               <div style={{ marginTop:10, background:C.dark, borderRadius:8, padding:'12px 14px', border:'1px solid #10b98133' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
                   <span style={{ fontSize:13 }}>Repuestos</span>
                   <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>Q {calcSub(eq.parts).toFixed(2)}</span>
                 </div>
-                <ItemsTable items={eq.parts} onChange={(li,k,v) => setLineField(ei,'parts',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'parts',li,art)} onAdd={() => addLine(ei,'parts')} onRemove={li => removeLine(ei,'parts',li)} color="#10b981" articles={partArticles} onOpenModal={() => setArticleModal('part')} />
+                <ItemsTable items={eq.parts} onChange={(li,k,v) => setLineField(ei,'parts',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'parts',li,art)} onAdd={() => addLine(ei,'parts')} onRemove={li => removeLine(ei,'parts',li)} color="#10b981" articles={partArticles} onOpenModal={() => setArticleModal('part')} isMobile={isMobile} />
               </div>
               <div style={{ marginTop:10, textAlign:'right', fontSize:12, color:C.muted }}>
                 Subtotal equipo: <strong style={{ color:C.text }}>Q {(calcSub(eq.labor)+calcSub(eq.parts)).toFixed(2)}</strong>

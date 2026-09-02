@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
@@ -27,8 +28,10 @@ export default function DatePicker({
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState('days'); // 'days' | 'years'
-  const [dropUp, setDropUp] = useState(false);
-  const ref = useRef(null);
+  const [pos, setPos] = useState(null);
+  const ref = useRef(null);       // wrapper del boton (para el clic afuera)
+  const btnRef = useRef(null);    // boton disparador (para medir su posicion)
+  const panelRef = useRef(null);  // panel del calendario (en el portal)
   const today = new Date();
 
   const parsed = useMemo(() => {
@@ -41,24 +44,53 @@ export default function DatePicker({
   const [viewYear, setViewYear] = useState(parsed?.y ?? today.getFullYear());
   const [viewMonth, setViewMonth] = useState(parsed?.m ?? today.getMonth());
 
-  // Al abrir, sincroniza la vista con el valor seleccionado y decide hacia
-  // donde abrir el calendario (evita que lo recorte un contenedor con scroll).
-  useEffect(() => {
-    if (open) {
-      setMode('days');
-      if (parsed) { setViewYear(parsed.y); setViewMonth(parsed.m); }
-      const rect = ref.current?.getBoundingClientRect();
-      if (rect) {
-        const POPOVER_H = 340;
-        setDropUp(rect.bottom + POPOVER_H > window.innerHeight && rect.top > POPOVER_H);
-      }
-    }
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Calcula donde poner el panel (arriba o abajo del boton, y sin salirse por
+  // los lados de la pantalla) en coordenadas fijas de viewport. Se hace en un
+  // portal con position:fixed -- igual que Combobox.jsx -- para que ni un
+  // contenedor angosto (columnas de filtro en celular) ni uno con overflow
+  // recortado (las tarjetas "sec" que se usan en todo el sistema) lo corten
+  // o lo empujen fuera de la pantalla.
+  const updatePosition = useCallback(() => {
+    if (!btnRef.current) return;
+    const rect = btnRef.current.getBoundingClientRect();
+    const POPOVER_W = Math.min(300, window.innerWidth - 16);
+    const POPOVER_H = 340;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const openUp = spaceBelow < POPOVER_H && spaceAbove > spaceBelow;
+    const maxLeft = window.innerWidth - POPOVER_W - 8;
+    const left = Math.min(Math.max(rect.left, 8), Math.max(maxLeft, 8));
+    setPos({
+      left,
+      width: POPOVER_W,
+      ...(openUp ? { bottom: window.innerHeight - rect.top + 4 } : { top: rect.bottom + 4 }),
+    });
+  }, []);
 
-  // Cerrar al hacer clic fuera o con Escape.
+  // Al abrir, sincroniza la vista con el valor seleccionado y calcula la posicion;
+  // mientras este abierto, la recalcula si la pantalla hace scroll o cambia de tamano.
   useEffect(() => {
     if (!open) return undefined;
-    const onAway = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    setMode('days');
+    if (parsed) { setViewYear(parsed.y); setViewMonth(parsed.m); }
+    updatePosition();
+    const onScroll = () => updatePosition();
+    window.addEventListener('scroll', onScroll, true);
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll, true);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cerrar al hacer clic fuera (boton + panel del portal) o con Escape.
+  useEffect(() => {
+    if (!open) return undefined;
+    const onAway = (e) => {
+      if (ref.current?.contains(e.target)) return;
+      if (panelRef.current?.contains(e.target)) return;
+      setOpen(false);
+    };
     const onKey = (e) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('mousedown', onAway);
     document.addEventListener('keydown', onKey);
@@ -110,6 +142,7 @@ export default function DatePicker({
 
       <div className="relative" ref={ref}>
         <button
+          ref={btnRef}
           type="button"
           disabled={disabled}
           onClick={() => setOpen(o => !o)}
@@ -122,9 +155,12 @@ export default function DatePicker({
           <CalendarIcon size={16} className="text-slate-400" />
         </button>
 
-        {open && (
-          <div className={`absolute left-0 z-30 w-full min-w-[15rem] max-w-[300px] rounded-md border border-line bg-surface p-3 shadow-lg animate-fade-in
-            ${dropUp ? 'bottom-full mb-1' : 'mt-1'}`}>
+        {open && pos && createPortal(
+          <div
+            ref={panelRef}
+            className="rounded-md border border-line bg-surface p-3 shadow-lg animate-fade-in"
+            style={{ position:'fixed', left:pos.left, width:pos.width, zIndex:70, ...(pos.top != null ? { top:pos.top } : { bottom:pos.bottom }) }}
+          >
             {/* Cabecera */}
             <div className="mb-2 flex items-center justify-between">
               <button type="button" onClick={prevMonth} className={navBtn} aria-label="Mes anterior"><ChevronLeft size={16} /></button>
@@ -190,7 +226,8 @@ export default function DatePicker({
               <button type="button" onClick={clear} className="rounded-md px-2 py-1 text-xs font-medium text-muted hover:bg-hover hover:text-content">Limpiar</button>
               <button type="button" onClick={pickToday} className="rounded-md px-2 py-1 text-xs font-semibold text-orange-500 hover:bg-hover">Hoy</button>
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
 

@@ -142,7 +142,7 @@ export default function InvoicesPage() {
         </div>
         <DatePicker label="Desde" value={dateFrom} onChange={setDateFrom} />
         <DatePicker label="Hasta" value={dateTo} onChange={setDateTo} />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c-text)', paddingBottom: 9, whiteSpace: 'nowrap' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--c-text)', paddingBottom: 9, whiteSpace: 'nowrap', gridColumn: isMobile ? '1 / -1' : 'auto' }}>
           <input type="checkbox" checked={onlyPending} onChange={e => setOnlyPending(e.target.checked)} />
           Solo pendientes
         </label>
