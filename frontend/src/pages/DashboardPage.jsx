@@ -21,14 +21,14 @@ export default function DashboardPage() {
   if (!hasPermission('dashboard.view')) {
     return (
       <div style={{ padding:'4px 0' }}>
-        <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1 }}>Panel de administracion — Taller AEG</p>
+        <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1 }}>Panel de administracion — Centro de Servicio AEG</p>
       </div>
     );
   }
 
   return (
     <div style={{ padding:'4px 0' }}>
-      <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>Panel de administracion — Taller AEG</p>
+      <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>Panel de administracion — Centro de Servicio AEG</p>
 
       <div style={{ display:'grid', gap:20, alignItems:'stretch', gridTemplateColumns: isMobile ? '1fr' : 'minmax(300px, 380px) 1fr' }}>
         {/* Resumen de próximas fechas (mantenimientos y entregas de órdenes) */}

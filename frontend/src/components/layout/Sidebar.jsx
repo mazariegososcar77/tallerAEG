@@ -171,10 +171,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
         className={'fixed inset-y-0 left-0 z-40 flex transform flex-col bg-navy-700 transition-all duration-200 lg:static lg:translate-x-0 ' + (slim ? 'w-20' : 'w-64') + ' ' + (mobileOpen ? 'translate-x-0' : '-translate-x-full')}
       >
         <div className={'flex items-center px-5 py-5 ' + (slim ? 'justify-center' : 'gap-3')}>
-          <img src="/logo.png" alt="Taller AEG" className="h-11 w-11 shrink-0 rounded-lg bg-white p-1" />
+          <img src="/logo.png" alt="Centro de Servicio AEG" className="h-11 w-11 shrink-0 rounded-lg bg-white p-1" />
           {!slim && (
             <div className="leading-tight">
-              <p className="font-bold text-white">Taller AEG</p>
+              <p className="font-bold text-white">Centro de Servicio AEG</p>
               <p className="text-xs text-navy-200">Panel de administracion</p>
             </div>
           )}

@@ -35,7 +35,7 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-sm">
       <div className="mb-8 flex flex-col items-center text-center">
-        <img src="/logo.png" alt="Taller AEG" className="mb-4 h-20 w-20" />
+        <img src="/logo.png" alt="Centro de Servicio AEG" className="mb-4 h-20 w-20" />
         <h1 className="text-2xl font-bold text-navy-800">Bienvenido</h1>
         <p className="mt-1 text-sm text-slate-500">Ingresa tus credenciales para continuar</p>
       </div>

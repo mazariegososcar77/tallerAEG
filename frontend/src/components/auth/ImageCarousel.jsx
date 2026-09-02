@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 const SLIDES = [
   {
     src: '/img/carrusel/slide-1.png',
-    title: 'Gestion integral del taller',
+    title: 'Gestion integral del centro de servicios',
     subtitle: 'Administra usuarios, roles y permisos desde un solo lugar.',
   },
   {
@@ -18,7 +18,7 @@ const SLIDES = [
   },
   {
     src: '/img/carrusel/slide-3.png',
-    title: 'Taller AEG',
+    title: 'Centro de Servicio AEG',
     subtitle: 'Especialistas en motores electricos.',
   },
 ];

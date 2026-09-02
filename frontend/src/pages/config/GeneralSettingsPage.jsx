@@ -235,21 +235,21 @@ export default function GeneralSettingsPage() {
               onClick={restoreBrandColors}
               className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-orange-500 hover:underline"
             >
-              <RotateCcw size={13} /> Restaurar los colores de marca de Taller AEG
+              <RotateCcw size={13} /> Restaurar los colores de marca de Centro de Servicio AEG
             </button>
           )}
         </div>
       </Section>
 
-      {/* ── DATOS DEL TALLER ───────────────────────────────────────── */}
+      {/* ── DATOS DEL CENTRO DE SERVICIOS ─────────────────────────────── */}
       <Section
         icon={Building2}
-        title="Datos del taller"
+        title="Datos del centro de servicios"
         description="Se imprimen en el encabezado y el pie de todos los PDF (cotizaciones, órdenes, reportes y facturas)."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            label="Nombre del taller"
+            label="Nombre del centro de servicios"
             value={form.company_name}
             onChange={(e) => set('company_name', e.target.value)}
             disabled={!canEdit}
@@ -280,7 +280,7 @@ export default function GeneralSettingsPage() {
             noUppercase
           />
           <Input
-            label="NIT del taller"
+            label="NIT del centro de servicios"
             value={form.company_nit}
             onChange={(e) => set('company_nit', e.target.value)}
             disabled={!canEdit}

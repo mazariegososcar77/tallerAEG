@@ -51,7 +51,7 @@ export default function PublicSignaturePage() {
 
   return (
     <div style={{ minHeight:'100vh', background:C.bg, display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 16px' }}>
-      <img src="/logo.png" alt="Taller AEG" style={{ height:64, marginBottom:16 }} />
+      <img src="/logo.png" alt="Centro de Servicio AEG" style={{ height:64, marginBottom:16 }} />
 
       <div style={{ width:'100%', maxWidth:420, background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:20, boxShadow:'0 2px 10px rgba(0,0,0,.06)' }}>
         {error ? (

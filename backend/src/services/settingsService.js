@@ -28,7 +28,7 @@ export const SETTINGS_SCHEMA = {
 
   // ── Datos del taller (se imprimen en el encabezado/pie de los PDF) ───
   company_name:     { type: 'text', default: 'CENTRO DE SERVICIO AEG', max: 120 },
-  company_tagline:  { type: 'text', default: 'Taller de Embobinado Industrial', max: 160 },
+  company_tagline:  { type: 'text', default: 'Centro de Servicios Industriales', max: 160 },
   company_address:  { type: 'text', default: 'Guatemala, Guatemala', max: 200 },
   company_phone:    { type: 'text', default: '(+502) 5502-5055', max: 60 },
   company_email:    { type: 'text', default: '', max: 120 },
