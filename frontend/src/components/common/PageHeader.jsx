@@ -1,3 +1,7 @@
+// Es el encabezado que aparece arriba de cada pantalla, con el título de la
+// sección (por ejemplo "Cotizaciones"), un subtítulo opcional, un emoji
+// decorativo, y un espacio a la derecha (`children`) donde normalmente se
+// ponen botones de acción como "Nuevo" o los filtros de esa pantalla.
 export default function PageHeader({ title, subtitle, emoji, children }) {
   return (
     <div style={{ marginBottom:20, display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12 }}>

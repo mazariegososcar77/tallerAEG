@@ -1,6 +1,11 @@
 # Backend Taller AEG — API Node.js + Express
 FROM node:20-alpine
 
+# ffmpeg/ffprobe: comprimen el video final de un reporte de trabajo al subirlo
+# (ver src/lib/mediaProcessing.js) -- la VM de produccion tiene poca RAM libre
+# y sin swap, asi que nunca se guarda un video sin comprimir.
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 # Instalar dependencias primero (mejor caché de capas)

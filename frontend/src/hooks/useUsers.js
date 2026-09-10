@@ -1,8 +1,10 @@
+// Este archivo trae del servidor la lista de usuarios del sistema (las
+// personas que pueden iniciar sesión en la app) para usarla en administración.
 import { useState, useEffect, useCallback } from 'react';
 import { usersApi } from '../api/usersApi.js';
 import { notify } from '../lib/toast.js';
 
-/** Carga la lista de usuarios y expone una funcion para recargar. */
+/** Trae la lista de usuarios del servidor y permite volver a cargarla cuando haga falta. */
 export function useUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);

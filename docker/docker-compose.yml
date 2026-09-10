@@ -20,10 +20,14 @@ services:
     ports:
       - "127.0.0.1:${DB_HOST_PORT:-3307}:3306"
   backend:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    image: ${PROJECT_NAME:-talleraeg}-backend
+    # La imagen la construye y publica GitHub Actions en GHCR
+    # (.github/workflows/cd.yml). Aqui NO hay "build:" a proposito: la VM tiene
+    # 1.9 GB de RAM y compilar en ella dejaba el deploy colgado por falta de
+    # memoria. Si hace falta construir a mano: docker build ../backend
+    #
+    # El deploy fija IMAGE_TAG al SHA del commit. El default (dev) sirve para
+    # levantar a mano la ultima imagen publicada de esa rama.
+    image: ${IMAGE_PREFIX:-ghcr.io/mazariegososcar77}/talleraeg-backend:${IMAGE_TAG:-dev}
     restart: unless-stopped
     depends_on:
       - db
@@ -37,18 +41,47 @@ services:
       DB_NAME: ${MYSQL_DATABASE:-talleraeg}
       DB_USER: ${MYSQL_USER:-aeg_user}
       DB_PASSWORD: ${MYSQL_PASSWORD}
+      # Almacenamiento de archivos en Google Cloud Storage. Es la UNICA variable
+      # nueva: no hay llave JSON ni secreto que agregar. La VM tiene adjunta la
+      # service account talleraeg-storage, asi que la libreria consigue las
+      # credenciales sola por el metadata server y firma las URLs con la API de
+      # IAM. Vacia = el sistema sigue guardando en el disco del contenedor, como
+      # antes (ver backend/src/lib/gcsStorage.js).
+      # prod: talleraeg-media-prod   dev: talleraeg-media-dev
+      GCS_BUCKET: ${GCS_BUCKET:-}
+      # Facturacion electronica (Digifact FEL). Vacias = felCertifier sigue en modo simulador.
+      DIGIFACT_ENV: ${DIGIFACT_ENV:-test}
+      DIGIFACT_NIT: ${DIGIFACT_NIT:-}
+      DIGIFACT_USERNAME: ${DIGIFACT_USERNAME:-}
+      DIGIFACT_PASSWORD: ${DIGIFACT_PASSWORD:-}
+      DIGIFACT_EMISOR_NIT: ${DIGIFACT_EMISOR_NIT:-}
+      DIGIFACT_AFILIACION_IVA: ${DIGIFACT_AFILIACION_IVA:-GEN}
+      DIGIFACT_FRASE: ${DIGIFACT_FRASE:-1}
+      DIGIFACT_ESCENARIO: ${DIGIFACT_ESCENARIO:-1}
+      DIGIFACT_ESTABLECIMIENTO_CODIGO: ${DIGIFACT_ESTABLECIMIENTO_CODIGO:-1}
+      DIGIFACT_ESTABLECIMIENTO_NOMBRE: ${DIGIFACT_ESTABLECIMIENTO_NOMBRE:-}
+      DIGIFACT_EMISOR_NOMBRE: ${DIGIFACT_EMISOR_NOMBRE:-}
+      DIGIFACT_EMISOR_DIRECCION: ${DIGIFACT_EMISOR_DIRECCION:-}
+      DIGIFACT_EMISOR_MUNICIPIO: ${DIGIFACT_EMISOR_MUNICIPIO:-}
+      DIGIFACT_EMISOR_DEPARTAMENTO: ${DIGIFACT_EMISOR_DEPARTAMENTO:-}
+      DIGIFACT_EMISOR_CODIGO_GEOGRAFICO: ${DIGIFACT_EMISOR_CODIGO_GEOGRAFICO:-}
+      DIGIFACT_EMISOR_EMAIL: ${DIGIFACT_EMISOR_EMAIL:-}
     volumes:
       - backend_data:/app/src/data
+      # Sigue montado aunque los archivos nuevos ya vayan a Google Cloud Storage:
+      # aqui viven los que se subieron ANTES de la migracion (el backend sabe
+      # servir los dos formatos) y es donde ffmpeg trabaja el video mientras lo
+      # comprime. Se puede quitar recien cuando no quede ninguna fila apuntando a
+      # /uploads/ -- ver docs/integracion-gcp-storage.md.
       - backend_uploads:/app/uploads
     networks:
       - talleraeg
     expose:
       - "4000"
   frontend:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    image: ${PROJECT_NAME:-talleraeg}-frontend
+    # Igual que el backend: imagen ya construida, la VM solo la descarga. Este era
+    # el build que se colgaba (el `vite build` de rollup pide ~1-1.5 GB).
+    image: ${IMAGE_PREFIX:-ghcr.io/mazariegososcar77}/talleraeg-frontend:${IMAGE_TAG:-dev}
     restart: unless-stopped
     depends_on:
       - backend

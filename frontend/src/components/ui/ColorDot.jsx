@@ -1,4 +1,8 @@
-/** Punto de color reutilizable (p.ej. el color de una bodega). */
+/**
+ * Es un simple circulito pintado de un color. Se usa, por ejemplo, para
+ * mostrar de un vistazo el color asignado a una bodega en la lista de
+ * Configuración, sin tener que leer el texto.
+ */
 export default function ColorDot({ color, className = 'h-3 w-3' }) {
   return (
     <span

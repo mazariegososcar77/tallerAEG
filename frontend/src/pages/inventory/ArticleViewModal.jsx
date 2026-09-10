@@ -1,3 +1,7 @@
+// PANTALLA: Ventana emergente (modal) que muestra el detalle de UN artículo,
+// solo para consultar — aquí no se puede editar nada. Se abre al hacer clic en
+// el icono de "ojito" desde la lista de Inventario. Tiene 3 pestañas: información
+// general, piezas y mano de obra.
 import { useState, useEffect } from 'react';
 import { Package, Info, Boxes, Wrench } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
@@ -5,6 +9,7 @@ import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
 
+// Pequeño bloque de "etiqueta: valor" que se repite varias veces en la pantalla de información.
 function Field({ label, children }) {
   return (
     <div>
@@ -55,6 +60,10 @@ export default function ArticleViewModal({ open, onClose, article }) {
 
   const pieces = article.pieces || [];
   const labor = article.labor || [];
+  // Margen = lo que se cobra menos lo que costo. Es dato calculado al vuelo, no una
+  // columna: guardarlo obligaria a recalcularlo cada vez que cambia cualquiera de los
+  // dos precios, y tarde o temprano quedaria desactualizado.
+  const margen = Number(article.price || 0) - Number(article.cost || 0);
 
   return (
     <Modal
@@ -62,7 +71,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
       onClose={onClose}
       title="Detalle del articulo"
       size="xl"
-      accentColor={article.warehouse_color || '#16285C'}
+      accentColor={article.warehouse_color || '#164B2C'}
       footer={
         <Button variant="outline" onClick={onClose}>
           Cerrar
@@ -83,11 +92,11 @@ export default function ArticleViewModal({ open, onClose, article }) {
       <div className="min-h-[60vh]">
         {tab === 'info' && (
           <div className="grid gap-6 sm:grid-cols-[260px_1fr]">
-            {/* Imagen */}
+            {/* Imagen del articulo (si no tiene o no carga, se muestra un icono generico) */}
             <div className="flex h-64 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-              {article.image_url && !broken ? (
+              {article.image_display_url && !broken ? (
                 <img
-                  src={article.image_url}
+                  src={article.image_display_url}
                   alt={article.name}
                   className="h-full w-full object-contain"
                   onError={() => setBroken(true)}
@@ -97,7 +106,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
               )}
             </div>
 
-            {/* Informacion */}
+            {/* Datos generales: nombre, codigo, tipo, bodega, cantidad, precio, etc. */}
             <div>
               <h4 className="text-xl font-bold text-navy-800">{article.name}</h4>
               <p className="font-mono text-xs text-slate-500">{article.code}</p>
@@ -120,10 +129,29 @@ export default function ArticleViewModal({ open, onClose, article }) {
                     {article.warehouse_name}
                   </span>
                 </Field>
-                <Field label="Cantidad">
+                <Field label="Existencia">
                   {article.quantity} {article.unit}
                 </Field>
-                <Field label="Precio">Q {Number(article.price).toFixed(2)}</Field>
+                {/* Un costo sin capturar se muestra como "—", no como Q 0.00: en la columna,
+                    NULL significa "todavia no se sabe", que no es lo mismo que gratis. */}
+                <Field label="Precio de compra">
+                  {article.cost == null ? '—' : `Q ${Number(article.cost).toFixed(2)}`}
+                </Field>
+                <Field label="Precio de venta">Q {Number(article.price).toFixed(2)}</Field>
+                {/* El margen solo aparece cuando hay con que calcularlo. Es dato derivado,
+                    no se guarda: si cambia cualquiera de los dos precios, se recalcula solo. */}
+                {article.cost != null && (
+                  <Field label="Margen">
+                    <span className={margen < 0 ? 'text-red-500' : undefined}>
+                      Q {margen.toFixed(2)}
+                      {Number(article.price) > 0 && (
+                        <span className="ml-1 text-xs text-muted">
+                          ({((margen / Number(article.price)) * 100).toFixed(0)}%)
+                        </span>
+                      )}
+                    </span>
+                  </Field>
+                )}
                 <Field label="Marca">{article.brand || '—'}</Field>
                 <Field label="Modelo">{article.model || '—'}</Field>
                 <Field label="Ubicacion">{article.location || '—'}</Field>

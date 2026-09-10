@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
-// Paleta tomada del logo "Taller AEG": azul marino + naranja.
+// Paleta de marca "Taller AEG": verde oscuro + amarillo.
+// Nota: los tokens conservan los nombres `navy` (ahora verde) y `orange`
+// (ahora amarillo) para no tener que renombrar clases en toda la app.
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   darkMode: 'class',
@@ -16,31 +18,38 @@ export default {
         content: 'var(--c-text)',     // texto principal
         heading: 'var(--c-heading)',  // titulos
         muted: 'var(--c-muted)',      // texto secundario
+        // `navy` = verde oscuro de marca, `orange` = amarillo dorado de marca
+        // (se conservan los nombres historicos de los tokens).
+        //
+        // Ambas escalas resuelven a variables CSS definidas en index.css, para
+        // que se puedan cambiar desde Configuracion > Configuracion general sin
+        // recompilar. El formato `rgb(var(--x) / <alpha-value>)` es a proposito:
+        // es lo que permite seguir usando transparencias tipo `bg-navy-900/50`.
         navy: {
-          50: '#EEF1F8',
-          100: '#D5DCEC',
-          200: '#ABB8D8',
-          300: '#7E91C1',
-          400: '#4F6AA8',
-          500: '#2C4585',
-          600: '#1F3470',
-          700: '#16285C', // color principal de marca
-          800: '#112048',
-          900: '#0C1733',
-          DEFAULT: '#16285C',
+          50: 'rgb(var(--c-navy-50) / <alpha-value>)',
+          100: 'rgb(var(--c-navy-100) / <alpha-value>)',
+          200: 'rgb(var(--c-navy-200) / <alpha-value>)',
+          300: 'rgb(var(--c-navy-300) / <alpha-value>)',
+          400: 'rgb(var(--c-navy-400) / <alpha-value>)',
+          500: 'rgb(var(--c-navy-500) / <alpha-value>)',
+          600: 'rgb(var(--c-navy-600) / <alpha-value>)',
+          700: 'rgb(var(--c-navy-700) / <alpha-value>)', // color principal de marca
+          800: 'rgb(var(--c-navy-800) / <alpha-value>)',
+          900: 'rgb(var(--c-navy-900) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--c-navy-700) / <alpha-value>)',
         },
         orange: {
-          50: '#FEF3EC',
-          100: '#FCE2D1',
-          200: '#F9C2A3',
-          300: '#F49B6E',
-          400: '#EE7440',
-          500: '#E8551C', // acento principal de marca
-          600: '#C9430F',
-          700: '#A3340C',
-          800: '#7E2810',
-          900: '#672313',
-          DEFAULT: '#E8551C',
+          50: 'rgb(var(--c-orange-50) / <alpha-value>)',
+          100: 'rgb(var(--c-orange-100) / <alpha-value>)',
+          200: 'rgb(var(--c-orange-200) / <alpha-value>)',
+          300: 'rgb(var(--c-orange-300) / <alpha-value>)',
+          400: 'rgb(var(--c-orange-400) / <alpha-value>)',
+          500: 'rgb(var(--c-orange-500) / <alpha-value>)', // acento principal de marca
+          600: 'rgb(var(--c-orange-600) / <alpha-value>)',
+          700: 'rgb(var(--c-orange-700) / <alpha-value>)',
+          800: 'rgb(var(--c-orange-800) / <alpha-value>)',
+          900: 'rgb(var(--c-orange-900) / <alpha-value>)',
+          DEFAULT: 'rgb(var(--c-orange-500) / <alpha-value>)',
         },
       },
       fontFamily: {

@@ -1,5 +1,9 @@
 import Spinner from './Spinner.jsx';
 
+// Botón reutilizable con el estilo de la marca de Taller AEG (naranja, azul
+// marino, gris, rojo...). Se usa en casi todas las pantallas del sistema:
+// guardar, cancelar, eliminar, etc. Si recibe `loading`, muestra una ruedita
+// girando y se deshabilita para evitar que le den doble clic.
 const VARIANTS = {
   primary: 'bg-orange-500 text-white hover:bg-orange-600 disabled:bg-orange-300',
   navy: 'bg-navy-700 text-white hover:bg-navy-800 disabled:bg-navy-400',

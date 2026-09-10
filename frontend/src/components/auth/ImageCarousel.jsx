@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
 
+// Este componente es el carrusel de imagenes grandes que se ve al lado del
+// formulario de inicio de sesion (pantalla de Login). Va cambiando de imagen
+// solo, cada pocos segundos, mostrando una frase distinta en cada una.
+
 // Slides del login. Reemplaza las imagenes en public/img/carrusel/ conservando los nombres.
 const SLIDES = [
   {
     src: '/img/carrusel/slide-1.png',
-    title: 'Gestion integral del taller',
+    title: 'Gestion integral del centro de servicios',
     subtitle: 'Administra usuarios, roles y permisos desde un solo lugar.',
   },
   {
@@ -14,14 +18,18 @@ const SLIDES = [
   },
   {
     src: '/img/carrusel/slide-3.png',
-    title: 'Taller AEG',
+    title: 'Centro de Servicio AEG',
     subtitle: 'Especialistas en motores electricos.',
   },
 ];
 
 export default function ImageCarousel() {
+  // "index" guarda cual de las 3 imagenes se esta mostrando en este momento.
   const [index, setIndex] = useState(0);
 
+  // Cada 5 segundos avanza a la siguiente imagen automaticamente (y al llegar
+  // a la ultima, vuelve a empezar desde la primera). Cuando el componente
+  // desaparece de la pantalla, se detiene el contador para no dejarlo corriendo.
   useEffect(() => {
     const id = setInterval(() => setIndex((i) => (i + 1) % SLIDES.length), 5000);
     return () => clearInterval(id);
@@ -29,6 +37,8 @@ export default function ImageCarousel() {
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-navy-700">
+      {/* Dibuja las 3 imagenes una encima de otra; solo se ve la que esta activa
+          (las demas quedan invisibles con una transicion suave de opacidad). */}
       {SLIDES.map((slide, i) => (
         <div
           key={slide.src}
@@ -45,6 +55,8 @@ export default function ImageCarousel() {
         </div>
       ))}
 
+      {/* Puntitos de navegacion en la parte inferior: al hacer clic en uno,
+          salta directo a esa imagen sin esperar el cambio automatico. */}
       <div className="absolute bottom-10 left-10 flex gap-2">
         {SLIDES.map((slide, i) => (
           <button

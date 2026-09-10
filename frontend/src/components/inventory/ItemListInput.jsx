@@ -9,6 +9,11 @@ const SCROLL_THRESHOLD = 10;
  * Editor de una lista de nombres (string[]). Cada Enter (o el boton Agregar) inserta un item;
  * la lista se muestra debajo y al superar 10 items aparece scroll.
  * Reutilizable para Piezas y Mano de obra via props de texto/icono.
+ *
+ * En palabras simples: es una lista donde el usuario va escribiendo textos
+ * cortos, uno por uno (por ejemplo, la lista de piezas usadas o el listado de
+ * mano de obra realizada), y cada uno queda como un renglon numerado que se
+ * puede quitar despues con el boton de la "X".
  */
 export default function ItemListInput({
   items,
@@ -18,8 +23,9 @@ export default function ItemListInput({
   emptyText = 'Aún no hay elementos.',
   emptyIcon = null,
 }) {
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(''); // lo que el usuario esta escribiendo antes de agregarlo a la lista
 
+  // Agrega el texto escrito a la lista (si no esta vacio) y limpia el campo.
   const add = () => {
     const name = draft.trim();
     if (!name) return;
@@ -27,6 +33,8 @@ export default function ItemListInput({
     setDraft('');
   };
 
+  // Permite agregar el elemento presionando la tecla Enter, sin necesidad de
+  // hacer clic en el boton "Agregar".
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -34,6 +42,7 @@ export default function ItemListInput({
     }
   };
 
+  // Quita de la lista el elemento en la posicion indicada.
   const removeAt = (index) => onChange(items.filter((_, i) => i !== index));
 
   const scrollable = items.length > SCROLL_THRESHOLD;

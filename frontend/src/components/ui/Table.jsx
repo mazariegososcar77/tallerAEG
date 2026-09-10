@@ -1,6 +1,14 @@
 import Spinner from './Spinner.jsx';
 
 /**
+ * Es la tabla que se usa en casi todas las pantallas de listado (Clientes,
+ * Inventario, Órdenes, Facturación, etc.). A este componente solo se le
+ * dice qué columnas mostrar y qué datos poner en cada fila, y él se encarga
+ * de dibujar la tabla, mostrar "Cargando..." mientras trae la información,
+ * y mostrar un mensaje cuando no hay ningún registro que mostrar.
+ * `renderActions` es opcional: si se usa, agrega una última columna con los
+ * botones de acción (ver, editar, eliminar, etc.) de cada fila.
+ *
  * Tabla reutilizable basada en configuracion.
  * columns: [{ key, header, render?(row), className? }]
  * renderActions?(row): celda de acciones al final
@@ -29,7 +37,9 @@ export default function Table({
               </th>
             ))}
             {renderActions && (
-              <th className="px-4 py-3 text-right font-semibold text-muted">Acciones</th>
+              <th className="w-px whitespace-nowrap px-4 py-3 text-right font-semibold text-muted">
+                Acciones
+              </th>
             )}
           </tr>
         </thead>
@@ -48,14 +58,17 @@ export default function Table({
             </tr>
           ) : (
             data.map((row) => (
-              <tr key={row[rowKey]} className="hover:bg-hover">
+              <tr key={row[rowKey]} className="transition-colors hover:bg-hover">
                 {columns.map((col) => (
-                  <td key={col.key} className={`px-4 py-3 text-content ${col.className || ''}`}>
+                  <td key={col.key} className={`px-4 py-3 align-middle text-content ${col.className || ''}`}>
                     {col.render ? col.render(row) : row[col.key]}
                   </td>
                 ))}
+                {/* `w-px` + `whitespace-nowrap`: la columna de acciones se queda
+                    del ancho justo de sus botones y nunca los parte en dos
+                    lineas ni deja que se monten sobre la columna anterior. */}
                 {renderActions && (
-                  <td className="px-4 py-3">
+                  <td className="w-px whitespace-nowrap px-4 py-3 align-middle">
                     <div className="flex justify-end gap-2">{renderActions(row)}</div>
                   </td>
                 )}

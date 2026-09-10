@@ -1,3 +1,8 @@
+// PANTALLA: Alta / edición de un artículo del inventario.
+// Aquí se llenan los datos de un artículo (código, nombre, precio, bodega, etc.),
+// se le puede poner una imagen, y se le agregan sus piezas y su mano de obra
+// (listas simples de texto, como una lista de compras). Se usa tanto para crear
+// un artículo nuevo como para editar uno existente (según si la URL trae un "id").
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Info, Boxes, Wrench } from 'lucide-react';
@@ -23,6 +28,8 @@ const emptyForm = {
   type_id: '',
   warehouse_id: '',
   quantity: 0,
+  min_stock: 0,
+  cost: '',
   unit: 'unidad',
   price: 0,
   brand: '',
@@ -48,7 +55,8 @@ export default function ArticleFormPage() {
   const [loadingArticle, setLoadingArticle] = useState(isEdit);
   const [tab, setTab] = useState('datos');
 
-  // Cargar el articulo en modo edicion.
+  // Si estamos editando un articulo existente, trae sus datos del servidor
+  // y los pone en el formulario para que el usuario los pueda modificar.
   useEffect(() => {
     if (!isEdit) return;
     articlesApi
@@ -60,6 +68,8 @@ export default function ArticleFormPage() {
           type_id: a.type_id,
           warehouse_id: a.warehouse_id,
           quantity: a.quantity,
+          min_stock: a.min_stock,
+          cost: a.cost ?? '',
           unit: a.unit,
           price: a.price,
           brand: a.brand,
@@ -67,6 +77,8 @@ export default function ArticleFormPage() {
           location: a.location,
           description: a.description,
           image_url: a.image_url,
+          // Solo para la vista previa: es una direccion temporal, no se guarda.
+          image_display_url: a.image_display_url,
           is_active: a.is_active,
           pieces: (a.pieces || []).map((p) => p.name),
           labor: (a.labor || []).map((l) => l.name),
@@ -89,20 +101,35 @@ export default function ArticleFormPage() {
     }));
   }, [types, warehouses, isEdit]);
 
+  // Atajos para actualizar un solo campo del formulario cuando el usuario escribe o elige algo.
   const setField = (field) => (e) => setForm((p) => ({ ...p, [field]: e.target.value }));
   const setValue = (field) => (value) => setForm((p) => ({ ...p, [field]: value }));
 
+  // Guarda el articulo: si ya existia lo actualiza, si es nuevo lo crea.
+  // Si el servidor responde con errores de campos (por ejemplo, un codigo repetido),
+  // los muestra debajo de cada campo y regresa a la pestaña "Datos" para que se vean.
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setErrors({});
+    const { quantity, ...rest } = form;
     const payload = {
-      ...form,
+      ...rest,
       type_id: Number(form.type_id),
       warehouse_id: Number(form.warehouse_id),
-      quantity: Number(form.quantity) || 0,
       price: Number(form.price) || 0,
+      min_stock: Number(form.min_stock) || 0,
+      // El precio de compra en blanco viaja como null ("todavia no se ha capturado"),
+      // que no es lo mismo que un costo real de Q0.00. Si mandaramos 0 estariamos
+      // diciendo que el articulo no cuesta nada.
+      cost: form.cost === '' || form.cost === null || form.cost === undefined
+        ? null
+        : Number(form.cost),
     };
+    // La existencia solo se manda al CREAR: ahi el backend la convierte en el saldo
+    // inicial del kardex. Al editar no se manda, porque editar la ficha de un articulo
+    // no cambia su existencia -- eso se hace con un ajuste de inventario.
+    if (!isEdit) payload.quantity = Number(quantity) || 0;
     try {
       if (isEdit) {
         await articlesApi.update(id, payload);
@@ -165,7 +192,7 @@ export default function ArticleFormPage() {
           ]}
         />
 
-        {/* Pestaña: datos del articulo */}
+        {/* Pestaña: datos del articulo (codigo, nombre, tipo, bodega, cantidad, precio, etc.) */}
         <div className={tab === 'datos' ? 'grid gap-6 lg:grid-cols-3' : 'hidden'}>
           {/* Datos */}
           <Card className="space-y-4 p-6 lg:col-span-2">
@@ -174,9 +201,44 @@ export default function ArticleFormPage() {
               <Input label="Nombre" value={form.name} onChange={setField('name')} error={errors.name} required />
               <Select label="Tipo" value={form.type_id} onChange={setValue('type_id')} options={typeOptions} error={errors.type_id} />
               <Select label="Bodega" value={form.warehouse_id} onChange={setValue('warehouse_id')} options={warehouseOptions} error={errors.warehouse_id} />
-              <Input label="Cantidad" type="number" min="0" step="any" value={form.quantity} onChange={setField('quantity')} error={errors.quantity} />
+              {/* La existencia solo se escribe al dar de alta el articulo (ahi nace como su
+                  saldo inicial en el kardex). Despues queda de solo lectura: cambiarla es
+                  un ajuste de inventario, que deja constancia de por que cambio. Se deja
+                  visible en vez de esconderla para que se vea cuanto hay sin salir de aqui. */}
+              <div>
+                <Input
+                  label={isEdit ? 'Existencia actual' : 'Existencia inicial'}
+                  type="number" min="0" step="any"
+                  value={form.quantity}
+                  onChange={setField('quantity')}
+                  error={errors.quantity}
+                  disabled={isEdit}
+                />
+                <p className="mt-1 text-xs text-muted">
+                  {isEdit
+                    ? 'La existencia se cambia con un ajuste de inventario, no desde aqui.'
+                    : 'Queda registrada como saldo inicial en el kardex.'}
+                </p>
+              </div>
               <Input label="Unidad" value={form.unit} onChange={setField('unit')} error={errors.unit} />
-              <Input label="Precio" type="number" min="0" step="any" value={form.price} onChange={setField('price')} error={errors.price} />
+              {/* Los dos precios juntos y etiquetados sin ambiguedad: el de compra es lo que
+                  le cuesta a AEG (valua el inventario) y el de venta lo que se le cobra al
+                  cliente. Confundirlos deja el costo de los trabajos mal calculado. */}
+              <Input label="Precio de compra (Q)" type="number" min="0" step="any" value={form.cost} onChange={setField('cost')} error={errors.cost} placeholder="Sin capturar" />
+              <Input label="Precio de venta (Q)" type="number" min="0" step="any" value={form.price} onChange={setField('price')} error={errors.price} />
+              {/* Punto de reorden: por debajo de este nivel el articulo se considera
+                  "stock bajo". A diferencia de la existencia, esto si se puede editar
+                  despues de crear el articulo -- no es un saldo, es una regla de aviso. */}
+              <div>
+                <Input
+                  label="Existencia minima (punto de reorden)"
+                  type="number" min="0" step="any"
+                  value={form.min_stock}
+                  onChange={setField('min_stock')}
+                  error={errors.min_stock}
+                />
+                <p className="mt-1 text-xs text-muted">0 = sin alerta de stock bajo para este articulo.</p>
+              </div>
               <Input label="Marca" value={form.brand} onChange={setField('brand')} error={errors.brand} />
               <Input label="Modelo" value={form.model} onChange={setField('model')} error={errors.model} />
               <Input label="Ubicacion" value={form.location} onChange={setField('location')} error={errors.location} />
@@ -184,14 +246,18 @@ export default function ArticleFormPage() {
             <Textarea label="Descripcion" rows={4} value={form.description} onChange={setField('description')} error={errors.description} />
           </Card>
 
-          {/* Imagen + estado */}
+          {/* Foto del articulo y si esta activo (visible para usarse) o no */}
           <Card className="flex flex-col gap-4 p-6">
-            <ImagePicker value={form.image_url} onChange={setValue('image_url')} />
+            <ImagePicker
+              value={form.image_url}
+              previewUrl={form.image_display_url}
+              onChange={setValue('image_url')}
+            />
             <Checkbox label="Articulo activo" checked={form.is_active} onChange={setValue('is_active')} />
           </Card>
         </div>
 
-        {/* Pestaña: piezas */}
+        {/* Pestaña: piezas que componen este articulo (lista simple, se agregan escribiendo y con Enter) */}
         <div className={tab === 'pieces' ? 'block' : 'hidden'}>
           <Card className="p-6">
             <ItemListInput
@@ -205,7 +271,7 @@ export default function ArticleFormPage() {
           </Card>
         </div>
 
-        {/* Pestaña: mano de obra */}
+        {/* Pestaña: tareas de mano de obra asociadas a este articulo */}
         <div className={tab === 'labor' ? 'block' : 'hidden'}>
           <Card className="p-6">
             <ItemListInput

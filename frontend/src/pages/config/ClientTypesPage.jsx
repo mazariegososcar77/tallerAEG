@@ -1,3 +1,10 @@
+// ============================================================================
+// PANTALLA: Configuración → Tipos de Cliente
+// Administra el catálogo de tipos de cliente (particular, empresa, gobierno,
+// etc.) que se usa en el formulario de Clientes para saber qué datos pedir.
+// Permite crear, editar, activar/desactivar y eliminar tipos. Usa el
+// componente reutilizable "CatalogManager".
+// ============================================================================
 import { UserCog } from "lucide-react";
 import { useClientTypes } from '../../hooks/useClientTypes.js';
 import { clientTypesApi } from '../../api/clientTypesApi.js';
@@ -14,7 +21,7 @@ export default function ClientTypesPage() {
       loading={loading}
       reload={reload}
       api={clientTypesApi}
-      emoji={<UserCog size={26} color="#E8551C" />}
+      emoji={<UserCog size={26} color="var(--c-accent)" />}
       permPrefix="client-types"
     />
   );

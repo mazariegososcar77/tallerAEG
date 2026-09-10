@@ -1,7 +1,19 @@
 /**
- * Utilidades de Excel (SheetJS) para la carga masiva de articulos.
- * xlsx se importa de forma diferida para no inflar el bundle inicial:
- * solo se descarga cuando el usuario usa la carga masiva.
+ * Este archivo maneja la "carga masiva" de artículos: en vez de crear los
+ * artículos del inventario uno por uno en la pantalla, el usuario puede
+ * llenar un archivo de Excel con varios artículos y subirlo de una sola vez.
+ * Aquí hay dos funciones: una para generar el Excel de plantilla (vacío, con
+ * los encabezados correctos) que el usuario descarga y llena, y otra para
+ * leer el Excel que el usuario sube y convertirlo a algo que la app entiende.
+ *
+ * La plantilla espera estas columnas (encabezados en español, en la primera
+ * fila de la hoja): codigo, nombre, tipo, bodega, cantidad, unidad, precio,
+ * marca, modelo, ubicacion, descripcion, imagen_url. No importa si están en
+ * mayúsculas o con espacios extra, la lectura los tolera igual.
+ *
+ * Nota técnica: la librería que lee/escribe Excel (xlsx) solo se descarga
+ * cuando el usuario realmente usa la carga masiva, para que la app cargue
+ * más rápido en el resto de los casos.
  */
 
 // Encabezados de la plantilla (en espanol) y su mapeo al modelo interno.
@@ -22,7 +34,7 @@ const HEADER_MAP = {
 
 const COLUMNS = Object.keys(HEADER_MAP);
 
-/** Descarga una plantilla .xlsx con los encabezados y una fila de ejemplo. */
+/** Genera y descarga el archivo Excel de plantilla (encabezados + una fila de ejemplo). */
 export async function downloadTemplate() {
   const XLSX = await import('xlsx');
   const example = {
@@ -45,7 +57,11 @@ export async function downloadTemplate() {
   XLSX.writeFile(wb, 'plantilla_inventario.xlsx');
 }
 
-/** Lee un archivo .xlsx y devuelve filas normalizadas al modelo interno. */
+/**
+ * Lee el archivo Excel que subió el usuario (la primera hoja) y devuelve una
+ * lista de artículos ya en el formato que la app usa internamente. Descarta
+ * las filas vacías que no tengan al menos código o nombre.
+ */
 export async function parseFile(file) {
   const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
@@ -55,6 +71,9 @@ export async function parseFile(file) {
   return rows.map(normalizeRow).filter((r) => r.code || r.name);
 }
 
+// Toma una fila leída del Excel (con los encabezados en español, como los
+// escribió el usuario) y la convierte a los nombres de campo internos de la
+// app (en inglés), tolerando mayúsculas o espacios extra en los encabezados.
 function normalizeRow(raw) {
   const out = {};
   const keys = Object.keys(raw);

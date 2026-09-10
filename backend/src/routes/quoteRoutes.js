@@ -1,17 +1,41 @@
+// Este archivo define las direcciones web (rutas) para manejar las COTIZACIONES: ver la lista,
+// ver el detalle, crear, editar, cambiar su estado, borrar y descargar el PDF.
 import { Router } from 'express';
+import { z } from 'zod';
 import * as quoteController from '../controllers/quoteController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
+import { validate } from '../middleware/validate.middleware.js';
 
 const router = Router();
+
+// Correo al que se manda la cotizacion. Se pide en pantalla (prellenado con el
+// del cliente) porque muchas veces la recibe alguien de compras y no el
+// contacto que quedo guardado en la ficha.
+const sendEmailSchema = z.object({
+  email:   z.string().email('Correo invalido'),
+  message: z.string().max(500).optional(),
+});
+// A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
+// Ver la lista de cotizaciones. (Nota: hoy solo exige el permiso general de "ver dashboard", no un permiso especifico de cotizaciones)
 router.get('/',              requirePermission('dashboard.view'), quoteController.list);
+// Ver el detalle de una cotizacion especifica.
 router.get('/:id',           requirePermission('dashboard.view'), quoteController.getById);
+// Crear una cotizacion nueva.
 router.post('/',             requirePermission('dashboard.view'), quoteController.create);
+// Editar una cotizacion existente.
 router.put('/:id',           requirePermission('dashboard.view'), quoteController.update);
+// Cambiar solo el estado de una cotizacion.
 router.patch('/:id/status',  requirePermission('dashboard.view'), quoteController.updateStatus);
+// Borrar una cotizacion.
 router.delete('/:id',        requirePermission('dashboard.view'), quoteController.remove);
+// Descargar el PDF de la cotizacion.
 router.get('/:id/pdf',       requirePermission('dashboard.view'), quoteController.pdf);
+// Mandarle la cotizacion al cliente por correo, con el PDF adjunto (via n8n).
+router.post('/:id/send-email', requirePermission('dashboard.view'), validate(sendEmailSchema), quoteController.sendEmail);
+// Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden(es) -> Reporte -> Factura).
+router.get('/:id/document-flow', requirePermission('dashboard.view'), quoteController.documentFlow);
 
 export default router;

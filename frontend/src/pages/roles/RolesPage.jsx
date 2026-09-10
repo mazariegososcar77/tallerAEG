@@ -1,3 +1,7 @@
+// PANTALLA: Lista de Roles. Muestra los roles del sistema (por ejemplo "Técnico",
+// "Administrador") con cuántos permisos tiene cada uno. Desde aquí se crea un
+// rol nuevo, se edita uno existente (abre la ventana de "RoleFormModal" donde se
+// eligen los permisos) o se elimina.
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, ShieldCheck } from 'lucide-react';
 import { useRoles } from '../../hooks/useRoles.js';
@@ -9,7 +13,7 @@ import { notify } from '../../lib/toast.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import RoleFormModal from './RoleFormModal.jsx';
 
-const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
+const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 
 export default function RolesPage() {
   const { roles, loading, reload } = useRoles();
@@ -23,6 +27,7 @@ export default function RolesPage() {
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (r) => { setEditing(r); setFormOpen(true); };
   const handleSaved = () => { setFormOpen(false); reload(); };
+  // Elimina el rol seleccionado, despues de confirmar.
   const handleDelete = async () => {
     try {
       await rolesApi.remove(deleting.id);
@@ -35,7 +40,7 @@ export default function RolesPage() {
     <div style={{ padding:'20px 16px', maxWidth:1100, margin:'0 auto' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <ShieldCheck size={26} color="#E8551C" />
+          <ShieldCheck size={26} color="var(--c-accent)" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Roles</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>{roles.length} roles registrados</p>

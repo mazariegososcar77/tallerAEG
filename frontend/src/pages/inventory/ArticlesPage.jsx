@@ -1,3 +1,8 @@
+// PANTALLA: Lista de Inventario. Muestra todos los artículos registrados con su
+// foto, código, nombre, tipo, bodega, cantidad y precio. Desde aquí se puede
+// buscar, filtrar por tipo o bodega, ver el detalle de un artículo, editarlo,
+// eliminarlo, crear uno nuevo o subir varios de una vez con un archivo de Excel
+// (carga masiva).
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Upload, Package, Search, Eye } from 'lucide-react';
@@ -13,9 +18,10 @@ import Combobox from '../../components/ui/Combobox.jsx';
 import BulkUploadModal from './BulkUploadModal.jsx';
 import ArticleViewModal from './ArticleViewModal.jsx';
 
-const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#E8551C' };
+const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 const inp = { background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:13, outline:'none' };
 
+// Muestra la fotito del articulo; si no tiene imagen o no carga, pone un icono de caja.
 function Thumb({ url, name }) {
   const [broken, setBroken] = useState(false);
   if (!url || broken) return (
@@ -40,6 +46,8 @@ export default function ArticlesPage() {
   const [deleting, setDeleting] = useState(null);
   const [viewing, setViewing] = useState(null);
 
+  // Filtra la lista de articulos segun lo que el usuario busco y los filtros
+  // de tipo/bodega que haya elegido. Se recalcula solo cuando cambia algo de eso.
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return articles.filter(a => {
@@ -50,6 +58,7 @@ export default function ArticlesPage() {
     });
   }, [articles, search, typeFilter, warehouseFilter]);
 
+  // Elimina el articulo seleccionado (despues de confirmar en el dialogo) y recarga la lista.
   const handleDelete = async () => {
     try {
       await articlesApi.remove(deleting.id);
@@ -64,7 +73,7 @@ export default function ArticlesPage() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-          <Package size={26} color="#E8551C" />
+          <Package size={26} color="var(--c-accent)" />
           <div>
             <h1 style={{ fontSize:20, fontWeight:700, margin:0, color:C.text }}>Inventario</h1>
             <p style={{ fontSize:13, color:C.muted, margin:0 }}>{articles.length} articulos registrados</p>
@@ -84,7 +93,7 @@ export default function ArticlesPage() {
         </div>
       </div>
 
-      {/* Filtros */}
+      {/* Filtros: buscar por texto, o filtrar por tipo y por bodega */}
       <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
@@ -96,7 +105,7 @@ export default function ArticlesPage() {
           options={[{ value:'', label:'Todas las bodegas' }, ...warehouses.map(w => ({ value:w.id, label:w.name }))]} />
       </div>
 
-      {/* Tabla Desktop */}
+      {/* Tabla para pantallas grandes (computadora) */}
       {!isMobile && (
         <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
           <div style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', background:C.dark, padding:'10px 16px', borderBottom:'1px solid '+C.border }}>
@@ -108,12 +117,12 @@ export default function ArticlesPage() {
             <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
-              <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Package size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
           ) : filtered.map(a => (
             <div key={a.id} style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
-              <div><Thumb url={a.image_url} name={a.name} /></div>
+              <div><Thumb url={a.image_display_url} name={a.name} /></div>
               <span style={{ fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</span>
               <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
               <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
@@ -130,19 +139,19 @@ export default function ArticlesPage() {
         </div>
       )}
 
-      {/* Cards Mobile */}
+      {/* Version en tarjetas para pantallas de celular (misma informacion, otro formato) */}
       {isMobile && (
         <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, overflow:'hidden' }}>
           {loading ? (
             <p style={{ color:C.muted, textAlign:'center', padding:40 }}>Cargando...</p>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'48px 0', color:C.muted }}>
-              <Package size={48} style={{ opacity:.3, marginBottom:12 }} />
+              <Package size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
           ) : filtered.map(a => (
             <div key={a.id} style={{ display:'flex', gap:12, padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
-              <Thumb url={a.image_url} name={a.name} />
+              <Thumb url={a.image_display_url} name={a.name} />
               <div style={{ flex:1, minWidth:0 }}>
                 <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
                 <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>

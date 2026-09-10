@@ -16,25 +16,96 @@ Módulos implementados, funcionales end-to-end:
    configurables en **Configuración** (tipos de artículo y bodegas).
 3. **Clientes**: registro/edición/visualización de clientes (NIT/DPI, datos de contacto, tipo y nivel
    de fidelización) y catálogos configurables en **Configuración** (tipos de cliente y fidelización).
+4. **Órdenes de trabajo** (`/ordenes`): ficha del equipo recibido, ítems/piezas, técnicos, estado
+   (`recibido → en_proceso → listo → entregado`/`cancelado`) y descarga de PDF.
+5. **Cotizaciones** (`/cotizaciones`): ítems con categoría de pieza, subtotal/descuento/total y
+   descarga de PDF; usa el catálogo `part-categories`.
+6. **Máquinas y mantenimiento** (`/maquinas`, `/mantenimientos`): equipos por cliente y calendario de
+   mantenimientos programados (frecuencia, próximo servicio, estado `al_dia`/`proximo`/`vencido`).
+7. **Reportes de trabajo** (`/reportes`): documentación fotográfica de una orden en 4 etapas fijas
+   (antes de desarmar, desarmado + piezas nuevas, piezas instaladas + usadas, armado final), varias
+   fotos y una nota por etapa. En celular las fotos se pueden tomar con la cámara o elegir de la
+   galería; se acepta cualquier formato porque el navegador las convierte a JPG antes de subirlas. Se crea desde el botón "Reporte" de una orden de trabajo
+   (`work-reports.createForOrder`, idempotente: una orden solo tiene un reporte). Al finalizarlo
+   genera automáticamente la factura correspondiente.
+8. **Facturación** (`/facturacion`): lista de facturas con filtro por cliente/fecha/"solo pendientes"
+   y certificación (captura el correo del cliente, prellenado desde su ficha). La certificación FEL
+   ya está **conectada a Digifact (Guatemala)**: `felCertifier.certify` arma el documento NUC con
+   [backend/src/lib/nucBuilder.js](backend/src/lib/nucBuilder.js) y lo envía con
+   [backend/src/lib/digifactClient.js](backend/src/lib/digifactClient.js), devolviendo el
+   UUID/serie/número que asigna la SAT. **Mientras falten las credenciales**
+   (`DIGIFACT_NIT/USERNAME/PASSWORD` en `.env`, ver [backend/.env.example](backend/.env.example))
+   sigue comportándose como el stub original: no llama a nadie, deja los campos `fel_*` en `null` y
+   la factura avanza a `certificada` solo para uso administrativo — **no es válida ante la SAT**. No
+   se debe "arreglar" eso rellenando datos falsos. El **envío del correo** de certificación tampoco
+   está implementado (no hay SMTP en el backend); el correo se guarda pero no se manda. Detalles en
+   [backend/CLAUDE.md](backend/CLAUDE.md).
+
+Flujo completo: **Cotización → Orden de Trabajo → Reporte de Trabajo → Factura**, vinculado por FKs
+reales (`work_orders.quote_id`, `work_reports.work_order_id`, `invoices.work_order_id/quote_id`). Una
+cotización con varios equipos (`quotes.equipment_data[]`) genera una orden por equipo — no hay
+creación masiva, el usuario repite "Crear Orden" por cada equipo desde `QuotesPage`.
+
+Los módulos 4–6 (y sus rutas `work-orders`/`quotes`/`machines`/`maintenance`/`part-categories`) están
+gateados en el backend solo con el permiso genérico `dashboard.view` (no tienen permisos granulares
+`*.view/create/update/delete` como Inventario/Clientes todavía) — tenlo en cuenta si agregas RBAC fino
+ahí. Los módulos 7–8 sí usan permisos granulares (`work-reports.*`, `billing.*`) desde el inicio.
+9. **Configuración general** (`/configuracion/general`): ajustes de todo el sistema guardados en
+   MySQL (`system_settings`, tabla clave/valor): tema por defecto (claro/oscuro/seguir el
+   dispositivo), los dos colores de marca, los datos del taller que se imprimen en **todos** los PDF
+   y la vigencia por defecto de una cotización. Solo con permiso `settings.update` (rol
+   Administrador). La lista de ajustes que existen vive en
+   [backend/src/services/settingsService.js](backend/src/services/settingsService.js) —
+   agregar uno nuevo **no** necesita migración.
+
+10. **Notificaciones** (`/configuracion/notificaciones`): avisos automáticos por correo. El sistema
+    **no manda correos** — decide qué avisar, a quién y con qué texto, y le hace un POST a **n8n**,
+    que es quien envía. Del lado de n8n hay **un solo webhook** (`Webhook → Send Email`), sin claves
+    ni endpoints del sistema expuestos hacia afuera. Cuatro avisos, cada uno con su interruptor y sus
+    destinatarios: **stock bajo**, **mantenimientos próximos y vencidos** y **cotizaciones por
+    vencer** (los tres los revisa el propio sistema una vez al día, a la hora configurada, con
+    [backend/src/lib/notificationScheduler.js](backend/src/lib/notificationScheduler.js)), y **orden
+    de trabajo creada** (sale en el momento). Aparte, cada cotización tiene un botón **"Enviar por
+    correo"** que pide la dirección (prellenada con la del cliente) y manda el PDF adjunto. La
+    deduplicación vive en `notifications_log` (migración 039) y se escribe **después** de que n8n
+    confirma, para que un correo que no salió se reintente en vez de darse por enviado. Detalles en
+    [backend/CLAUDE.md](backend/CLAUDE.md).
+
+**Configuración** tiene solo esas dos páginas. Las antiguas `/configuracion/parametros` y
+`/configuracion/catalogos` eran placeholders "Coming Soon" y **se eliminaron** (menú, rutas y
+pantallas); los catálogos que sí existen viven bajo Inventario y Clientes.
 
 ## Estado de la persistencia (importante)
 
-Aún **no hay base de datos**. El backend guarda los datos en archivos JSON (`backend/src/data/`),
-pero el esquema MySQL destino vive como scripts SQL incrementales en
-[backend/migraciones/](backend/migraciones/). La forma de los JSON refleja ese esquema, de modo que
-migrar a MySQL sea solo reescribir la capa de repositorios (`backend/src/repositories/`), sin tocar
-servicios ni controladores.
+**Ya hay base de datos real: MySQL.** Todos los repositorios (`backend/src/repositories/*.js`)
+consultan MySQL vía el pool de `mysql2` en [backend/src/lib/db.js](backend/src/lib/db.js) — ya no leen
+JSON. El esquema vive como scripts SQL incrementales y numerados en
+[backend/migraciones/](backend/migraciones/) (`001_init.sql` … `032_system_settings.sql`); **hay
+que aplicarlos a mano** (no hay migrador automático — ver siguiente sección).
+
+Detalle que puede confundir: `backend/src/seed.js` (`npm run seed`) es **legacy** — todavía escribe a
+los archivos JSON de `backend/src/data/` vía `backend/src/lib/jsonStore.js`, pero **ningún repositorio
+los lee**. Correrlo no inicializa datos para la app real; los datos iniciales (roles, permisos,
+usuario admin, catálogos) se cargan aplicando los scripts `..._seed.sql` de `migraciones/`. No
+confundas este seed con el de la base de datos.
 
 ## Levantar el sistema en desarrollo
 
-Dos terminales:
+Requiere una base MySQL corriendo. Variables de conexión (`backend/.env`, ver
+[backend/.env.example](backend/.env.example) — que hoy **no** incluye las de DB) y sus defaults en
+[backend/src/lib/db.js](backend/src/lib/db.js): `DB_HOST` (localhost), `DB_PORT` (3306), `DB_NAME`
+(talleraeg), `DB_USER` (aeg_user), `DB_PASSWORD`.
 
 ```bash
+# Una sola vez: crear la base y aplicar las migraciones en orden numérico
+mysql -u root -p -e "CREATE DATABASE talleraeg CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+cd backend/migraciones
+for f in *.sql; do mysql -u root -p talleraeg < "$f"; done   # o uno por uno, en orden
+
 # Terminal 1 — backend (http://localhost:4000, docs en /api/docs)
 cd backend
 npm install
-npm run seed     # genera los JSON con roles, permisos y el usuario admin
-npm run dev
+npm run dev       # OJO: `npm run seed` NO llena la base MySQL (ver sección anterior)
 
 # Terminal 2 — frontend (http://localhost:5173)
 cd frontend
@@ -44,13 +115,32 @@ npm run dev
 
 Vite redirige `/api` al backend (puerto 4000), así que el cliente usa rutas relativas.
 
-Credenciales por defecto (creadas por `npm run seed`): **admin@talleraeg.com / Admin123!**
+Credenciales por defecto (creadas por `002_seed.sql`): **admin@talleraeg.com / Admin123!**
 
 ## Convenciones transversales
 
 - **Idioma:** la interfaz visible está en español; los identificadores de código (variables,
   funciones, archivos) en inglés.
-- **Marca / colores:** azul marino `#16285C` (`navy`) y naranja `#E8551C` (`orange`), definidos como
-  escalas en `frontend/tailwind.config.js`. El logo es `Propuesta 2.png` (copiado a
-  `frontend/public/logo.png`).
+- **Avisos y confirmaciones:** nunca se usan los diálogos del navegador (`alert`/`confirm`/`prompt`).
+  Los avisos van por toast (`frontend/src/lib/toast.js`) y las confirmaciones por
+  `components/ui/ConfirmDialog`.
+- **Archivos (fotos, firmas, videos, adjuntos):** viven en **Google Cloud Storage**, en un bucket
+  privado por entorno (`talleraeg-media-prod` / `talleraeg-media-dev`). El navegador los sube **directo
+  al bucket** con una URL firmada — no pasan por el backend — y en MySQL solo se guarda la ruta del
+  objeto; la URL de lectura se firma en cada respuesta y nunca se guarda. Única variable:
+  `GCS_BUCKET` (sin llave JSON: la VM tiene adjunta la service account). Vacía = se guarda en el disco
+  del servidor como antes. Los archivos subidos antes de la migración siguen funcionando sin cambios.
+  Ver [docs/integracion-gcp-storage.md](docs/integracion-gcp-storage.md).
+- **PDF:** los genera el backend con `pdfkit` en endpoints protegidos y el frontend los muestra
+  **dentro de la app** con `components/ui/PdfViewerModal` (nunca en otra pestaña); descargar es
+  `downloadPdf()` de `frontend/src/lib/pdf.js`.
+- **Marca / colores:** verde oscuro `#164B2C` y amarillo dorado `#CA8A04`. Por compatibilidad, los
+  tokens **conservan los nombres** `navy` (= verde) y `orange` (= amarillo), así que las clases
+  Tailwind existentes no cambian. Ahora esas escalas **resuelven a variables CSS**
+  (`--c-navy-*`/`--c-orange-*` en `frontend/src/index.css`) para que se puedan cambiar desde
+  Configuración general sin recompilar — ver `frontend/CLAUDE.md`. El tema por defecto lo decide la
+  configuración del sistema (de fábrica, **claro**) y cada usuario lo puede cambiar con el botón
+  sol/luna del topbar. El logo es el emblema A.E.G. (`logo-nuevo.jpeg` en la raíz): `frontend/public/logo.png` es solo el
+  emblema, para el menú y el favicon, y `frontend/public/logo-full.png` el completo con "Desde el
+  año 2000", para el login. Los PDF usan `backend/src/assets/logo.jpeg`. Ver `frontend/CLAUDE.md`.
 - Cada subproyecto tiene su propio `CLAUDE.md` con los detalles de arquitectura y comandos.

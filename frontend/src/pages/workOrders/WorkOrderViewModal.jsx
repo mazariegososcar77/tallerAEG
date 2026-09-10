@@ -1,5 +1,11 @@
+// PANTALLA: Ventana emergente que muestra el detalle de UNA orden de trabajo,
+// solo para consultar (no se puede editar aquí). Se abre desde la lista de
+// Órdenes con el icono de "ojito". Igual que el formulario, a propósito no
+// muestra ningún precio ni total — solo los datos del cliente, el equipo, el
+// trabajo a realizar y las piezas incluidas. Desde aquí tambien se puede
+// visualizar el PDF de la orden (en el visor de la app) o descargarlo.
 import { useState, useEffect } from 'react';
-import { Download, Wrench, Cpu, ClipboardList, Package } from 'lucide-react';
+import { Download, Wrench, Cpu, ClipboardList, Package, FileSearch } from 'lucide-react';
 import { workOrdersApi } from '../../api/workOrdersApi.js';
 import Modal from '../../components/ui/Modal.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -34,11 +40,16 @@ function Section({ icon: Icon, title, children }) {
   );
 }
 
-/** Modal de solo lectura con toda la informacion de una orden de trabajo. */
-export default function WorkOrderViewModal({ open, onClose, orderId, onDownload }) {
+/**
+ * Modal de solo lectura con toda la informacion de una orden de trabajo.
+ * `onViewPdf(order)` abre el visor de PDF de la app (lo maneja la pantalla que
+ * lo usa, para que solo haya una ventana abierta a la vez).
+ */
+export default function WorkOrderViewModal({ open, onClose, orderId, onDownload, onViewPdf }) {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Cada vez que se abre el modal con una orden distinta, trae sus datos completos del servidor.
   useEffect(() => {
     if (!open || !orderId) return;
     setLoading(true);
@@ -55,9 +66,14 @@ export default function WorkOrderViewModal({ open, onClose, orderId, onDownload 
       onClose={onClose}
       title="Detalle de la orden"
       size="lg"
-      accentColor="#E8551C"
+      accentColor="#CA8A04"
       footer={
         <>
+          {order && onViewPdf && (
+            <Button variant="outline" onClick={() => onViewPdf(order)}>
+              <FileSearch size={16} /> Ver PDF
+            </Button>
+          )}
           {order && (
             <Button variant="navy" onClick={() => onDownload?.(order)}>
               <Download size={16} /> Descargar PDF
@@ -82,11 +98,6 @@ export default function WorkOrderViewModal({ open, onClose, orderId, onDownload 
                 style={{ background: st.color + '22', color: st.color, borderColor: st.color + '44' }}
               >
                 {st.label}
-              </span>
-            )}
-            {order.total > 0 && (
-              <span className="ml-auto text-lg font-bold text-emerald-500">
-                Q {Number(order.total).toFixed(2)}
               </span>
             )}
           </div>

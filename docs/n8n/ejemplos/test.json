@@ -1,0 +1,8 @@
+{
+  "event": "test",
+  "sent_at": "2026-09-10T00:30:59.132Z",
+  "to": "tucorreo@centrodeservicioaeg.com",
+  "subject": "[CENTRO DE SERVICIO AEG] Prueba de notificaciones",
+  "html": "<div style=\"font-family:Arial,Helvetica,sans-serif;color:#111827;max-width:720px;\">\n  <div style=\"background:#164B2C;color:#fff;padding:14px 18px;border-radius:8px 8px 0 0;\">\n    <div style=\"font-size:11px;letter-spacing:1px;opacity:.8;\">CENTRO DE SERVICIO AEG</div>\n    <div style=\"font-size:18px;font-weight:700;\">Prueba de notificaciones</div>\n  </div>\n  <div style=\"border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px;padding:18px;\">\n    <p style=\"margin:0 0 14px;font-size:13px;color:#4b5563;\">Si estas leyendo esto, la conexion entre el sistema y n8n funciona.</p>\n    \n    <p style=\"margin:18px 0 0;font-size:11px;color:#9ca3af;\">\n      Aviso automatico del sistema de CENTRO DE SERVICIO AEG. Se puede desactivar en Configuracion &gt; Notificaciones.\n    </p>\n  </div>\n</div>",
+  "text": "Prueba de notificaciones: la conexion entre el sistema y n8n funciona."
+}

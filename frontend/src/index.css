@@ -3,32 +3,67 @@
 @tailwind utilities;
 
 /*
- * Tokens de tema. El tema OSCURO replica exactamente el look original
- * (navy-900 fondo, navy-800 tarjetas, etc). El tema CLARO usa un celeste
- * super claro de fondo, tarjetas blancas y texto oscuro. El sidebar (navy)
- * y el acento naranja son fijos en ambos temas.
+ * Tokens de tema. El tema CLARO (por defecto) usa un verde super claro de
+ * fondo, tarjetas blancas y texto oscuro. El tema OSCURO usa verdes oscuros.
+ * El sidebar (verde) y el acento amarillo son iguales en ambos temas.
+ *
+ * PALETA DE MARCA (--c-navy-* y --c-orange-*): son los colores configurables
+ * desde Configuracion > Configuracion general. Van como canales RGB sueltos
+ * ("22 75 44" en vez de "#164B2C") porque asi Tailwind puede aplicarles
+ * transparencia — es lo que hace que sigan funcionando clases como
+ * `bg-navy-900/50` o `border-orange-500/40` (ver tailwind.config.js).
+ * `--c-primary` / `--c-accent` son los mismos dos colores en hex, para los
+ * estilos en linea que no pasan por Tailwind.
+ * Los valores de abajo son la paleta de marca original: si nadie cambia los
+ * colores en la configuracion, el sistema se ve exactamente igual que antes.
  */
 :root {
-  /* Tema claro (celeste super claro) */
-  --c-app: #E9F1FB;
+  /* Marca: verde oscuro (token historico `navy`) */
+  --c-navy-50: 236 246 239;
+  --c-navy-100: 210 233 218;
+  --c-navy-200: 169 210 183;
+  --c-navy-300: 120 183 142;
+  --c-navy-400: 72 152 106;
+  --c-navy-500: 44 122 75;
+  --c-navy-600: 30 95 57;
+  --c-navy-700: 22 75 44;   /* color principal de marca */
+  --c-navy-800: 16 58 34;
+  --c-navy-900: 11 42 24;
+  /* Marca: amarillo dorado (token historico `orange`) */
+  --c-orange-50: 254 252 232;
+  --c-orange-100: 253 246 200;
+  --c-orange-200: 252 236 148;
+  --c-orange-300: 245 215 78;
+  --c-orange-400: 232 191 30;
+  --c-orange-500: 202 138 4;  /* acento principal de marca */
+  --c-orange-600: 166 111 3;
+  --c-orange-700: 135 90 7;
+  --c-orange-800: 107 71 10;
+  --c-orange-900: 84 56 11;
+  /* Los mismos dos colores en hex, para estilos en linea */
+  --c-primary: #164B2C;
+  --c-accent: #CA8A04;
+
+  /* Tema claro (verde super claro) — por defecto */
+  --c-app: #ECF5EF;
   --c-surface: #FFFFFF;
-  --c-surface-2: #F1F6FC;
-  --c-line: #D3DEEE;
-  --c-hover: #E6EFFA;
+  --c-surface-2: #F0F6F1;
+  --c-line: #D5E5DA;
+  --c-hover: #E4F0E8;
   --c-text: #1E293B;
-  --c-heading: #16285C;
+  --c-heading: #164B2C;
   --c-muted: #64748B;
 }
 .dark {
-  /* Tema oscuro = look original */
-  --c-app: #0C1733;
-  --c-surface: #112048;
-  --c-surface-2: #0C1733;
-  --c-line: #1F3470;
-  --c-hover: #16285C;
+  /* Tema oscuro (verdes oscuros) */
+  --c-app: #0B2A18;
+  --c-surface: #103A22;
+  --c-surface-2: #0B2A18;
+  --c-line: #1E5F39;
+  --c-hover: #164B2C;
   --c-text: #E2E8F0;
   --c-heading: #FFFFFF;
-  --c-muted: #5A7AA8;
+  --c-muted: #7FA98F;
 }
 
 @layer base {

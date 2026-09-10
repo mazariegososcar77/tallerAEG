@@ -1,3 +1,8 @@
+// PANTALLA: Ventana emergente para cargar muchos artículos de una sola vez usando
+// un archivo de Excel, en vez de crearlos uno por uno. El usuario descarga una
+// plantilla de ejemplo, la llena, la sube, ve una vista previa de lo que se va a
+// crear y confirma. Al final se muestra cuántos se crearon bien y cuáles filas
+// tuvieron error (por ejemplo, un tipo o bodega que no existe).
 import { useState } from 'react';
 import { Download, Upload, CheckCircle2, AlertTriangle } from 'lucide-react';
 import Modal from '../../components/ui/Modal.jsx';
@@ -26,6 +31,8 @@ export default function BulkUploadModal({ open, onClose, onDone }) {
     onClose();
   };
 
+  // Lee el archivo Excel que el usuario selecciono y lo convierte en filas
+  // que se pueden mostrar en la vista previa antes de guardarlas de verdad.
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -44,6 +51,9 @@ export default function BulkUploadModal({ open, onClose, onDone }) {
     }
   };
 
+  // Envia todas las filas leidas del Excel al servidor para crear los articulos.
+  // El servidor puede crear unos y rechazar otros (por ejemplo, si falta un dato);
+  // el resultado indica cuantos se crearon y la lista de errores por fila.
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
@@ -102,7 +112,7 @@ export default function BulkUploadModal({ open, onClose, onDone }) {
           </div>
         )}
 
-        {/* Previsualizacion */}
+        {/* Vista previa de las filas leidas del Excel, antes de guardarlas */}
         {rows.length > 0 && (
           <div>
             <p className="mb-1 text-sm font-medium text-navy-800">Vista previa ({rows.length} filas)</p>
@@ -135,7 +145,7 @@ export default function BulkUploadModal({ open, onClose, onDone }) {
           </div>
         )}
 
-        {/* Resultado */}
+        {/* Resultado final: cuantos articulos se crearon y cuales filas fallaron */}
         {result && (
           <div className="space-y-2 rounded-lg border border-slate-200 p-3">
             <p className="flex items-center gap-2 text-sm font-medium text-green-700">
