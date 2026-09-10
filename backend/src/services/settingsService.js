@@ -38,7 +38,58 @@ export const SETTINGS_SCHEMA = {
   // Dias de vigencia que se le pone por defecto a una cotizacion nueva (y que
   // se imprime en el pie del PDF de cotizacion).
   quote_valid_days: { type: 'int', default: 15, min: 1, max: 365 },
+
+  // ── Notificaciones automaticas (las manda n8n) ───────────────────────
+  // El sistema NO envia correos: solo decide QUE hay que avisar y A QUIEN.
+  // El envio lo hace n8n, de dos maneras distintas segun el aviso:
+  //   - Avisos por Cron  : n8n pregunta cada tanto por GET /notifications/pending.
+  //   - Avisos por evento: el backend le pega a n8n_webhook_url en el momento.
+  // Ver services/notificationService.js.
+
+  // URL del webhook de n8n al que se le avisa de los eventos inmediatos
+  // (orden creada, enviar cotizacion por correo). Vacia = no se avisa nada,
+  // y el sistema sigue funcionando igual que antes.
+  n8n_webhook_url:  { type: 'text', default: '', max: 300 },
+
+  // Hora del dia (0-23) en la que se revisan los tres avisos que dependen del
+  // calendario (stock, mantenimientos, cotizaciones por vencer). Es hora del
+  // servidor. Ver lib/notificationScheduler.js.
+  notif_daily_hour: { type: 'int', default: 7, min: 0, max: 23 },
+
+  // Stock bajo: articulos cuya existencia cayo a su punto de reorden
+  // (articles.min_stock, ver migracion 038). Es un aviso interno.
+  notif_low_stock_enabled: { type: 'bool',   default: false },
+  notif_low_stock_email:   { type: 'emails', default: '', max: 400 },
+
+  // Mantenimientos proximos y vencidos. `days` es con cuanta anticipacion se
+  // avisa; los ya vencidos entran siempre, sin importar ese numero.
+  notif_maintenance_enabled: { type: 'bool',   default: false },
+  notif_maintenance_email:   { type: 'emails', default: '', max: 400 },
+  notif_maintenance_days:    { type: 'int',    default: 15, min: 1, max: 180 },
+
+  // Cotizaciones enviadas al cliente que estan por pasarse de su fecha
+  // "valida hasta" y todavia no fueron aprobadas ni rechazadas.
+  notif_quote_expiring_enabled: { type: 'bool',   default: false },
+  notif_quote_expiring_email:   { type: 'emails', default: '', max: 400 },
+  notif_quote_expiring_days:    { type: 'int',    default: 3, min: 1, max: 90 },
+
+  // Orden de trabajo recien creada. A diferencia de los tres de arriba este no
+  // es por Cron: se avisa en el momento en que se guarda la orden.
+  notif_work_order_created_enabled: { type: 'bool',   default: false },
+  notif_work_order_created_email:   { type: 'emails', default: '', max: 400 },
 };
+
+// Correos separados por coma. Se valida cada uno por separado para que un dedo
+// resbalado en el tercero no pase inadvertido hasta que falle el envio en n8n.
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Convierte el texto guardado ("a@x.com, b@x.com") en una lista limpia. */
+export function parseEmails(raw) {
+  return String(raw || '')
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
 
 /** Lista de claves validas (lo que el frontend puede mandar a guardar). */
 export const SETTING_KEYS = Object.keys(SETTINGS_SCHEMA);
@@ -65,6 +116,13 @@ function coerce(key, raw) {
       return HEX_COLOR.test(value) ? value.toUpperCase() : def.default;
     case 'enum':
       return def.values.includes(value) ? value : def.default;
+    case 'bool':
+      // Se guarda como el texto '1'/'0'. Cualquier otra cosa cae al default.
+      return value === '1' ? true : value === '0' ? false : def.default;
+    case 'emails':
+      // Se devuelve el texto tal cual (la pantalla lo edita como una sola
+      // linea); quien necesite la lista usa parseEmails().
+      return value;
     default:
       return value;
   }
@@ -112,6 +170,18 @@ function validateValue(key, value) {
         throw new ApiError(400, `"${key}" debe ser uno de: ${def.values.join(', ')}`);
       }
       return v;
+    }
+    case 'bool':
+      // El formulario manda true/false; en la tabla se escribe '1'/'0'.
+      return value === true || value === 'true' || value === '1' || value === 1 ? '1' : '0';
+    case 'emails': {
+      const v = String(value ?? '').trim();
+      if (v.length > def.max) throw new ApiError(400, `"${key}" no puede pasar de ${def.max} caracteres`);
+      const lista = parseEmails(v);
+      const malo = lista.find((e) => !EMAIL.test(e));
+      if (malo) throw new ApiError(400, `"${malo}" no es un correo valido`);
+      // Se normaliza a "a@x.com, b@x.com" para que se guarde siempre igual.
+      return lista.join(', ');
     }
     default: {
       const v = String(value ?? '').trim();

@@ -13,7 +13,8 @@ export async function getAll(clientId) {
         WHEN c.last_name IS NOT NULL AND c.last_name != ''
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
-      END as client_name
+      END as client_name,
+      c.email as client_email
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
     ${clientId ? 'WHERE q.client_id = ?' : ''}
@@ -37,7 +38,8 @@ export async function findById(id) {
         WHEN c.last_name IS NOT NULL AND c.last_name != ''
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
-      END as client_name
+      END as client_name,
+      c.email as client_email
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
     WHERE q.id = ?

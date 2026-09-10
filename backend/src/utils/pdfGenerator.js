@@ -18,6 +18,25 @@ import { dirname, join } from 'path';
 import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Junta el PDF en memoria en vez de mandarlo a la respuesta HTTP.
+ *
+ * Las funciones `generar...PDF` devuelven un documento de pdfkit pensado para
+ * hacerle `.pipe(res)` y que el navegador lo descargue. Cuando el PDF hay que
+ * ADJUNTARLO a un correo no hay a donde canalizarlo, asi que se recogen los
+ * pedazos y se devuelven como un solo Buffer. Ojo: llama a `doc.end()` por
+ * dentro, asi que quien la use no debe llamarlo tambien.
+ */
+export function pdfABuffer(doc) {
+  return new Promise((resolve, reject) => {
+    const pedazos = [];
+    doc.on('data', (p) => pedazos.push(p));
+    doc.on('end', () => resolve(Buffer.concat(pedazos)));
+    doc.on('error', reject);
+    doc.end();
+  });
+}
 // Colores de marca de Taller AEG usados en todos los PDF (azul marino,
 // naranja) y algunos tonos neutros de apoyo (gris, negro, blanco).
 const AZUL = '#0C1733';

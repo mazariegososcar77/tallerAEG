@@ -58,8 +58,22 @@ ahí. Los módulos 7–8 sí usan permisos granulares (`work-reports.*`, `billin
    [backend/src/services/settingsService.js](backend/src/services/settingsService.js) —
    agregar uno nuevo **no** necesita migración.
 
-Las otras dos páginas de **Configuración** (`/configuracion/parametros`, `/configuracion/catalogos`)
-siguen siendo placeholders "Coming Soon" (`ComingSoonPage`), no funcionalidad real.
+10. **Notificaciones** (`/configuracion/notificaciones`): avisos automáticos por correo. El sistema
+    **no manda correos** — decide qué avisar, a quién y con qué texto, y le hace un POST a **n8n**,
+    que es quien envía. Del lado de n8n hay **un solo webhook** (`Webhook → Send Email`), sin claves
+    ni endpoints del sistema expuestos hacia afuera. Cuatro avisos, cada uno con su interruptor y sus
+    destinatarios: **stock bajo**, **mantenimientos próximos y vencidos** y **cotizaciones por
+    vencer** (los tres los revisa el propio sistema una vez al día, a la hora configurada, con
+    [backend/src/lib/notificationScheduler.js](backend/src/lib/notificationScheduler.js)), y **orden
+    de trabajo creada** (sale en el momento). Aparte, cada cotización tiene un botón **"Enviar por
+    correo"** que pide la dirección (prellenada con la del cliente) y manda el PDF adjunto. La
+    deduplicación vive en `notifications_log` (migración 039) y se escribe **después** de que n8n
+    confirma, para que un correo que no salió se reintente en vez de darse por enviado. Detalles en
+    [backend/CLAUDE.md](backend/CLAUDE.md).
+
+**Configuración** tiene solo esas dos páginas. Las antiguas `/configuracion/parametros` y
+`/configuracion/catalogos` eran placeholders "Coming Soon" y **se eliminaron** (menú, rutas y
+pantallas); los catálogos que sí existen viven bajo Inventario y Clientes.
 
 ## Estado de la persistencia (importante)
 

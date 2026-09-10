@@ -5,6 +5,7 @@
 // Cotizacion y antes del Reporte de Trabajo.
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
+import * as notificationService from './notificationService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Devuelve la lista completa de ordenes de trabajo.
@@ -57,7 +58,15 @@ export async function create({ items, ...data }) {
   if (data.delivery_at === '') data.delivery_at = null;
   normalizePostPricing(data);
   normalizePaperForm(data);
-  return workOrderRepository.create({ ...data, number }, items);
+  const order = await workOrderRepository.create({ ...data, number }, items);
+
+  // Aviso de "orden creada" (lo manda n8n, ver services/notificationService.js).
+  // NO se espera a que termine ni se revisa el resultado a proposito: la orden
+  // ya quedo guardada, y que el correo salga o no es un asunto aparte. Si n8n
+  // esta caido, quien creo la orden no tiene por que enterarse ni esperar.
+  notificationService.emitWorkOrderCreated(order).catch(() => {});
+
+  return order;
 }
 
 // Edita una orden de trabajo existente, con la misma limpieza de fechas/cotizacion

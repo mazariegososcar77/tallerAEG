@@ -188,6 +188,73 @@ Configuración general (`032_system_settings.sql`):
 `src/data/*.json` y `src/lib/jsonStore.js` son legacy (ver "Base de datos" arriba): nada los lee en
 runtime, solo los escribe `npm run seed`.
 
+## Notificaciones automaticas (n8n) — notas
+
+El backend **no manda correos** (no hay SMTP/nodemailer, sigue sin haberlo). Decide *qué* avisar,
+*a quién* y con *qué texto* (HTML + texto plano ya redactados), y hace un `POST` al webhook de n8n.
+Del otro lado hay **un solo workflow**: `Webhook (POST) → Send Email`. Toda la lógica está en
+[src/services/notificationService.js](src/services/notificationService.js).
+
+**Todo es push. n8n nunca le pregunta nada al sistema** — no hay endpoints expuestos hacia afuera ni
+claves de integración. Esa decisión es la que obliga a que el reloj viva en el backend
+([src/lib/notificationScheduler.js](src/lib/notificationScheduler.js)): si n8n tuviera que preguntar
+"¿qué hay pendiente?", habría que abrirle una ruta y repartirle un token.
+
+| Aviso | Qué lo dispara | Dónde |
+|---|---|---|
+| `low_stock`, `maintenance_due`, `quote_expiring` | el reloj, 1×/día a `notif_daily_hour` | `runScheduledChecks()` |
+| `work_order_created` | crear una orden | `workOrderService.create` |
+| `quote_email` | botón manual "Enviar por correo" | `POST /quotes/:id/send-email` |
+| `test` | botón "Enviar prueba" de la pantalla | `POST /notifications/test` |
+
+**El mensaje al webhook va plano a propósito** — `event`, `to` (texto con los correos separados por
+coma, que es lo que espera el campo "To" del nodo de correo), `subject`, `html`, `text`, y para la
+cotización `adjunto_nombre` / `adjunto_tipo` / `adjunto_base64`. Sin objetos anidados: del otro lado
+hay un webhook simple y cada dato se usa directo como `{{ $json.subject }}`.
+
+- **El programador** no usa `node-cron` ni ninguna librería: se asoma al reloj cada 10 minutos y
+  corre cuando la hora coincide (`ultimaCorrida` evita repetir dentro de la misma hora). Es **seguro
+  que corra de más** — la deduplicación es la red de seguridad real, no el temporizador. Se arranca
+  en `server.js` y **no** en `app.js`, para que importar la app (una prueba, un script) no deje
+  temporizadores vivos. `unref()` para que un Ctrl+C no espere 10 minutos.
+- **Deduplicación:** `VENTANA_HORAS` en `notificationService.js` — 24 h para stock y cotizaciones,
+  **7 días para mantenimientos** (recordar a diario el mismo mantenimiento a 15 días vista solo logra
+  que dejen de leerse los correos). Se escribe en `notifications_log` **solo después de que n8n
+  confirma** que recibió el aviso. Al revés, un correo que nunca salió quedaría marcado como enviado
+  para siempre; así, si n8n está caído, el pendiente se reintenta en la revisión siguiente.
+- **Cada tipo se resuelve por su cuenta:** un fallo consultando stock no puede dejar sin revisar
+  mantenimientos y cotizaciones. `runScheduledChecks` devuelve un resumen por tipo
+  (`enviado`/`nada_pendiente`/`apagado`/`sin_destinatario`/`fallo_envio`/`error`) que la pantalla
+  muestra y el programador escribe en la consola.
+- **`POST /notifications/run`** corre esa misma revisión en el momento (botón "Revisar ahora"), y
+  **`/log`** y **`/test`** son para la pantalla. Los tres piden sesión y `settings.view`/`settings.update`.
+
+**Configuración:** ajustes de `system_settings` como cualquier otro, en `SETTINGS_SCHEMA` —
+`n8n_webhook_url`, `notif_daily_hour`, y por aviso `notif_<x>_enabled` / `notif_<x>_email`
+(+ `_days` donde aplica). **No hacen falta migraciones para agregar otro aviso.** Se agregaron dos
+tipos al esquema de ajustes: `bool` (se guarda como `'1'`/`'0'`) y `emails` (lista separada por
+comas, se valida cada dirección por separado; `parseEmails()` la convierte en array).
+
+**Regla que no se debe romper: un fallo notificando nunca puede tumbar la operación.** `emit()` y
+`emitWorkOrderCreated()` atrapan todo (incluido un fallo leyendo la configuración) y solo dejan
+rastro en la consola; `workOrderService.create` además ignora la promesa. Si n8n está caído, la orden
+igual se guarda. La excepción es `sendQuoteEmail`: ahí el usuario apretó un botón y espera saber si
+salió, así que un fallo sí sube como `502`.
+
+**Depende de dos migraciones ya existentes:** `038_articles_min_stock.sql` (`articles.min_stock`, el
+punto de reorden; `0` = ese artículo no avisa) y `039_notifications_log.sql` (la tabla de
+deduplicación). Si falta la 039, `notificationRepository` lo dice con todas sus letras en vez de
+fallar con un error de MySQL — o peor, reenviar todo en cada corrida. El comentario de cabecera de
+esa migración quedó desactualizado: describe el diseño anterior, en el que n8n consultaba la tabla
+por su cuenta. Hoy la escribe el backend.
+
+**Enviar una cotización por correo** (`POST /quotes/:id/send-email`, body `{ email, message? }`) no
+es un aviso automático: es una acción manual. El controller genera el PDF con `pdfABuffer()` (helper
+en `pdfGenerator.js`: junta el documento en memoria en vez de hacer `.pipe(res)`) y lo manda en
+base64 dentro del mismo mensaje, para que n8n no tenga que volver a pedirlo. `quoteRepository` expone
+`client_email` por JOIN para proponerlo en pantalla — y por eso `quoteService.create/update` lo
+descartan del payload, igual que `client_name` (no es una columna de `quotes`).
+
 ## Inventario — notas
 
 - Endpoints: `/articles` (CRUD + `POST /articles/bulk` carga masiva + `POST /articles/upload-image`),

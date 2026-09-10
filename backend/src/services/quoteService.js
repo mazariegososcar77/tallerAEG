@@ -59,7 +59,7 @@ export async function getById(id) {
 // de vuelta esa orden con la cotizacion recien creada (work_orders.quote_id) —
 // no es una columna de "quotes", asi que se separa del resto del payload antes
 // de guardar.
-export async function create({ items, work_order_id, ...data }) {
+export async function create({ items, work_order_id, client_name, client_email, ...data }) {
   const number = await quoteRepository.getNextNumber();
   normalize(data);
   items = dropBlankItems(items);
@@ -76,11 +76,12 @@ export async function create({ items, work_order_id, ...data }) {
 }
 
 // Edita una cotizacion existente, recalculando subtotal/total igual que al crear.
-// Se descartan client_name (no es una columna real, la agrega el repositorio solo
-// para mostrarla) y created_at/updated_at (fechas que MySQL controla solas; si el
-// formulario las reenvia tal como las mando el servidor, rompen el guardado porque
-// no vienen en el formato que la base de datos espera).
-export async function update(id, { items, client_name, created_at, updated_at, ...data }) {
+// Se descartan client_name y client_email (no son columnas reales, las agrega el
+// repositorio por JOIN solo para mostrarlas -- client_email lo usa la pantalla
+// para proponer a quien mandarle la cotizacion) y created_at/updated_at (fechas
+// que MySQL controla solas; si el formulario las reenvia tal como las mando el
+// servidor, rompen el guardado porque no vienen en el formato que espera la base).
+export async function update(id, { items, client_name, client_email, created_at, updated_at, ...data }) {
   const existing = await quoteRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Cotización no encontrada');
   normalize(data);

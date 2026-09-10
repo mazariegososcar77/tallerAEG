@@ -135,8 +135,20 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   Bodegas—, `withPrefix` agrega campo de prefijo y `withDescription={false}` oculta la descripción
   —los usa `PartCategoriesPage` porque `part_categories` no tiene columna `description`, solo
   `name/prefix/is_active`—). `LoyaltyTiersPage` (fidelización: nivel, descuento %, beneficios) es una
-  página propia porque no encaja en ese catálogo simple. `SystemParamsPage` y `CatalogsPage` siguen
-  siendo placeholders (`ComingSoonPage`), sin funcionalidad real aún.
+  página propia porque no encaja en ese catálogo simple. Las pantallas placeholder
+  `SystemParamsPage` y `CatalogsPage` se eliminaron junto con sus entradas de menú y sus rutas;
+  `ComingSoonPage` sigue existiendo porque la usa la ruta `post/cotizaciones`.
+- **Notificaciones** (`pages/config/NotificationsPage`, ruta `/configuracion/notificaciones`, mismos
+  permisos `settings.view`/`settings.update`): qué se avisa por correo y a quién. Los ajustes son de
+  `system_settings` como los de Configuración general, así que usa el **mismo `useSettings`** — no
+  tiene API propia para guardar. `api/notificationsApi.js` solo cubre lo que no es configuración: el
+  historial de envíos, el aviso de prueba y el botón "Revisar ahora". Los cuatro avisos se declaran
+  como **datos** en la constante `AVISOS`, no como cuatro bloques de JSX repetidos: agregar uno es
+  una entrada ahí más su clave en `SETTINGS_SCHEMA` del backend. La pantalla distingue los avisos
+  **Diarios** (los revisa el sistema a la hora configurada) de los **Inmediatos** (salen al ocurrir),
+  y avisa cuando algo no va a poder enviarse: un aviso activo sin destinatario, o avisos activos sin
+  URL de webhook. El botón "Enviar prueba" se deshabilita si la URL está editada y sin guardar,
+  porque la prueba usa la guardada.
 - **Configuración general** (`pages/config/GeneralSettingsPage`, ruta `/configuracion/general`,
   permiso `settings.view` para verla y `settings.update` para guardar): tema por defecto, colores de
   marca, datos del taller y vigencia de cotizaciones. La carga y aplica `context/SettingsContext`
@@ -147,7 +159,7 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   manda**; el ajuste del sistema solo aplica a quien nunca eligió (`ThemeContext.applyDefaultTheme`,
   y `resetToSystemDefault` para volver a lo que diga el sistema). Por eso `ThemeContext` ya **no**
   persiste el tema en cada cambio — solo cuando el usuario lo cambia a mano.
-- Las rutas de órdenes/cotizaciones/máquinas/mantenimiento/configuración-placeholder se protegen con
+- Las rutas de órdenes/cotizaciones/máquinas/mantenimiento se protegen con
   `permission="dashboard.view"` en `AppRoutes` (no tienen permiso granular propio todavía, a
   diferencia de `articles.view`/`clients.view`/etc.). Reportes y Facturación sí usan permiso granular
   propio (`work-reports.view`/`billing.view`) desde el inicio.

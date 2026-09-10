@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Package, Tags, Warehouse, Users, ShieldCheck, KeyRound,
   Contact, UserCog, Award, ClipboardList, Wrench, Calendar, FileText, Settings,
-  Briefcase, Boxes, HeartHandshake, SlidersHorizontal, Cog, ListChecks, Camera,
+  Briefcase, Boxes, HeartHandshake, SlidersHorizontal, Cog, ListChecks, Camera, BellRing,
   Receipt, Layers, Search, Truck,
 } from 'lucide-react';
 
@@ -97,9 +97,8 @@ export const NAV = [
   {
     type: 'group', label: 'Configuracion', icon: Settings,
     items: [
-      { to: '/configuracion/general',    label: 'Configuracion general', icon: SlidersHorizontal, permission: 'settings.view' },
-      { to: '/configuracion/parametros', label: 'Parametros del sistema', icon: Cog,              permission: 'dashboard.view' },
-      { to: '/configuracion/catalogos',  label: 'Catalogos',             icon: ListChecks,        permission: 'dashboard.view' },
+      { to: '/configuracion/general',        label: 'Configuracion general', icon: SlidersHorizontal, permission: 'settings.view' },
+      { to: '/configuracion/notificaciones', label: 'Notificaciones',        icon: BellRing,          permission: 'settings.view' },
     ],
   },
 ];

@@ -8,6 +8,7 @@
  */
 import { createApp } from './app.js';
 import { env } from './config/env.js';
+import { iniciarProgramador } from './lib/notificationScheduler.js';
 
 const app = createApp();
 
@@ -21,4 +22,10 @@ app.listen(env.port, () => {
   console.log(`Health:    http://localhost:${env.port}/api/health`);
   console.log('================================');
   console.log('');
+
+  // Despertador de las notificaciones automaticas: revisa una vez al dia si
+  // hay stock bajo, mantenimientos por vencer o cotizaciones por caducar. Se
+  // arranca aqui y no en app.js para que importar la app (una prueba, un
+  // script) no deje temporizadores corriendo.
+  iniciarProgramador();
 });

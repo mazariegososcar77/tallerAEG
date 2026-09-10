@@ -1,11 +1,21 @@
 // Este archivo define las direcciones web (rutas) para manejar las COTIZACIONES: ver la lista,
 // ver el detalle, crear, editar, cambiar su estado, borrar y descargar el PDF.
 import { Router } from 'express';
+import { z } from 'zod';
 import * as quoteController from '../controllers/quoteController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
+import { validate } from '../middleware/validate.middleware.js';
 
 const router = Router();
+
+// Correo al que se manda la cotizacion. Se pide en pantalla (prellenado con el
+// del cliente) porque muchas veces la recibe alguien de compras y no el
+// contacto que quedo guardado en la ficha.
+const sendEmailSchema = z.object({
+  email:   z.string().email('Correo invalido'),
+  message: z.string().max(500).optional(),
+});
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
@@ -23,6 +33,8 @@ router.patch('/:id/status',  requirePermission('dashboard.view'), quoteControlle
 router.delete('/:id',        requirePermission('dashboard.view'), quoteController.remove);
 // Descargar el PDF de la cotizacion.
 router.get('/:id/pdf',       requirePermission('dashboard.view'), quoteController.pdf);
+// Mandarle la cotizacion al cliente por correo, con el PDF adjunto (via n8n).
+router.post('/:id/send-email', requirePermission('dashboard.view'), validate(sendEmailSchema), quoteController.sendEmail);
 // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden(es) -> Reporte -> Factura).
 router.get('/:id/document-flow', requirePermission('dashboard.view'), quoteController.documentFlow);
 

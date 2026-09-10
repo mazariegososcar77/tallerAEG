@@ -2,7 +2,8 @@
 // editarlas, cambiar su estado, borrarlas y descargar el PDF.
 import * as quoteService from '../services/quoteService.js';
 import * as documentFlowService from '../services/documentFlowService.js';
-import { generarCotizacionPDF } from '../utils/pdfGenerator.js';
+import { generarCotizacionPDF, pdfABuffer } from '../utils/pdfGenerator.js';
+import * as notificationService from '../services/notificationService.js';
 import * as settingsService from '../services/settingsService.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -41,6 +42,26 @@ export const remove = asyncHandler(async (req, res) => {
 // Trabajo -> Reporte -> Factura) que nacieron de esta cotizacion.
 export const documentFlow = asyncHandler(async (req, res) => {
   res.json(await documentFlowService.getForQuote(req.params.id));
+});
+
+// Manda la cotizacion al cliente por correo, con el PDF adjunto. El correo lo
+// pide la pantalla al usuario (viene prellenado con el del cliente, pero se
+// puede cambiar: muchas veces la cotizacion la recibe alguien de compras y no
+// el contacto que quedo registrado en la ficha).
+//
+// El envio en si lo hace n8n; aqui solo se arma el PDF y se le pasa. A
+// diferencia de los avisos automaticos, este SI espera la respuesta y reporta
+// el error: el usuario apreto un boton y necesita saber si salio o no.
+export const sendEmail = asyncHandler(async (req, res) => {
+  const quote = await quoteService.getById(req.params.id);
+  const doc = generarCotizacionPDF(quote, await settingsService.getSettings());
+  const buffer = await pdfABuffer(doc);
+  res.json(await notificationService.sendQuoteEmail({
+    quote,
+    email: req.body.email,
+    mensaje: req.body.message,
+    pdfBase64: buffer.toString('base64'),
+  }));
 });
 
 // Cuando el usuario descarga el PDF de una cotización, esto genera el archivo y se lo envía.

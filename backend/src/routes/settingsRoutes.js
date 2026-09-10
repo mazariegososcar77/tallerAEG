@@ -20,7 +20,7 @@ const router = Router();
 // cada ajuste lo valida settingsService (que es donde vive su definicion).
 const updateSchema = z
   .object(Object.fromEntries(
-    SETTING_KEYS.map((key) => [key, z.union([z.string(), z.number()]).optional()]),
+    SETTING_KEYS.map((key) => [key, z.union([z.string(), z.number(), z.boolean()]).optional()]),
   ))
   .strict()
   .refine((d) => Object.keys(d).length > 0, { message: 'No hay cambios para aplicar' });
