@@ -83,8 +83,14 @@ function tablaHtml(columnas, filas) {
   return `<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;font-family:Arial,Helvetica,sans-serif;"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
 }
 
-/** Envoltura comun del correo: titulo, bajada, contenido y pie. */
-function cuerpoHtml({ titulo, bajada, contenido, empresa }) {
+/**
+ * Envoltura comun del correo: titulo, bajada, contenido y pie.
+ *
+ * `pie` existe porque no todos los correos van al mismo publico. Los avisos
+ * internos cierran diciendo como apagarlos; la cotizacion, que es el unico que
+ * sale hacia un cliente, no puede hablarle de la configuracion del sistema.
+ */
+function cuerpoHtml({ titulo, bajada, contenido, empresa, pie }) {
   return `<div style="font-family:Arial,Helvetica,sans-serif;color:#111827;max-width:720px;">
   <div style="background:#164B2C;color:#fff;padding:14px 18px;border-radius:8px 8px 0 0;">
     <div style="font-size:11px;letter-spacing:1px;opacity:.8;">${esc(empresa)}</div>
@@ -94,7 +100,7 @@ function cuerpoHtml({ titulo, bajada, contenido, empresa }) {
     <p style="margin:0 0 14px;font-size:13px;color:#4b5563;">${esc(bajada)}</p>
     ${contenido}
     <p style="margin:18px 0 0;font-size:11px;color:#9ca3af;">
-      Aviso automatico del sistema de ${esc(empresa)}. Se puede desactivar en Configuracion &gt; Notificaciones.
+      ${esc(pie || `Aviso automatico del sistema de ${empresa}. Se puede desactivar en Configuracion > Notificaciones.`)}
     </p>
   </div>
 </div>`;
@@ -143,30 +149,46 @@ function correoStockBajo(items, settings) {
   };
 }
 
+/**
+ * ¿Este mantenimiento ya se paso de fecha?
+ *
+ * **No se usa la columna `status` de la tabla a proposito.** Ese valor se
+ * calcula una sola vez, cuando se crea o edita el registro
+ * (`maintenanceRepository.create/update`), y despues se queda congelado: un
+ * mantenimiento guardado hace dos meses como "proximo" sigue diciendo
+ * "proximo" hoy, aunque su fecha ya haya pasado. Como este correo existe justo
+ * para gritar lo que esta vencido, se recalcula contra la fecha de hoy.
+ */
+function estaVencido(nextService) {
+  if (!nextService) return false;
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  return new Date(nextService) < hoy;
+}
+
 async function pendientesMantenimiento(settings) {
   const filas = await maintenanceRepository.getUpcoming(settings.notif_maintenance_days);
   // getUpcoming trae todo lo que vence dentro del plazo, lo que incluye lo que
-  // ya se paso de fecha (next_service menor a hoy). Los vencidos van primero
-  // porque son los que de verdad urgen.
-  const orden = { vencido: 0, proximo: 1, al_dia: 2 };
-  filas.sort((a, b) => (orden[a.status] ?? 3) - (orden[b.status] ?? 3) || new Date(a.next_service) - new Date(b.next_service));
+  // ya se paso de fecha. Los vencidos van primero porque son los que urgen.
+  for (const m of filas) m.vencido = estaVencido(m.next_service);
+  filas.sort((a, b) => (b.vencido - a.vencido) || (new Date(a.next_service) - new Date(b.next_service)));
   return filas.map((m) => ({
     reference_type: 'maintenance',
     reference_id: m.id,
-    meta: { status: m.status, next_service: m.next_service },
+    meta: { vencido: m.vencido, next_service: m.next_service },
     row: m,
   }));
 }
 
 function correoMantenimiento(items, settings) {
   const filas = items.map((i) => i.row);
-  const vencidos = filas.filter((m) => m.status === 'vencido').length;
+  const vencidos = filas.filter((m) => m.vencido).length;
   const contenido = tablaHtml([
-    { label: 'Estado',   value: (m) => (m.status === 'vencido' ? 'VENCIDO' : 'Proximo'), highlight: (m) => m.status === 'vencido' },
+    { label: 'Estado',   value: (m) => (m.vencido ? 'VENCIDO' : 'Proximo'), highlight: (m) => m.vencido },
     { label: 'Cliente',  value: (m) => m.client_name || '-' },
     { label: 'Maquina',  value: (m) => [m.machine_name, m.machine_brand].filter(Boolean).join(' ') || '-' },
     { label: 'Serie',    value: (m) => m.machine_serial || '-' },
-    { label: 'Proximo servicio', value: (m) => fmtFecha(m.next_service), highlight: (m) => m.status === 'vencido' },
+    { label: 'Proximo servicio', value: (m) => fmtFecha(m.next_service), highlight: (m) => m.vencido },
   ], filas);
   const resumen = vencidos
     ? `${vencidos} vencido${vencidos > 1 ? 's' : ''} y ${filas.length - vencidos} por vencer`
@@ -180,7 +202,7 @@ function correoMantenimiento(items, settings) {
       empresa: settings.company_name,
     }),
     text: cuerpoTexto('MANTENIMIENTOS PROGRAMADOS', filas.map(
-      (m) => `- [${m.status === 'vencido' ? 'VENCIDO' : 'proximo'}] ${m.client_name || '-'} / ${m.machine_name || '-'}: ${fmtFecha(m.next_service)}`,
+      (m) => `- [${m.vencido ? 'VENCIDO' : 'proximo'}] ${m.client_name || '-'} / ${m.machine_name || '-'}: ${fmtFecha(m.next_service)}`,
     )),
   };
 }
@@ -408,7 +430,10 @@ export async function emitWorkOrderCreated(order) {
         { k: 'Cliente',        v: order.client_name || '-' },
         { k: 'Equipo',         v: [order.equipment_name, order.brand, order.model].filter(Boolean).join(' ') || '-' },
         { k: 'Serie',          v: order.serial || '-' },
-        { k: 'Trabajo',        v: order.work_type || order.observations || '-' },
+        // Desde la migracion 029 el formulario llena `work_types` (varias
+        // casillas); `work_type` es el campo viejo de texto libre y hoy suele
+        // venir vacio. Se prefiere el arreglo, igual que hace el PDF.
+        { k: 'Trabajo',        v: (Array.isArray(order.work_types) && order.work_types.length ? order.work_types.join(', ') : order.work_type) || '-' },
         { k: 'Recibido',       v: fmtFecha(order.received_at || order.created_at) },
         { k: 'Entrega prevista', v: fmtFecha(order.delivery_at) },
       ]),
@@ -418,6 +443,7 @@ export async function emitWorkOrderCreated(order) {
       `Cliente: ${order.client_name || '-'}`,
       `Equipo: ${[order.equipment_name, order.brand, order.model].filter(Boolean).join(' ') || '-'}`,
       `Serie: ${order.serial || '-'}`,
+      `Trabajo: ${(Array.isArray(order.work_types) && order.work_types.length ? order.work_types.join(', ') : order.work_type) || '-'}`,
       `Entrega prevista: ${fmtFecha(order.delivery_at)}`,
     ]),
     work_order: { id: order.id, number: order.number, client_name: order.client_name, status: order.status },
@@ -444,22 +470,47 @@ export async function sendQuoteEmail({ quote, email, pdfBase64, mensaje }) {
     { k: 'Total',      v: fmtQ(quote.total) },
   ];
 
+  // Este correo lo lee un cliente, no alguien del taller: es el unico de todos
+  // los avisos que sale hacia afuera. Por eso lleva un saludo con nombre, dice
+  // que el detalle va en el PDF adjunto y cierra con los datos de contacto del
+  // taller (los de Configuracion general, los mismos que salen en los PDF).
+  const saludo = quote.client_name ? `Estimados ${quote.client_name}:` : 'Estimado cliente:';
+  const presentacion = mensaje
+    || `Adjunto encontrara la cotizacion No. ${quote.number}, generada desde el sistema de ${settings.company_name}. `
+     + 'En el PDF esta el detalle del trabajo, los repuestos y los precios.';
+
+  // Pie del correo: vigencia y como contactar al taller. Se arma aparte del
+  // cuerpo generico porque solo tiene sentido en este aviso.
+  const contacto = [settings.company_phone, settings.company_email].filter(Boolean).map(esc).join(' &middot; ');
+  const cierre = `
+    <p style="margin:16px 0 0;font-size:13px;color:#4b5563;">
+      Esta cotizacion tiene vigencia hasta el <strong>${esc(fmtFecha(quote.valid_until))}</strong>.
+      Si desea programar el trabajo o tiene alguna consulta, quedamos atentos.
+    </p>
+    ${contacto ? `<p style="margin:10px 0 0;font-size:13px;color:#4b5563;">${contacto}</p>` : ''}`;
+
   const resultado = await emit('quote_email', {
     to: email,
     subject: `${settings.company_name} - Cotizacion No. ${quote.number}`,
     html: cuerpoHtml({
       titulo: `Cotizacion No. ${quote.number}`,
-      bajada: mensaje || `Adjunto encontrara la cotizacion solicitada. Cualquier duda, con gusto la atendemos.`,
+      bajada: `${saludo} ${presentacion}`,
       contenido: tablaHtml([
         { label: 'Dato', value: (f) => f.k },
         { label: 'Valor', value: (f) => f.v },
-      ], filas),
+      ], filas) + cierre,
       empresa: settings.company_name,
+      pie: `Correo enviado automaticamente por el sistema de ${settings.company_name}. Por favor no responda a esta direccion.`,
     }),
     text: cuerpoTexto(`COTIZACION No. ${quote.number}`, [
-      mensaje || 'Adjunto encontrara la cotizacion solicitada.',
+      saludo,
+      presentacion,
       '',
       ...filas.map((f) => `${f.k}: ${f.v}`),
+      '',
+      `Esta cotizacion tiene vigencia hasta el ${fmtFecha(quote.valid_until)}.`,
+      'Si desea programar el trabajo o tiene alguna consulta, quedamos atentos.',
+      ...(contacto ? [[settings.company_phone, settings.company_email].filter(Boolean).join(' - ')] : []),
     ]),
     // El PDF viaja en el mismo mensaje (en base64) para que n8n no tenga que
     // volver a pedirselo al sistema. Van como tres campos sueltos y no como un
@@ -478,13 +529,22 @@ export async function sendQuoteEmail({ quote, email, pdfBase64, mensaje }) {
 
   // Queda registrado igual que los avisos por Cron, para poder responder
   // despues "¿si se le mando la cotizacion al cliente y cuando?".
-  await notificationRepository.logSent([{
-    type: 'quote_email',
-    reference_type: 'quote',
-    reference_id: quote.id,
-    channel: 'email',
-    meta: { email, number: quote.number },
-  }]);
+  //
+  // Un fallo aqui NO se le reporta al usuario: el correo con el PDF ya salio.
+  // Si esto lanzara (basta con que falte la migracion 039), el usuario veria
+  // un error, volveria a apretar "Enviar" y el cliente recibiria la cotizacion
+  // dos o tres veces. Perder una linea del historial es mucho menos grave.
+  try {
+    await notificationRepository.logSent([{
+      type: 'quote_email',
+      reference_type: 'quote',
+      reference_id: quote.id,
+      channel: 'email',
+      meta: { email, number: quote.number },
+    }]);
+  } catch (e) {
+    console.error('[notificaciones] la cotizacion se envio pero no se pudo registrar:', e.message);
+  }
 
   return { sent: true, email };
 }

@@ -102,6 +102,18 @@ const TIPOS = {
   test: 'Prueba',
 };
 
+// A qué registro del sistema se refiere cada aviso. La interfaz va en español,
+// así que no se imprimen los identificadores internos (`article`, `quote`, …).
+const REFERENCIAS = {
+  article: 'Artículo',
+  maintenance: 'Mantenimiento',
+  quote: 'Cotización',
+  work_order: 'Orden',
+  invoice: 'Factura',
+};
+
+const CANALES = { email: 'Correo' };
+
 function Section({ icon: Icon, title, description, children }) {
   return (
     <section className="mb-4 rounded-xl border border-line bg-surface p-5">
@@ -460,8 +472,10 @@ export default function NotificationsPage() {
                 {historial.map((h) => (
                   <tr key={h.id} className="border-b border-line/60">
                     <td className="py-2 pr-4 text-content">{TIPOS[h.type] || h.type}</td>
-                    <td className="py-2 pr-4 text-muted">{h.reference_type} #{h.reference_id}</td>
-                    <td className="py-2 pr-4 text-muted">{h.channel}</td>
+                    <td className="py-2 pr-4 text-muted">
+                      {REFERENCIAS[h.reference_type] || h.reference_type} #{h.reference_id}
+                    </td>
+                    <td className="py-2 pr-4 text-muted">{CANALES[h.channel] || h.channel}</td>
                     <td className="py-2 text-muted">
                       {new Date(h.sent_at).toLocaleString('es-GT', {
                         day: '2-digit', month: '2-digit', year: 'numeric',

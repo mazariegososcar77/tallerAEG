@@ -147,8 +147,14 @@ export default function QuotesPage() {
 
       <DocumentFlowModal open={flowSource != null} onClose={() => setFlowSource(null)} source={flowSource} />
 
-      {/* Enviar la cotizacion por correo al cliente (con el PDF adjunto, via n8n) */}
-      <SendQuoteEmailModal quote={emailQuote} onClose={() => setEmailQuote(null)} />
+      {/* Enviar la cotizacion por correo al cliente (con el PDF adjunto, via n8n).
+          Al enviarla, una cotizacion en borrador pasa a "enviada" en el servidor,
+          asi que hay que recargar la lista para que se vea el estado nuevo. */}
+      <SendQuoteEmailModal
+        quote={emailQuote}
+        onClose={() => setEmailQuote(null)}
+        onSent={() => quotesApi.list().then(setQuotes)}
+      />
 
       {/* Visor del PDF dentro de la app (no abre otra pestaña) */}
       <PdfViewerModal

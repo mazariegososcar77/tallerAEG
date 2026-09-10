@@ -229,6 +229,14 @@ hay un webhook simple y cada dato se usa directo como `{{ $json.subject }}`.
 - **`POST /notifications/run`** corre esa misma revisión en el momento (botón "Revisar ahora"), y
   **`/log`** y **`/test`** son para la pantalla. Los tres piden sesión y `settings.view`/`settings.update`.
 
+**`GET /settings` recorta los ajustes sensibles.** Ese endpoint no exige permiso a propósito (el
+tema y los colores se le aplican a todos), pero la URL del webhook y las listas de correo no pueden
+viajar a cualquier sesión: el webhook de n8n **no tiene credenciales**, así que esa URL *es* la
+credencial — quien la copie manda correos con la identidad del taller sin pasar por el sistema. Las
+claves marcadas `sensible: true` en `SETTINGS_SCHEMA` (`SENSITIVE_SETTING_KEYS`) solo salen con
+`settings.view`; para los demás roles el controller aplica `stripSensitive()`. Si agregas un ajuste
+que sea un secreto, márcalo igual.
+
 **Configuración:** ajustes de `system_settings` como cualquier otro, en `SETTINGS_SCHEMA` —
 `n8n_webhook_url`, `notif_daily_hour`, y por aviso `notif_<x>_enabled` / `notif_<x>_email`
 (+ `_days` donde aplica). **No hacen falta migraciones para agregar otro aviso.** Se agregaron dos
@@ -248,8 +256,21 @@ fallar con un error de MySQL — o peor, reenviar todo en cada corrida. El comen
 esa migración quedó desactualizado: describe el diseño anterior, en el que n8n consultaba la tabla
 por su cuenta. Hoy la escribe el backend.
 
+**El estado del mantenimiento se recalcula al avisar.** `maintenance_schedules.status` es una columna
+materializada que solo se escribe en `maintenanceRepository.create/update`: un registro guardado hace
+dos meses como `proximo` sigue diciendo `proximo` hoy aunque su fecha ya pasara. Como el correo existe
+justo para gritar lo vencido, `estaVencido()` compara `next_service` contra la fecha de hoy en vez de
+confiar en la columna. (La pantalla de Mantenimientos sí usa la columna guardada — mismo desfase,
+pero eso es anterior a esto.)
+
 **Enviar una cotización por correo** (`POST /quotes/:id/send-email`, body `{ email, message? }`) no
-es un aviso automático: es una acción manual. El controller genera el PDF con `pdfABuffer()` (helper
+es un aviso automático: es una acción manual. Si la cotización estaba en `borrador` pasa a `enviada`
+— no es cosmético: el aviso de "cotizaciones por vencer" solo mira las `enviada`, así que sin eso una
+cotización mandada por correo nunca generaría seguimiento. Los demás estados no se tocan. Es también
+el único correo que sale **hacia un cliente**, así que lleva saludo, vigencia y los datos de contacto
+del taller, y su pie no menciona la configuración del sistema (parámetro `pie` de `cuerpoHtml`).
+El registro en `notifications_log` va dentro de un `try/catch`: si fallara *después* del envío, el
+usuario vería un error, volvería a apretar "Enviar" y el cliente recibiría la cotización dos veces. El controller genera el PDF con `pdfABuffer()` (helper
 en `pdfGenerator.js`: junta el documento en memoria en vez de hacer `.pipe(res)`) y lo manda en
 base64 dentro del mismo mensaje, para que n8n no tenga que volver a pedirlo. `quoteRepository` expone
 `client_email` por JOIN para proponerlo en pantalla — y por eso `quoteService.create/update` lo

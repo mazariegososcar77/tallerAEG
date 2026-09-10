@@ -49,7 +49,7 @@ export const SETTINGS_SCHEMA = {
   // URL del webhook de n8n al que se le avisa de los eventos inmediatos
   // (orden creada, enviar cotizacion por correo). Vacia = no se avisa nada,
   // y el sistema sigue funcionando igual que antes.
-  n8n_webhook_url:  { type: 'text', default: '', max: 300 },
+  n8n_webhook_url:  { type: 'text', default: '', max: 300, sensible: true },
 
   // Hora del dia (0-23) en la que se revisan los tres avisos que dependen del
   // calendario (stock, mantenimientos, cotizaciones por vencer). Es hora del
@@ -59,24 +59,24 @@ export const SETTINGS_SCHEMA = {
   // Stock bajo: articulos cuya existencia cayo a su punto de reorden
   // (articles.min_stock, ver migracion 038). Es un aviso interno.
   notif_low_stock_enabled: { type: 'bool',   default: false },
-  notif_low_stock_email:   { type: 'emails', default: '', max: 400 },
+  notif_low_stock_email:   { type: 'emails', default: '', max: 400, sensible: true },
 
   // Mantenimientos proximos y vencidos. `days` es con cuanta anticipacion se
   // avisa; los ya vencidos entran siempre, sin importar ese numero.
   notif_maintenance_enabled: { type: 'bool',   default: false },
-  notif_maintenance_email:   { type: 'emails', default: '', max: 400 },
+  notif_maintenance_email:   { type: 'emails', default: '', max: 400, sensible: true },
   notif_maintenance_days:    { type: 'int',    default: 15, min: 1, max: 180 },
 
   // Cotizaciones enviadas al cliente que estan por pasarse de su fecha
   // "valida hasta" y todavia no fueron aprobadas ni rechazadas.
   notif_quote_expiring_enabled: { type: 'bool',   default: false },
-  notif_quote_expiring_email:   { type: 'emails', default: '', max: 400 },
+  notif_quote_expiring_email:   { type: 'emails', default: '', max: 400, sensible: true },
   notif_quote_expiring_days:    { type: 'int',    default: 3, min: 1, max: 90 },
 
   // Orden de trabajo recien creada. A diferencia de los tres de arriba este no
   // es por Cron: se avisa en el momento en que se guarda la orden.
   notif_work_order_created_enabled: { type: 'bool',   default: false },
-  notif_work_order_created_email:   { type: 'emails', default: '', max: 400 },
+  notif_work_order_created_email:   { type: 'emails', default: '', max: 400, sensible: true },
 };
 
 // Correos separados por coma. Se valida cada uno por separado para que un dedo
@@ -93,6 +93,27 @@ export function parseEmails(raw) {
 
 /** Lista de claves validas (lo que el frontend puede mandar a guardar). */
 export const SETTING_KEYS = Object.keys(SETTINGS_SCHEMA);
+
+/**
+ * Ajustes que NO se le pueden dar a cualquiera con sesion.
+ *
+ * `GET /settings` no exige permiso a proposito: el tema y los colores de marca
+ * se le aplican a todos los usuarios, y si eso pidiera un permiso, un rol sin
+ * el veria la app descolorida. Pero desde que existen las notificaciones ahi
+ * viajaban tambien la URL del webhook de n8n y las listas de correo. Ese
+ * webhook **no tiene credenciales** (del otro lado es un "recibir y mandar
+ * correo" abierto), asi que la URL *es* la credencial: cualquiera que abriera
+ * la app una vez podia copiarla y mandar correos con la identidad del taller
+ * sin pasar por el sistema. Por eso estas claves solo salen con `settings.view`.
+ */
+export const SENSITIVE_SETTING_KEYS = SETTING_KEYS.filter((k) => SETTINGS_SCHEMA[k].sensible);
+
+/** La configuracion sin los ajustes de administracion (lo que ve un rol comun). */
+export function stripSensitive(settings) {
+  const copia = { ...settings };
+  for (const k of SENSITIVE_SETTING_KEYS) delete copia[k];
+  return copia;
+}
 
 /** Todos los ajustes con su valor por defecto (sin tocar la base de datos). */
 export function defaults() {

@@ -45,15 +45,21 @@ export default function SendQuoteEmailModal({ quote, onClose, onSent }) {
     }
   };
 
+  // Mientras la peticion esta en vuelo se bloquea tambien el ESC y el clic en el
+  // fondo, no solo el boton Cancelar: al cerrarse, QuotesPage pone la cotizacion
+  // en null y el modal se vacia, asi que el usuario perderia lo que escribio sin
+  // llegar a ver si el correo salio o fallo.
+  const cerrarSiSePuede = sending ? () => {} : onClose;
+
   return (
     <Modal
       open={!!quote}
-      onClose={onClose}
+      onClose={cerrarSiSePuede}
       title={quote ? `Enviar cotización No. ${quote.number}` : ''}
       accentColor="#CA8A04"
       footer={
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose} disabled={sending}>Cancelar</Button>
+          <Button variant="outline" onClick={cerrarSiSePuede} disabled={sending}>Cancelar</Button>
           <Button variant="primary" onClick={handleSend} loading={sending}>
             <Send size={16} /> Enviar
           </Button>

@@ -56,12 +56,25 @@ export const sendEmail = asyncHandler(async (req, res) => {
   const quote = await quoteService.getById(req.params.id);
   const doc = generarCotizacionPDF(quote, await settingsService.getSettings());
   const buffer = await pdfABuffer(doc);
-  res.json(await notificationService.sendQuoteEmail({
+  const resultado = await notificationService.sendQuoteEmail({
     quote,
     email: req.body.email,
     mensaje: req.body.message,
     pdfBase64: buffer.toString('base64'),
-  }));
+  });
+
+  // Mandarsela al cliente ES enviarla: si seguia en borrador, pasa a "enviada".
+  // No es solo la etiqueta -- el aviso de "cotizaciones por vencer" solo mira
+  // las que estan en 'enviada', asi que sin esto una cotizacion mandada por
+  // correo nunca generaria seguimiento. Los demas estados (aprobada,
+  // rechazada, vencida) no se tocan: reenviar el PDF no los deshace.
+  let status = quote.status;
+  if (status === 'borrador') {
+    await quoteService.updateStatus(quote.id, 'enviada');
+    status = 'enviada';
+  }
+
+  res.json({ ...resultado, status });
 });
 
 // Cuando el usuario descarga el PDF de una cotización, esto genera el archivo y se lo envía.
