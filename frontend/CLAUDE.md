@@ -168,7 +168,21 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
 
 ## Imágenes
 
-- `public/logo.png` — logo de marca (copia de `Propuesta 2.png`).
+- **Logo:** hay dos archivos y se usan en lugares distintos a propósito.
+  - `public/logo.png` — **solo el emblema** (el rodamiento), cuadrado y con fondo transparente. Lo
+    usa la barra lateral (`Sidebar`, 44×44 px) y es el favicon. No lleva el pie "Desde el año 2000"
+    porque a ese tamaño el texto sería una mancha de 2 px.
+  - `public/logo-full.png` — el **logo completo, con el pie**, para el login (`LoginForm`, `h-32
+    w-auto`), donde sí hay espacio para leerlo. Va con `w-auto`: no es cuadrado y un ancho fijo lo
+    deformaría.
+  - Los dos salen de `logo-nuevo.jpeg` (en la raíz del repo, junto a `Propuesta 1/2.png`) recortando
+    el marco y el blanco sobrante. El fondo se vuelve transparente con un **relleno desde los
+    bordes**, no marcando "todo lo casi blanco": el emblema tiene blanco por dentro (el disco de las
+    letras A.E.G.) y por color quedaría agujereado.
+  - En el sidebar el logo conserva su recuadro blanco (`rounded-lg bg-white p-1`). Es a propósito: el
+    aro exterior del emblema es azul casi negro y sobre el verde oscuro del menú se perdería.
+  - El membrete de los PDF usa **otro archivo**, `backend/src/assets/logo.jpeg` (el logo completo
+    sobre blanco), porque `pdfkit` solo embebe JPEG/PNG opacos.
 - `public/img/carrusel/` — slides del login. Son placeholders de marca; reemplázalos por las
   imágenes definitivas conservando los nombres o ajusta la lista en `ImageCarousel`.
 - Imágenes de artículos: se suben directo a Google Cloud Storage y se guardan como la ruta del objeto

@@ -140,5 +140,7 @@ Credenciales por defecto (creadas por `002_seed.sql`): **admin@talleraeg.com / A
   (`--c-navy-*`/`--c-orange-*` en `frontend/src/index.css`) para que se puedan cambiar desde
   Configuración general sin recompilar — ver `frontend/CLAUDE.md`. El tema por defecto lo decide la
   configuración del sistema (de fábrica, **claro**) y cada usuario lo puede cambiar con el botón
-  sol/luna del topbar. El logo es `Propuesta 2.png` (copiado a `frontend/public/logo.png`).
+  sol/luna del topbar. El logo es el emblema A.E.G. (`logo-nuevo.jpeg` en la raíz): `frontend/public/logo.png` es solo el
+  emblema, para el menú y el favicon, y `frontend/public/logo-full.png` el completo con "Desde el
+  año 2000", para el login. Los PDF usan `backend/src/assets/logo.jpeg`. Ver `frontend/CLAUDE.md`.
 - Cada subproyecto tiene su propio `CLAUDE.md` con los detalles de arquitectura y comandos.

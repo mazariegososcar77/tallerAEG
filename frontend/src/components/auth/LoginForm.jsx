@@ -35,7 +35,12 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-sm">
       <div className="mb-8 flex flex-col items-center text-center">
-        <img src="/logo.png" alt="Centro de Servicio AEG" className="mb-4 h-20 w-20" />
+        {/* En el login se usa el logo COMPLETO, con el pie "Desde el ano 2000":
+            aqui hay espacio para que se lea. En la barra lateral, en cambio, se
+            usa /logo.png (solo el emblema) porque ahi se dibuja a 44 px y ese
+            texto no seria mas que una mancha. `w-auto` en vez de un ancho fijo
+            porque este logo no es cuadrado y se deformaria. */}
+        <img src="/logo-full.png" alt="Centro de Servicio AEG" className="mb-4 h-32 w-auto" />
         <h1 className="text-2xl font-bold text-navy-800">Bienvenido</h1>
         <p className="mt-1 text-sm text-slate-500">Ingresa tus credenciales para continuar</p>
       </div>
