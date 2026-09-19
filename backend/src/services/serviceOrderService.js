@@ -47,8 +47,9 @@ export async function getById(id) {
 // Crea una orden de servicio nueva: le asigna el siguiente numero correlativo y convierte
 // los campos opcionales que llegan vacios en "sin dato".
 export async function create(data) {
-  const number = await numberingService.getNextNumber('service_order');
-  const { items, ...rest } = data;
+  const { items, number: requestedNumber, ...rest } = data;
+  // El numero se puede escribir a mano (el de la orden fisica del talonario); vacio = automatico.
+  const number = await numberingService.resolveNumber('service_order', requestedNumber, { findByNumber: serviceOrderRepository.findIdByNumber, label: 'una orden de servicio' });
   normalize(rest);
   return serviceOrderRepository.create({ ...rest, number }, items || []);
 }
@@ -74,6 +75,11 @@ export async function update(id, {
 }) {
   const existing = await serviceOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de servicio no encontrada');
+  // El numero es editable (se copia el de la orden fisica); no puede repetirse ni quedar vacio.
+  if (data.number !== undefined) {
+    if (String(data.number).trim() === existing.number) delete data.number;
+    else data.number = await numberingService.assertNumberAvailable(data.number, id, { findByNumber: serviceOrderRepository.findIdByNumber, label: 'una orden de servicio' });
+  }
   normalize(data);
   return serviceOrderRepository.update(id, data, items);
 }

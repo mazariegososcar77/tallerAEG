@@ -47,8 +47,9 @@ function normalizePaperForm(data) {
 // la base de datos rechaza fechas vacias con un error confuso si se le manda texto
 // vacio en vez de "sin dato". Si no llega flow_type, MySQL lo deja en 'pre' solo
 // (es el default de la columna, ver 025_work_orders_flow_pricing.sql).
-export async function create({ items, ...data }) {
-  const number = await numberingService.getNextNumber('work_order');
+export async function create({ items, number: requestedNumber, ...data }) {
+  // El numero se puede escribir a mano (el de la orden fisica del talonario); vacio = automatico.
+  const number = await numberingService.resolveNumber('work_order', requestedNumber, { findByNumber: workOrderRepository.findIdByNumber, label: 'una orden de trabajo' });
   if (data.total === '' || data.total === null || data.total === undefined) data.total = 0;
   if (data.kw === '') data.kw = null;
   if (data.rpm === '') data.rpm = null;
@@ -81,6 +82,11 @@ export async function update(id, { items, client_name, created_at, updated_at,
   report_id, report_status, quote_status, invoice_id, invoice_status, ...data }) {
   const existing = await workOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de trabajo no encontrada');
+  // El numero es editable (se copia el de la orden fisica); no puede repetirse ni quedar vacio.
+  if (data.number !== undefined) {
+    if (String(data.number).trim() === existing.number) delete data.number;
+    else data.number = await numberingService.assertNumberAvailable(data.number, id, { findByNumber: workOrderRepository.findIdByNumber, label: 'una orden de trabajo' });
+  }
   if (data.quote_id === '') data.quote_id = null;
   if (data.machine_id === '') data.machine_id = null;
   if (data.received_at === '') data.received_at = null;

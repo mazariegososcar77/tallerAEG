@@ -207,3 +207,9 @@ export async function remove(id) {
   const [result] = await pool.query('DELETE FROM work_orders WHERE id = ?', [id]);
   return result.affectedRows > 0;
 }
+
+// Devuelve el id de la orden que ya usa ese numero, o null si esta libre.
+export async function findIdByNumber(number) {
+  const [[row]] = await pool.query('SELECT id FROM work_orders WHERE number = ?', [number]);
+  return row ? row.id : null;
+}
