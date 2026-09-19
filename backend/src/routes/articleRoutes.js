@@ -48,7 +48,10 @@ const createSchema = z.object({
   location: z.string().max(120).nullish(),
   description: z.string().max(1000).nullish(),
   image_url: z.string().max(500).nullish(),
-  is_active: z.boolean().optional(),
+  // MySQL devuelve TINYINT(1) como 1/0 (no true/false) y el formulario de edicion lo reenvia
+  // tal cual: sin este preprocess, zod rechazaba `is_active: 1` y editar CUALQUIER articulo
+  // daba "Datos invalidos".
+  is_active: z.preprocess((v) => (v === 1 || v === 0 ? Boolean(v) : v), z.boolean()).optional(),
   // Piezas que componen el articulo (lista de nombres). Se guardan en su propia tabla.
   pieces: z.array(z.string().trim().min(1).max(190)).optional(),
   // Mano de obra del articulo (lista de nombres). Se guarda en su propia tabla.
