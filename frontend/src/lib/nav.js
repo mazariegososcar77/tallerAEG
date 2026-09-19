@@ -62,6 +62,7 @@ export const NAV = [
       // desembocan en esta misma pantalla (/facturacion?invoice=<id>).
       { to: '/facturacion', label: 'Facturación', icon: Receipt, permission: 'billing.view' },
       { to: '/configuracion/tipos-trabajo', label: 'Tipos de trabajo', icon: Tags, permission: 'work-types.view' },
+      { to: '/configuracion/tipos-equipo', label: 'Tipos de equipo', icon: Cog, permission: 'equipment-types.view' },
     ],
   },
   {

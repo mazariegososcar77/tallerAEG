@@ -40,6 +40,7 @@ import { workReportsApi } from '../../api/workReportsApi.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import { notify } from '../../lib/toast.js';
+import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
@@ -102,6 +103,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const fromQuoteId = searchParams.get('fromQuote');
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
+  const { equipmentTypes } = useEquipmentTypes({ quiet: true });
   const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -224,7 +226,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const handleSubmit = async () => {
     if (!form.client_id) return notify.error('Selecciona un cliente');
     setSaving(true);
-    const payload = { ...form, equipment_name: deriveEquipmentName(form), work_type: deriveWorkType(form), items };
+    const payload = { ...form, equipment_name: deriveEquipmentName(form, equipmentTypes), work_type: deriveWorkType(form), items };
     try {
       if (isEdit) {
         await workOrdersApi.update(id, payload);

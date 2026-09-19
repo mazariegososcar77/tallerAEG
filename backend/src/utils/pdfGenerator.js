@@ -315,7 +315,7 @@ const MEASUREMENT_LINE_FIELDS = [
 ];
 
 // Acepta el tipo de equipo en el formato nuevo (casillas) o en el viejo (categoria + subtipos).
-function etiquetasEquipo(et) {
+function etiquetasEquipo(et, extra = {}) {
   const e = et && typeof et === 'object' ? et : {};
   const tipos = [];
   let aireadores = Array.isArray(e.aireador_sizes) ? e.aireador_sizes : [];
@@ -330,7 +330,7 @@ function etiquetasEquipo(et) {
     tipos.push(...(Array.isArray(e.subtypes) ? e.subtypes : []));
   }
   return {
-    tipos: tipos.map((t) => EQUIPMENT_LABELS[t] || t),
+    tipos: tipos.map((t) => extra[t] || EQUIPMENT_LABELS[t] || t),
     aireadores: aireadores.map((a) => AIREADOR_LABELS[a] || a),
     turbinaKw, turbinaHp: e.turbina_hp || '',
   };
@@ -348,15 +348,17 @@ const ESTADOS_ORDEN_TRABAJO = {
 // La Orden de Trabajo y la Orden de Servicio comparten el mismo formulario (el talonario
 // fisico), asi que comparten este PDF. La de Servicio ademas imprime las firmas
 // capturadas en pantalla (`firmas`) y su propio titulo/pie.
-export function generarOrdenTrabajoPDF(order, settings) {
-  return armarTalonarioPDF(order, settings, { titulo: 'ORDEN DE TRABAJO', pie: 'Orden de Trabajo' });
+// `tiposEquipo`: mapa codigo -> nombre de los tipos de equipo del catalogo (los creados desde
+// Configuracion no estan en la lista fija de aqui abajo).
+export function generarOrdenTrabajoPDF(order, settings, tiposEquipo = {}) {
+  return armarTalonarioPDF(order, settings, { titulo: 'ORDEN DE TRABAJO', pie: 'Orden de Trabajo', tiposEquipo });
 }
 
-export function generarOrdenServicioPDF(order, settings, locales = null) {
-  return armarTalonarioPDF(order, settings, { titulo: 'ORDEN DE SERVICIO', pie: 'Orden de Servicio', firmas: true, locales });
+export function generarOrdenServicioPDF(order, settings, locales = null, tiposEquipo = {}) {
+  return armarTalonarioPDF(order, settings, { titulo: 'ORDEN DE SERVICIO', pie: 'Orden de Servicio', firmas: true, locales, tiposEquipo });
 }
 
-function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, locales = null }) {
+function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, locales = null, tiposEquipo = {} }) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -438,7 +440,7 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   sectionHeader('TRABAJO A REALIZAR', NARANJA);
   const workTypes = Array.isArray(order.work_types) ? order.work_types : [];
   threeColList(marcados(TALONARIO_WORK, workTypes));
-  const eq = etiquetasEquipo(order.equipment_type);
+  const eq = etiquetasEquipo(order.equipment_type, tiposEquipo);
   if (eq.aireadores.length) fila(['Aireadores:', eq.aireadores.join(', ')], null, 75);
   fila(['Turbina Kw:', eq.turbinaKw], ['Turbina Hp:', eq.turbinaHp], 75, 75);
   if (eq.tipos.length) {

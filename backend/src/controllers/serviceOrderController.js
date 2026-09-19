@@ -4,6 +4,7 @@
 // descargar el PDF.
 import * as serviceOrderService from '../services/serviceOrderService.js';
 import { generarOrdenServicioPDF } from '../utils/pdfGenerator.js';
+import * as equipmentTypeService from '../services/equipmentTypeService.js';
 import * as settingsService from '../services/settingsService.js';
 import { resolverCampos, prepararLocales, limpiarLocales } from '../lib/mediaUrl.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
@@ -66,7 +67,7 @@ export const getSigningLink = asyncHandler(async (req, res) => {
 export const pdf = asyncHandler(async (req, res) => {
   const order = await serviceOrderService.getById(req.params.id);
   const locales = await prepararLocales([order.tech_signature_url, order.client_signature_url]);
-  const doc = generarOrdenServicioPDF(order, await settingsService.getSettings(), locales);
+  const doc = generarOrdenServicioPDF(order, await settingsService.getSettings(), locales, await equipmentTypeService.labelMap());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="orden-servicio-${order.number}.pdf"`);
   doc.pipe(res);
