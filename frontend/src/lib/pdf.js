@@ -45,7 +45,7 @@ export async function downloadPdf(url, fileName) {
  * visor de PDF, que ya tiene el blob en pantalla y no necesita volver a pedirlo).
  */
 export function saveBlob(blob, fileName) {
-  const name = fileName.toLowerCase().endsWith('.pdf') ? fileName : `${fileName}.pdf`;
+  const name = /\.(pdf|xml)$/i.test(fileName) ? fileName : `${fileName}.pdf`;
   const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = objectUrl;
@@ -56,4 +56,11 @@ export function saveBlob(blob, fileName) {
   // Se revoca en el siguiente ciclo: si se hace de inmediato, algunos
   // navegadores cancelan la descarga que acaba de empezar.
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+/** Descarga el XML certificado de una factura (documento legal) con su nombre. */
+export async function downloadXml(url, fileName) {
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${getToken()}` } });
+  if (!res.ok) throw new Error('No se pudo descargar el XML');
+  saveBlob(await res.blob(), fileName.toLowerCase().endsWith('.xml') ? fileName : `${fileName}.xml`);
 }

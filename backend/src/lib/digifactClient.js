@@ -148,4 +148,69 @@ export async function getDteInfo(uuid) {
   });
 }
 
+/** Ambiente en el que esta corriendo el cliente ('test' = sandbox, 'prod' = real). */
+export function environment() {
+  return env.digifact.environment === 'prod' ? 'prod' : 'test';
+}
+
+/** NIT/CUI sin guiones ni espacios y en mayusculas (el receptor "CF" queda igual). */
+export function normalizeTaxId(value) {
+  return String(value || '').replace(/[\s-]/g, '').toUpperCase();
+}
+
+/**
+ * Consulta un NIT en la SAT (via Digifact) y devuelve el nombre registrado, o `null` si no
+ * existe. Sirve para avisar ANTES de certificar que el NIT del cliente esta mal escrito.
+ */
+export async function lookupNit(nit) {
+  const clean = normalizeTaxId(nit);
+  if (!clean || clean === 'CF') return null;
+  const data = await authedFetch('/api/Shared', {
+    query: {
+      COUNTRY: 'GT',
+      TAXID: nit12(env.digifact.nit),
+      DATA1: 'SHARED_GETINFONITcom',
+      DATA2: `NIT|${clean}`,
+      USERNAME: env.digifact.username,
+    },
+  });
+  // La respuesta llega como { NIT, NOMBRE } o envuelta en un arreglo RESPONSE segun la version.
+  const row = Array.isArray(data?.RESPONSE) ? data.RESPONSE[0] : data;
+  const nombre = row?.NOMBRE || row?.Nombre || null;
+  return nombre ? { nit: row.NIT || clean, name: String(nombre).trim() } : null;
+}
+
+/** Baja de Digifact los archivos de un DTE ya certificado (para las facturas que no los guardaron). */
+export async function getDocument(uuid) {
+  return authedFetch('/api/GetDocument', {
+    query: { AUTHNUMBER: uuid, TAXID: nit12(env.digifact.nit), FORMAT: 'XML|PDF', USERNAME: env.digifact.username },
+  });
+}
+
+/**
+ * Saca de una respuesta de Digifact los archivos que trae en base64 (`responseData1..3`, con
+ * mayusculas distintas segun el endpoint) y los clasifica por su CONTENIDO, no por la posicion:
+ * el orden de los campos depende de los formatos pedidos y de la version del API.
+ * Devuelve `{ xml: string|null, pdf: Buffer|null }`.
+ */
+export function extractDocuments(response) {
+  const out = { xml: null, pdf: null };
+  const rows = Array.isArray(response?.RESPONSE) ? response.RESPONSE : [response];
+  for (const row of rows) {
+    for (const [key, value] of Object.entries(row || {})) {
+      if (!/^responsedata\d$/i.test(key) || typeof value !== 'string' || !value) continue;
+      let buf;
+      try { buf = Buffer.from(value, 'base64'); } catch { continue; }
+      if (buf.slice(0, 4).toString('latin1') === '%PDF') out.pdf = buf;
+      else {
+        const text = buf.toString('utf8').trimStart();
+        if (text.startsWith('<?xml') || /^<[A-Za-z]/.test(text)) {
+          if (!/^<!doctype html|^<html/i.test(text)) out.xml = text;
+        }
+      }
+    }
+  }
+  return out;
+}
+
 export const _internal = { isConfigured, nit12 };

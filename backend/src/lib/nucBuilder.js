@@ -17,6 +17,9 @@ import { env } from '../config/env.js';
 
 const IVA_RATE = 0.12;
 
+// Digifact/SAT esperan el NIT o CUI sin guion ni espacios ("1234567-8" -> "12345678").
+const taxId = (v) => String(v || '').replace(/[\s-]/g, '').toUpperCase();
+
 function n6(value) {
   return (Math.round((Number(value) || 0) * 1e6) / 1e6).toFixed(6);
 }
@@ -35,20 +38,27 @@ function buildBuyer(client) {
   // CUI del receptor"). Para NIT normal, no se incluye el atributo.
   if (client?.nit) {
     return {
-      TaxID: client.nit,
+      TaxID: taxId(client.nit),
       Name: client.full_name || client.first_name,
       ...(client.address ? { AddressInfo: { Address: client.address, Country: 'GT' } } : {}),
     };
   }
   if (client?.dpi) {
     return {
-      TaxID: client.dpi,
+      TaxID: taxId(client.dpi),
       TaxIDType: 'CUI',
       Name: client.full_name || client.first_name,
       ...(client.address ? { AddressInfo: { Address: client.address, Country: 'GT' } } : {}),
     };
   }
   return { TaxID: 'CF', Name: 'CONSUMIDOR FINAL' };
+}
+
+/** Identificador del receptor tal como va en el documento (NIT, CUI o "CF"): la anulacion lo repite. */
+export function receiverTaxId(client) {
+  if (client?.nit) return taxId(client.nit);
+  if (client?.dpi) return taxId(client.dpi);
+  return 'CF';
 }
 
 function buildSeller() {

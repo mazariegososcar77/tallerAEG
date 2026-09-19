@@ -726,6 +726,19 @@ export function generarFacturaPDF(invoice, settings) {
        .text('UUID: ' + invoice.fel_uuid, L, y)
        .text('Serie: ' + (invoice.fel_series || '-') + '   No.: ' + (invoice.fel_number || '-'), L, y + 10);
     y += 24;
+    // Una factura certificada en el sandbox de Digifact tiene UUID pero NO existe para la SAT.
+    if (invoice.fel_environment === 'test') {
+      doc.rect(L, y, CW, 24).fill('#fee2e2');
+      doc.fillColor('#991b1b').fontSize(8).font('Helvetica-Bold')
+         .text('FACTURA DE PRUEBAS (ambiente de pruebas de Digifact) — sin validez fiscal ante la SAT.', L + 8, y + 8, { width: CW - 16 });
+      y += 30;
+    }
+    if (invoice.status === 'anulada') {
+      doc.rect(L, y, CW, 24).fill('#fee2e2');
+      doc.fillColor('#991b1b').fontSize(9).font('Helvetica-Bold')
+         .text('FACTURA ANULADA' + (invoice.cancel_reason ? ' — ' + invoice.cancel_reason : ''), L + 8, y + 8, { width: CW - 16 });
+      y += 30;
+    }
   } else {
     doc.rect(L, y, CW, 24).fill('#fef3c7');
     doc.fillColor('#92400e').fontSize(8).font('Helvetica-Bold')
