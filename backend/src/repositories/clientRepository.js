@@ -69,3 +69,22 @@ export async function remove(id) {
   const [result] = await pool.query('DELETE FROM clients WHERE id = ?', [id]);
   return result.affectedRows > 0;
 }
+
+// Busca otro cliente con el mismo NIT, sin importar guiones ni espacios ("1234567-8" = "12345678").
+// `excludeId` deja fuera al propio cliente cuando se esta editando. Devuelve { id, first_name, last_name } o null.
+export async function findByNit(nit, excludeId = null) {
+  const [rows] = await pool.query(
+    "SELECT id, first_name, last_name FROM clients WHERE UPPER(REPLACE(REPLACE(nit, '-', ''), ' ', '')) = ? AND id <> ? LIMIT 1",
+    [String(nit).toUpperCase(), excludeId ?? 0],
+  );
+  return rows[0] || null;
+}
+
+// Igual que findByNit, para el DPI.
+export async function findByDpi(dpi, excludeId = null) {
+  const [rows] = await pool.query(
+    "SELECT id, first_name, last_name FROM clients WHERE REPLACE(REPLACE(dpi, '-', ''), ' ', '') = ? AND id <> ? LIMIT 1",
+    [String(dpi), excludeId ?? 0],
+  );
+  return rows[0] || null;
+}

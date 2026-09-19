@@ -11,6 +11,7 @@
  * reemplaza el error por el `ApiError` que devuelve `translateDbError`.
  */
 import { ApiError } from './ApiError.js';
+import { labelForColumn } from './fieldLabels.js';
 
 // Etiquetas amigables para nombres de columnas frecuentes del esquema.
 const FIELD_LABELS = {
@@ -76,9 +77,13 @@ export function translateDbError(err) {
     case 'ER_DUP_ENTRY': {
       // Ej: "Duplicate entry 'x@y.com' for key 'clients.email'"
       const key = /for key '(?:[^.'`]+\.)?`?([^'`]+)`?'/.exec(msg)?.[1] || '';
-      const col = key.replace(/_(unique|uq|idx|key)$/i, '').split('.').pop();
-      const label = FIELD_LABELS[col] || FIELD_LABELS[key] || 'ese valor';
-      return new ApiError(409, `Ya existe un registro con ese ${label}.`);
+      const valor = /Duplicate entry '(.*)' for key/s.exec(msg)?.[1];
+      // El nombre de la llave suele traer la columna ("uq_clients_nit"): se busca la que tenga etiqueta.
+      const tokens = key.toLowerCase().split(/[._]/);
+      const col = tokens.find((t) => labelForColumn(t) || FIELD_LABELS[t]);
+      const etiqueta = labelForColumn(col) || (col && FIELD_LABELS[col]) || 'Ese valor';
+      const nombre = etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
+      return new ApiError(409, valor ? `${nombre} «${valor}» ya está registrado en el sistema.` : `${nombre} ya está registrado en el sistema.`);
     }
     case 'ER_BAD_NULL_ERROR': {
       const col = /Column '([^']+)'/.exec(msg)?.[1];
@@ -94,9 +99,12 @@ export function translateDbError(err) {
     case 'ER_ROW_IS_REFERENCED':
     case 'ER_ROW_IS_REFERENCED_2':
       return new ApiError(409, 'No se puede eliminar porque está siendo utilizado por otros registros.');
+    case 'ER_LOCK_WAIT_TIMEOUT':
+    case 'ER_LOCK_DEADLOCK':
+      return new ApiError(503, 'El sistema está ocupado guardando otros cambios. Espera unos segundos e inténtalo de nuevo.');
     case 'ER_DATA_TOO_LONG': {
       const col = /column '([^']+)'/i.exec(msg)?.[1];
-      return new ApiError(400, `El valor de ${labelFor(col)} es demasiado largo.`);
+      return new ApiError(400, `El texto de «${labelForColumn(col) || labelFor(col)}» es demasiado largo. Acórtalo e inténtalo de nuevo.`);
     }
     case 'ER_TRUNCATED_WRONG_VALUE':
     case 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD':
