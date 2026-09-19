@@ -7,7 +7,7 @@ export const workOrdersApi = {
   get:          (id)       => client.get(`/work-orders/${id}`).then(r => r.data),
   create:       (payload)  => client.post('/work-orders', payload).then(r => r.data),
   update:       (id, payload) => client.put(`/work-orders/${id}`, payload).then(r => r.data),
-  // Cambia solo el estado de la orden (recibido, en_proceso, listo, entregado o cancelado).
+  // Cambia solo el estado de la orden (recibido, en_proceso, listo, entregado, garantia o devolucion).
   updateStatus: (id, status)  => client.patch(`/work-orders/${id}/status`, { status }).then(r => r.data),
   remove:       (id)       => client.delete(`/work-orders/${id}`).then(r => r.data),
   // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).

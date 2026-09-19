@@ -1,6 +1,6 @@
 // Este archivo guarda y consulta las ÓRDENES DE TRABAJO del taller: la ficha del equipo
 // que se recibió a reparar, con sus piezas/ítems (work_order_items) y su estado
-// (recibido, en proceso, listo, entregado o cancelado).
+// (recibido, en proceso, listo, entregado, garantia o devolucion).
 import pool from '../lib/db.js';
 
 // Campos que se guardan como JSON (checkboxes multiples y tablas de filas fijas del
@@ -173,7 +173,7 @@ export async function update(id, data, items) {
  * puede seguir figurando como lista.
  *
  * La condición va en el WHERE y no en un `if` de JavaScript a propósito. Primero porque
- * así es imposible que se toque una orden ya 'entregado' o 'cancelado' (son estados
+ * así es imposible que se toque una orden ya 'entregado' o 'devolucion' (son estados
  * terminales) aunque alguien cambie el código de arriba; el único paso que esta consulta
  * sabe dar es 'listo' → 'en_proceso'. Y segundo porque leer el estado y escribirlo en dos
  * viajes deja una rendija en el medio: otra persona podría marcar la orden como entregada

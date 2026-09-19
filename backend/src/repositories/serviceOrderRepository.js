@@ -7,7 +7,11 @@ import pool from '../lib/db.js';
 
 // Campos que se guardan como JSON (arreglos/objetos de filas fijas del papel) en vez de
 // columnas rígidas — ver 028_service_order_field_report.sql.
-const JSON_FIELDS = ['electrical_measurements', 'installed_components', 'additional_specs'];
+const JSON_FIELDS = [
+  'electrical_measurements', 'installed_components', 'additional_specs',
+  // El talonario (mismo formulario que la Orden de Trabajo) — ver 045_service_orders_talonario.sql.
+  'work_types', 'equipment_type', 'physical_parts', 'screws', 'measurement_intake', 'measurement_delivery',
+];
 
 // Convierte de vuelta a objeto/arreglo usable los campos JSON que MySQL devuelve como texto.
 function parseJsonFields(row) {
@@ -58,7 +62,11 @@ export async function findById(id) {
     LEFT JOIN clients c ON so.client_id = c.id
     WHERE so.id = ?
   `, [id]);
-  return order ? parseJsonFields(order) : null;
+  if (!order) return null;
+  parseJsonFields(order);
+  const [items] = await pool.query('SELECT * FROM service_order_items WHERE service_order_id = ?', [id]);
+  order.items = items;
+  return order;
 }
 
 // Busca la orden de servicio que corresponde a un token de enlace publico de firma
@@ -68,26 +76,61 @@ export async function findByPublicToken(token) {
   return row ? findById(row.id) : null;
 }
 
-// Guarda una nueva orden de servicio.
-export async function create(data) {
-  stringifyJsonFields(data);
-  const fields = Object.keys(data).join(', ');
-  const placeholders = Object.keys(data).map(() => '?').join(', ');
-  const [result] = await pool.query(
-    `INSERT INTO service_orders (${fields}) VALUES (${placeholders})`,
-    Object.values(data)
-  );
-  return findById(result.insertId);
+// Inserta la lista de componentes recibidos (service_order_items) de una orden.
+async function insertItems(conn, orderId, items) {
+  for (const item of items) {
+    await conn.query(
+      'INSERT INTO service_order_items (service_order_id, name, quantity, has_item, notes) VALUES (?, ?, ?, ?, ?)',
+      [orderId, item.name, item.quantity || 1, item.has_item || 0, item.notes || null]
+    );
+  }
 }
 
-// Actualiza una orden de servicio existente.
-export async function update(id, data) {
+// Guarda una nueva orden de servicio junto con sus componentes, todo en una transaccion.
+export async function create(data, items = []) {
   stringifyJsonFields(data);
-  if (Object.keys(data).length > 0) {
-    const fields = Object.keys(data).map(k => k + ' = ?').join(', ');
-    await pool.query(`UPDATE service_orders SET ${fields} WHERE id = ?`, [...Object.values(data), id]);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const fields = Object.keys(data).join(', ');
+    const placeholders = Object.keys(data).map(() => '?').join(', ');
+    const [result] = await conn.query(
+      `INSERT INTO service_orders (${fields}) VALUES (${placeholders})`,
+      Object.values(data)
+    );
+    await insertItems(conn, result.insertId, items);
+    await conn.commit();
+    return findById(result.insertId);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
   }
-  return findById(id);
+}
+
+// Actualiza una orden de servicio. Si vienen componentes (items) se reemplazan por completo.
+export async function update(id, data, items) {
+  stringifyJsonFields(data);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    if (Object.keys(data).length > 0) {
+      const fields = Object.keys(data).map(k => k + ' = ?').join(', ');
+      await conn.query(`UPDATE service_orders SET ${fields} WHERE id = ?`, [...Object.values(data), id]);
+    }
+    if (items !== undefined) {
+      await conn.query('DELETE FROM service_order_items WHERE service_order_id = ?', [id]);
+      await insertItems(conn, id, items);
+    }
+    await conn.commit();
+    return findById(id);
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
 }
 
 // Elimina una orden de servicio. Devuelve true si sí se borró algo, false si no existía.

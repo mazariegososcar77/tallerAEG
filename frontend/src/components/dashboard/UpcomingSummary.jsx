@@ -70,7 +70,7 @@ export default function UpcomingSummary() {
     for (const o of orders) {
       const key = o.delivery_at ? String(o.delivery_at).slice(0, 10) : null;
       if (!key || key < todayKey) continue;
-      if (o.status === 'entregado' || o.status === 'cancelado') continue;
+      if (o.status === 'entregado' || o.status === 'devolucion') continue;
       list.push({
         id: 'o-' + o.id, dateKey: key, type: 'order', color: C.red, Icon: ClipboardList,
         title: `Orden No. ${o.number}`,

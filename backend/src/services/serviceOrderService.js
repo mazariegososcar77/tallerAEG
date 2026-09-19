@@ -11,7 +11,7 @@ import { ApiError } from '../utils/ApiError.js';
 
 // Campos de fecha/hora opcionales: si llegan vacios ('') se guardan como "sin dato", porque
 // la base de datos rechaza texto vacio en columnas DATE/TIME con un error confuso.
-const OPTIONAL_DATE_TIME_FIELDS = ['visit_time', 'arrival_time', 'departure_time'];
+const OPTIONAL_DATE_TIME_FIELDS = ['visit_time', 'arrival_time', 'departure_time', 'received_at', 'delivery_at', 'next_service_at'];
 
 function normalize(data) {
   if (data.client_id === '') data.client_id = null;
@@ -24,6 +24,12 @@ function normalize(data) {
   // un valor valido de la lista (mismo patron que pump_seal_type en Ordenes de
   // Trabajo -- ver 029_work_orders_paper_form.sql).
   if (data.well_type === '') data.well_type = null;
+  // Columnas del talonario: '' no es valido en ENUM / DECIMAL / INT (ver 045_service_orders_talonario.sql).
+  for (const field of ['pump_seal_type', 'kw', 'hp', 'rpm', 'torno_price', 'parts_price', 'labor_article_id', 'labor_price', 'total']) {
+    if (data[field] === '') data[field] = null;
+  }
+  // La fecha de ingreso del talonario es la fecha de visita (columna obligatoria).
+  if (data.received_at && !data.visit_date) data.visit_date = data.received_at;
 }
 
 // Devuelve la lista completa de ordenes de servicio.
@@ -42,8 +48,9 @@ export async function getById(id) {
 // los campos opcionales que llegan vacios en "sin dato".
 export async function create(data) {
   const number = await numberingService.getNextNumber('service_order');
-  normalize(data);
-  return serviceOrderRepository.create({ ...data, number });
+  const { items, ...rest } = data;
+  normalize(rest);
+  return serviceOrderRepository.create({ ...rest, number }, items || []);
 }
 
 /**
@@ -62,12 +69,13 @@ export async function create(data) {
 export async function update(id, {
   client_name, created_at, updated_at,
   tech_signature_url, client_signature_url, client_signature_token,
+  items, report_id, report_number, report_status,
   ...data
 }) {
   const existing = await serviceOrderRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Orden de servicio no encontrada');
   normalize(data);
-  return serviceOrderRepository.update(id, data);
+  return serviceOrderRepository.update(id, data, items);
 }
 
 // Cambia solo el estado de una orden de servicio (ej. de "programada" a "en_proceso").

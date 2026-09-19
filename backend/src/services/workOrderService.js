@@ -1,7 +1,7 @@
 // Este archivo maneja las ORDENES DE TRABAJO: la ficha del equipo que el cliente
 // dejo en el taller (marca, modelo, serie, datos electricos), las piezas/items que
 // lleva, los tecnicos asignados y su estado (recibido -> en_proceso -> listo ->
-// entregado, o cancelado). Es el segundo paso del flujo del taller, despues de la
+// entregado, garantia o devolucion). Es el segundo paso del flujo del taller, despues de la
 // Cotizacion y antes del Reporte de Trabajo.
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as invoiceRepository from '../repositories/invoiceRepository.js';

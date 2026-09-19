@@ -1,25 +1,36 @@
-// PANTALLA: Alta / edición de una Orden de Servicio — el formato real que usa el taller
-// para documentar una VISITA TÉCNICA DE CAMPO (servicio de bombas/pozos en el sitio del
-// cliente): datos del cliente, fuente de energía, mediciones eléctricas, condiciones del
-// equipo, componentes instalados, especificaciones adicionales, reporte técnico y las
-// firmas del técnico y del cliente. Reproduce, sección por sección, el papel que ya usaba
-// el taller. La firma del cliente también se puede capturar a control remoto: si el
-// cliente no puede firmar en el momento en la pantalla, se genera un enlace público (sin
-// sesión) que el técnico le comparte para que firme desde su propio teléfono — mismo
-// mecanismo que ya existe en Reportes de Trabajo (ver WorkReportFormPage.jsx).
+// PANTALLA: Alta / edición de una Orden de Servicio. Es el MISMO formulario que la Orden de
+// Trabajo (el talonario físico A.E.G., mismos campos, mismo orden y las mismas pestañas —
+// ver WorkOrderFormPage.jsx, lib/workOrderTalonario.js y components/workOrders/
+// TalonarioSections.jsx). Lo que agrega la Orden de Servicio es la captura de las firmas
+// del técnico y del cliente, que se hace en la última pestaña. La firma del cliente también
+// se puede capturar a control remoto: si el cliente no puede firmar en el momento en la
+// pantalla, se genera un enlace público (sin sesión) que el técnico le comparte para que
+// firme desde su propio teléfono — mismo mecanismo que ya existe en Reportes de Trabajo.
+//
+// Los datos de la antigua "visita de campo" (mediciones eléctricas, condiciones del pozo…)
+// siguen guardados en la base pero ya no se muestran.
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { FileSearch } from 'lucide-react';
 import { serviceOrdersApi } from '../../api/serviceOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
-import { withUppercase } from '../../lib/text.js';
+import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
+import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import SignaturePad from '../../components/reports/SignaturePad.jsx';
+import {
+  C, inp, lbl, sec, secBody, SectionHeader,
+  GeneralTab, MeasurementTab, ComponentsTab, ScrewsTab, ObservationsTab, ClosingFields,
+} from '../../components/workOrders/TalonarioSections.jsx';
+import {
+  DEFAULT_ITEMS, emptyScrews, emptyEquipmentType, emptyMeasurementIntake, emptyMeasurementDelivery,
+  normalizeEquipmentType, normalizeMeasurement, deriveEquipmentName, deriveWorkType,
+} from '../../lib/workOrderTalonario.js';
 
 const STATUS_OPTIONS = [
   { value:'programada', label:'Programada' },
@@ -28,105 +39,100 @@ const STATUS_OPTIONS = [
   { value:'cancelada',  label:'Cancelada' },
 ];
 const STATUS_COLORS = { programada:'#3b82f6', en_proceso:'#CA8A04', completada:'#10b981', cancelada:'#ef4444' };
+const LABOR_ARTICLE_TYPE_ID = 4; // catalogo "Mano de Obra", el mismo que usa la Orden de Trabajo
 
-const MEASUREMENT_ROWS = [
-  { key:'sin_trabajar', label:'Voltaje / Sin trabajar' },
-  { key:'trabajando',   label:'Trabajando' },
-  { key:'resistencia',  label:'Resistencia línea a línea' },
-  { key:'monofasico',   label:'Monofásico' },
-  { key:'aislamiento',  label:'Medición de aislamiento' },
-  { key:'amperios',     label:'Amperios en placa' },
+// Mismas pestañas que la Orden de Trabajo; la última suma los precios y las firmas.
+const TABS = [
+  { id:'general', label:'Datos Generales' },
+  { id:'medicion_ingreso', label:'Med. de ingreso' },
+  { id:'componentes', label:'Componentes' },
+  { id:'tornillos', label:'Tornillos' },
+  { id:'observaciones', label:'Observaciones' },
+  { id:'medicion_entrega', label:'Med. de entrega' },
+  { id:'cierre', label:'Cierre y precios' },
 ];
-const emptyMeasurements = () => MEASUREMENT_ROWS.map(r => ({ key:r.key, c1:'', c2:'', c3:'', c4:'', c5:'', c6:'', nota:'' }));
 
-const COMPONENT_ROWS = ['Motor','Bomba','Tanque','Ablandador','Contactor','Flip-On','Presostato','Guardanivel','Protector Fase','Timer','Válv. Pie','Válv. Cheque','Válv. Esfera'];
-const emptyComponents = () => COMPONENT_ROWS.map(name => ({ component:name, marca:'', modelo:'', serie:'', especificacion:'', valor:'' }));
-
-const ADDITIONAL_SPEC_FIELDS = [
-  ['hp_motor','HP (Motor)'], ['voltaje','Voltaje'], ['hp_bomba','HP (Bomba)'], ['etapas','Etapas'],
-  ['precarga_tanque','Precarga del Tanque'], ['tipo_filtro','Tipo de Filtro / Lbs.'],
-  ['bimetalico','Bimetálico Graduado a'], ['tamano','Tamaño'], ['rango_presion','Rango de Presión (PSI)'],
-  ['distancia_electrodos','Distancia entre Electrodos'], ['alto_volt','Alto Volt.'], ['bajo_volt','Bajo Volt.'],
-  ['desb','Desb.'], ['retardo','Retardo'], ['programacion','Programación'], ['manometro','Manómetro'],
-  ['cheque_bypass','Cheque By-Pass'], ['recirculacion','Recirculación'], ['valv_flote','Válv. Flote'],
-];
-const emptySpecs = () => Object.fromEntries(ADDITIONAL_SPEC_FIELDS.map(([k]) => [k, '']));
-
-const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
-const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
-const inpSm = { ...inp, padding:'5px 6px', fontSize:11 };
-const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
-const sec = { background:C.card, border:'1px solid '+C.border, borderRadius:10, marginBottom:12, overflow:'hidden' };
-const secHdr = { background:C.dark, borderBottom:'1px solid '+C.border, padding:'9px 16px', display:'flex', alignItems:'center', gap:8 };
-const secTtl = { fontSize:11, fontWeight:800, color:C.orange, letterSpacing:'1px', textTransform:'uppercase' };
-const secBody = { padding:'14px 16px' };
-
-const SectionHeader = ({ title }) => (
-  <div style={secHdr}>
-    <span style={{ width:6, height:6, background:C.orange, borderRadius:'50%', display:'inline-block' }}></span>
-    <span style={secTtl}>{title}</span>
-  </div>
-);
 const SaveIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
   </svg>
 );
+
 export default function ServiceOrderFormPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
   const [clients, setClients] = useState([]);
+  const [laborArticles, setLaborArticles] = useState([]);
   const [saving, setSaving] = useState(false);
   const [orderNumber, setOrderNumber] = useState('—');
   const [signingLink, setSigningLink] = useState(null);
   const [loadingLink, setLoadingLink] = useState(false);
   const [showPdf, setShowPdf] = useState(false); // true mientras el visor de PDF esta abierto
+  const [activeTab, setActiveTab] = useState('general');
   const [form, setForm] = useState({
-    client_id:'', machine_id:null, caller_name:'', client_address:'', client_nit:'', client_phone:'',
-    visit_date:new Date().toISOString().slice(0,10), visit_time:'', reported_problem:'',
-    equipment_name:'', brand:'', model:'', serial:'', status:'programada',
-    transformer_bank:'', generator:'', voltage_source:'',
-    pump_from:'', pump_to:'', well_type:'', diameter:'', total_depth:'', static_level:'',
-    dynamic_level:'', gpm:'', pipe_count:'', air_line:'', cable_gauge:'', sleeve:'', pool_dimensions:'',
-    technical_report:'', arrival_time:'', departure_time:'',
+    client_id:'', machine_id:null, received_at:new Date().toISOString().slice(0,10),
+    delivery_at:'', next_service_at:'', reported_problem:'', code:'',
+    authorized_by:'', project:'', status:'programada',
+    equipment_name:'', equipment_type: emptyEquipmentType(), brand:'', model:'', serial:'',
+    kw:'', voltage:'', amperage:'', rpm:'', hp:'', frame:'',
+    pump_brand:'', pump_impeller:'', pump_bm:'', pump_seal_size:'', pump_seal_type:'',
+    physical_parts:[], retainers_count:'', shaft_rectify_mm:'', bearings_count:'', bearings_mm:'', bearings_mm_2:'',
+    seal_liner_mm:'', front_cover_mm:'', rear_cover_mm:'', fan_hole_mm:'', lathe_kw:'', lathe_hp:'', lathe_note:'', physical_other:'',
+    screws: emptyScrews(),
+    measurement_intake: emptyMeasurementIntake(), measurement_delivery: emptyMeasurementDelivery(),
+    work_type:'', work_types:[], observations:'', internal_notes:'',
+    quotation_number:'', dte_number:'', oc_number:'',
+    tech_disarm:'', tech_assemble:'',
+    supervisor_aeg_receive:'', supervisor_aeg_deliver:'', supervisor_client_deliver:'', supervisor_client_receive:'',
+    shipping:'', whatsapp_number:'',
+    torno_price:'', parts_price:'', labor_article_id:null, labor_price:'',
     tech_signature_url:null, tech_signature_name:null, client_signature_url:null, client_signature_name:null,
   });
-  const [measurements, setMeasurements] = useState(emptyMeasurements());
-  const [components, setComponents] = useState(emptyComponents());
-  const [specs, setSpecs] = useState(emptySpecs());
+  const [items, setItems] = useState(DEFAULT_ITEMS.map(n => ({ name:n, quantity:1, has_item:false })));
 
   useEffect(() => {
     clientsApi.list().then(setClients);
+    articlesApi.listByType(LABOR_ARTICLE_TYPE_ID).then(setLaborArticles);
     if (isEdit) {
       serviceOrdersApi.get(id).then(order => {
-        setOrderNumber(order.number || '—');
-        setForm(f => ({ ...f, ...order,
-          visit_date: order.visit_date?.slice(0,10) || '',
+        const { items:oi, ...rest } = order;
+        setOrderNumber(rest.number || '—');
+        setForm(f => ({ ...f, ...rest,
+          // Las ordenes de antes de la migracion no tienen fecha de ingreso: es su fecha de visita.
+          received_at: (rest.received_at || rest.visit_date)?.slice(0,10) || '',
+          delivery_at: rest.delivery_at?.slice(0,10) || '',
+          next_service_at: rest.next_service_at?.slice(0,10) || '',
+          equipment_type: normalizeEquipmentType(rest.equipment_type),
+          physical_parts: rest.physical_parts || [],
+          screws: (rest.screws && rest.screws.length) ? rest.screws : emptyScrews(),
+          measurement_intake: normalizeMeasurement(rest.measurement_intake, 'intake'),
+          measurement_delivery: normalizeMeasurement(rest.measurement_delivery, 'delivery'),
+          work_types: rest.work_types || [],
         }));
-        if (order.electrical_measurements?.length) setMeasurements(order.electrical_measurements);
-        if (order.installed_components?.length) setComponents(order.installed_components);
-        if (order.additional_specs) setSpecs(s => ({ ...s, ...order.additional_specs }));
+        if (oi?.length) setItems(oi);
       });
     }
   }, [id]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const setMeasurement = (i, k, v) => setMeasurements(prev => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const setComponent = (i, k, v) => setComponents(prev => prev.map((r, idx) => idx === i ? { ...r, [k]: v } : r));
-  const setSpec = (k, v) => setSpecs(prev => ({ ...prev, [k]: v }));
+  // Marca o desmarca un componente (que piezas trae el equipo al llegar).
+  const toggleItem = (i) => setItems(p => p.map((it, idx) => idx === i ? { ...it, has_item: !it.has_item } : it));
 
   const handleSubmit = async () => {
-    if (!form.visit_date) return notify.error('Ingresa la fecha de visita');
+    if (!form.received_at) return notify.error('Ingresa la fecha de ingreso');
     setSaving(true);
     try {
-      const payload = { ...form, electrical_measurements: measurements, installed_components: components, additional_specs: specs };
+      const payload = {
+        ...form, visit_date: form.received_at,
+        equipment_name: deriveEquipmentName(form), work_type: deriveWorkType(form), items,
+      };
       if (isEdit) await serviceOrdersApi.update(id, payload);
       else await serviceOrdersApi.create(payload);
       notify.success(isEdit ? 'Orden actualizada' : 'Orden creada');
       navigate('/ordenes-servicio');
-    } catch(e) { notify.error(e.response?.data?.error || e.message || 'Error al guardar'); }
+    } catch(e) { notify.error(e.response?.data?.message || e.response?.data?.error || e.message || 'Error al guardar'); }
     finally { setSaving(false); }
   };
 
@@ -140,7 +146,9 @@ export default function ServiceOrderFormPage() {
   const handleSaveSignature = async (role, file, name) => {
     if (!isEdit) return notify.error('Guarda la orden primero para poder firmarla');
     const updated = await serviceOrdersApi.setSignature(id, file, role, name);
-    setForm(f => ({ ...f, ...updated }));
+    setForm(f => ({ ...f,
+      tech_signature_url: updated.tech_signature_url, tech_signature_name: updated.tech_signature_name,
+      client_signature_url: updated.client_signature_url, client_signature_name: updated.client_signature_name }));
   };
 
   // Genera (o recupera) el enlace publico para que el cliente firme desde su propio
@@ -159,9 +167,36 @@ export default function ServiceOrderFormPage() {
 
   const statusColor = STATUS_COLORS[form.status] || '#3b82f6';
   const statusLabel = STATUS_OPTIONS.find(s => s.value === form.status)?.label || 'Programada';
-  const g4 = isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr';
-  const g3 = isMobile ? '1fr 1fr' : '1fr 1fr 1fr';
-  const g2 = isMobile ? '1fr' : '1fr 1fr';
+  const gridCols = isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr';
+
+  // Lo que el sistema necesita y NO esta en el papel: va arriba de la primera pestaña.
+  const extras = (
+    <div style={sec}>
+      <SectionHeader title="Datos del sistema" />
+      <div style={secBody}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap:10 }}>
+          <div>
+            <label style={lbl}>Estado</label>
+            <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
+          </div>
+          <div>
+            <label style={lbl}>Máquina del cliente (opcional)</label>
+            <MachinePicker
+              clientId={form.client_id}
+              clients={clients}
+              value={form.machine_id}
+              onChange={v => set('machine_id', v)}
+              onMachineLoaded={m => setForm(f => ({ ...f, machine_id: m.id,
+                equipment_name: m.name || f.equipment_name, brand: m.brand || f.brand,
+                model: m.model || f.model,
+                serial: m.serial || f.serial, kw: m.kw || f.kw, voltage: m.voltage || f.voltage,
+                amperage: m.amperage || f.amperage, rpm: m.rpm || f.rpm, hp: m.hp || f.hp }))}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
@@ -189,184 +224,81 @@ export default function ServiceOrderFormPage() {
         </div>
       </div>
 
-      <div style={{ padding: isMobile ? '12px' : '16px 20px', maxWidth:1000, margin:'0 auto' }}>
+      {/* Pestañas: las mismas que la Orden de Trabajo */}
+      <div style={{ display:'flex', gap:6, overflowX:'auto', padding: isMobile ? '10px 12px' : '10px 20px', background:C.card, borderBottom:'1px solid '+C.border }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setActiveTab(t.id)}
+            style={{
+              whiteSpace:'nowrap', padding:'8px 14px', borderRadius:8, border:'1px solid '+(activeTab===t.id ? C.orange : C.border),
+              background: activeTab===t.id ? C.orange+'18' : C.dark, color: activeTab===t.id ? C.orange : C.muted,
+              fontSize:12, fontWeight:700, cursor:'pointer',
+            }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
 
-        {/* 1. DATOS DEL CLIENTE */}
-        <div style={sec}>
-          <SectionHeader title="Datos del Cliente" />
-          <div style={secBody}>
-            <div style={{ display:'grid', gridTemplateColumns:g2, gap:10 }}>
-              <div>
-                <label style={lbl}>Cliente (catálogo, opcional)</label>
-                <ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />
+      <div style={{ padding: isMobile ? '12px' : '16px 20px', maxWidth:960, margin:'0 auto' }}>
+
+        {activeTab === 'general' && (
+          <GeneralTab
+            form={form} set={set} setForm={setForm} isMobile={isMobile} extras={extras}
+            clientPicker={<ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />}
+          />
+        )}
+
+        {activeTab === 'medicion_ingreso' && (
+          <MeasurementTab title="Medición como ingresa equipo" variant="intake" isMobile={isMobile}
+            value={form.measurement_intake} onChange={v => set('measurement_intake', v)} />
+        )}
+
+        {activeTab === 'componentes' && <ComponentsTab items={items} onToggle={toggleItem} isMobile={isMobile} />}
+
+        {activeTab === 'tornillos' && <ScrewsTab value={form.screws} onChange={v => set('screws', v)} />}
+
+        {activeTab === 'observaciones' && <ObservationsTab form={form} set={set} />}
+
+        {activeTab === 'medicion_entrega' && (
+          <MeasurementTab title="Medición como se entrega equipo" variant="delivery" isMobile={isMobile}
+            value={form.measurement_delivery} onChange={v => set('measurement_delivery', v)} />
+        )}
+
+        {activeTab === 'cierre' && (
+          <>
+            <ClosingFields form={form} set={set} isMobile={isMobile} />
+
+            {/* Precios estimados: NUNCA se imprimen en el PDF (igual que en la Orden de Trabajo). */}
+            <div style={sec}>
+              <SectionHeader title="Precios Estimados" />
+              <div style={secBody}>
+                <div style={{ display:'grid', gridTemplateColumns: gridCols, gap:10 }}>
+                  <div>
+                    <label style={lbl}>Precio de Torno</label>
+                    <CurrencyInput value={form.torno_price||''} onChange={e => set('torno_price', e.target.value)} style={inp} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Precio Estimado de Repuestos</label>
+                    <CurrencyInput value={form.parts_price||''} onChange={e => set('parts_price', e.target.value)} style={inp} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Mano de Obra (catalogo)</label>
+                    <Combobox
+                      value={form.labor_article_id||''}
+                      onChange={v => {
+                        const art = laborArticles.find(a => String(a.id) === String(v));
+                        setForm(f => ({ ...f, labor_article_id: v, labor_price: art ? art.price : f.labor_price }));
+                      }}
+                      options={laborArticles.map(a => ({ value:a.id, label:a.name + ' (Q' + Number(a.price).toFixed(2) + ')' }))}
+                      placeholder="Seleccionar..."
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Precio de Mano de Obra</label>
+                    <CurrencyInput value={form.labor_price||''} onChange={e => set('labor_price', e.target.value)} style={inp} />
+                  </div>
+                </div>
               </div>
-              <div><label style={lbl}>Nombre del Cliente / Dirección</label><input value={form.client_address||''} onChange={withUppercase(e => set('client_address', e.target.value))} style={inp} placeholder="Dirección" /></div>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:g4, gap:10, marginTop:10 }}>
-              <div><label style={lbl}>Persona que llamó</label><input value={form.caller_name||''} onChange={withUppercase(e => set('caller_name', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>NIT</label><input value={form.client_nit||''} onChange={withUppercase(e => set('client_nit', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Teléfono</label><input value={form.client_phone||''} onChange={e => set('client_phone', e.target.value)} style={inp} /></div>
-              <div>
-                <label style={lbl}>Estado</label>
-                <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
-              </div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:g4, gap:10, marginTop:10 }}>
-              <div>
-                <label style={lbl}>Fecha *</label>
-                <input type='date' value={form.visit_date||''} onChange={e => set('visit_date', e.target.value)} style={inp}
-                  onClick={e => e.target.showPicker && e.target.showPicker()} />
-              </div>
-              <div><label style={lbl}>Hora</label><input type='time' value={form.visit_time||''} onChange={e => set('visit_time', e.target.value)} style={inp} /></div>
-              <div style={{ gridColumn:'span 2' }}><label style={lbl}>Tipo de Equipo</label><input value={form.equipment_name||''} onChange={withUppercase(e => set('equipment_name', e.target.value))} style={inp} /></div>
-            </div>
-            <div style={{ marginTop:10 }}>
-              <label style={lbl}>Máquina del Cliente (opcional)</label>
-              <MachinePicker
-                clientId={form.client_id}
-                clients={clients}
-                value={form.machine_id}
-                onChange={v => set('machine_id', v)}
-                onMachineLoaded={m => setForm(f => ({ ...f, machine_id: m.id,
-                  equipment_name: m.name || f.equipment_name, brand: m.brand || f.brand,
-                  model: m.model || f.model, serial: m.serial || f.serial }))}
-              />
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:g3, gap:10, marginTop:10 }}>
-              <div><label style={lbl}>Marca</label><input value={form.brand||''} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Modelo</label><input value={form.model||''} onChange={withUppercase(e => set('model', e.target.value))} style={inp} /></div>
-              <div><label style={lbl}>Serie</label><input value={form.serial||''} onChange={withUppercase(e => set('serial', e.target.value))} style={inp} /></div>
-            </div>
-            <div style={{ marginTop:10 }}>
-              <label style={lbl}>Problema Reportado</label>
-              <textarea value={form.reported_problem||''} onChange={withUppercase(e => set('reported_problem', e.target.value))} rows={2} style={{ ...inp, resize:'vertical' }} />
-            </div>
-          </div>
-        </div>
-
-        {/* 2. FUENTE DE ENERGÍA */}
-        <div style={sec}>
-          <SectionHeader title="Fuente de Energía" />
-          <div style={secBody}>
-            <div style={{ display:'grid', gridTemplateColumns:g3, gap:10 }}>
-              <div><label style={lbl}>Banco de Transformadores</label><input value={form.transformer_bank||''} onChange={e => set('transformer_bank', e.target.value)} style={inp} placeholder="kva" /></div>
-              <div><label style={lbl}>Generador</label><input value={form.generator||''} onChange={e => set('generator', e.target.value)} style={inp} placeholder="kva/kw" /></div>
-              <div><label style={lbl}>Voltaje</label><input value={form.voltage_source||''} onChange={e => set('voltage_source', e.target.value)} style={inp} /></div>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. MEDICIONES ELÉCTRICAS */}
-        <div style={sec}>
-          <SectionHeader title="Mediciones Eléctricas de la Fuente y el Motor" />
-          <div style={{ ...secBody, overflowX:'auto' }}>
-            <table style={{ width:'100%', minWidth:640, borderCollapse:'collapse', fontSize:11 }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign:'left', padding:'4px 6px', color:C.muted, fontSize:10, textTransform:'uppercase' }}>Medición</th>
-                  {[1,2,3,4,5,6].map(n => <th key={n} style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Col. {n}</th>)}
-                  <th style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Nota</th>
-                </tr>
-              </thead>
-              <tbody>
-                {MEASUREMENT_ROWS.map((row, i) => (
-                  <tr key={row.key}>
-                    <td style={{ padding:'3px 6px', fontWeight:700, color:C.text, whiteSpace:'nowrap' }}>{row.label}</td>
-                    {['c1','c2','c3','c4','c5','c6'].map(c => (
-                      <td key={c} style={{ padding:'2px' }}><input value={measurements[i]?.[c]||''} onChange={e => setMeasurement(i, c, e.target.value)} style={inpSm} /></td>
-                    ))}
-                    <td style={{ padding:'2px' }}><input value={measurements[i]?.nota||''} onChange={e => setMeasurement(i, 'nota', e.target.value)} style={inpSm} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 4. CONDICIONES DE TRABAJO DEL EQUIPO */}
-        <div style={sec}>
-          <SectionHeader title="Condiciones de Trabajo del Equipo" />
-          <div style={secBody}>
-            <div style={{ display:'grid', gridTemplateColumns:g4, gap:10 }}>
-              <div><label style={lbl}>Bombea de</label><input value={form.pump_from||''} onChange={e => set('pump_from', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>A</label><input value={form.pump_to||''} onChange={e => set('pump_to', e.target.value)} style={inp} /></div>
-              <div>
-                <label style={lbl}>Tipo Pozo</label>
-                <Combobox value={form.well_type||''} onChange={v => set('well_type', v)} options={[{value:'sumergible',label:'Sumergible'},{value:'centrifuga',label:'Centrífuga'}]} placeholder="Seleccionar..." />
-              </div>
-              <div><label style={lbl}>Diámetro</label><input value={form.diameter||''} onChange={e => set('diameter', e.target.value)} style={inp} /></div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:g4, gap:10, marginTop:10 }}>
-              <div><label style={lbl}>Profundidad Total</label><input value={form.total_depth||''} onChange={e => set('total_depth', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Nivel Estático</label><input value={form.static_level||''} onChange={e => set('static_level', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Nivel Dinámico</label><input value={form.dynamic_level||''} onChange={e => set('dynamic_level', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>GPM</label><input value={form.gpm||''} onChange={e => set('gpm', e.target.value)} style={inp} /></div>
-            </div>
-            <div style={{ display:'grid', gridTemplateColumns:g4, gap:10, marginTop:10 }}>
-              <div><label style={lbl}>Cantidad de Tubos</label><input value={form.pipe_count||''} onChange={e => set('pipe_count', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Línea Aire</label><input value={form.air_line||''} onChange={e => set('air_line', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Calibre de Cable</label><input value={form.cable_gauge||''} onChange={e => set('cable_gauge', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Funda</label><input value={form.sleeve||''} onChange={e => set('sleeve', e.target.value)} style={inp} /></div>
-            </div>
-            <div style={{ marginTop:10 }}>
-              <label style={lbl}>Dimensiones de la Piscina</label>
-              <input value={form.pool_dimensions||''} onChange={e => set('pool_dimensions', e.target.value)} style={inp} />
-            </div>
-          </div>
-        </div>
-
-        {/* 5. DATOS DEL EQUIPO Y COMPONENTES INSTALADOS */}
-        <div style={sec}>
-          <SectionHeader title="Datos del Equipo y Componentes Instalados" />
-          <div style={{ ...secBody, overflowX:'auto' }}>
-            <table style={{ width:'100%', minWidth:640, borderCollapse:'collapse', fontSize:11 }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign:'left', padding:'4px 6px', color:C.muted, fontSize:10, textTransform:'uppercase' }}>Componente</th>
-                  <th style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Marca</th>
-                  <th style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Modelo</th>
-                  <th style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Serie</th>
-                  <th style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Especificación</th>
-                  <th style={{ padding:'4px 6px', color:C.muted, fontSize:10 }}>Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMPONENT_ROWS.map((name, i) => (
-                  <tr key={name}>
-                    <td style={{ padding:'3px 6px', fontWeight:700, color:C.text, whiteSpace:'nowrap' }}>{name}</td>
-                    {['marca','modelo','serie','especificacion','valor'].map(c => (
-                      <td key={c} style={{ padding:'2px' }}><input value={components[i]?.[c]||''} onChange={e => setComponent(i, c, e.target.value)} style={inpSm} /></td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* 6. ESPECIFICACIONES ADICIONALES */}
-        <div style={sec}>
-          <SectionHeader title="Especificaciones Adicionales" />
-          <div style={secBody}>
-            <div style={{ display:'grid', gridTemplateColumns:g3, gap:10 }}>
-              {ADDITIONAL_SPEC_FIELDS.map(([key, label]) => (
-                <div key={key}><label style={lbl}>{label}</label><input value={specs[key]||''} onChange={e => setSpec(key, e.target.value)} style={inp} /></div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 7. REPORTE TÉCNICO */}
-        <div style={sec}>
-          <SectionHeader title="Reporte Técnico" />
-          <div style={secBody}>
-            <textarea value={form.technical_report||''} onChange={e => set('technical_report', e.target.value)} rows={6} style={{ ...inp, resize:'vertical' }} />
-            <div style={{ display:'grid', gridTemplateColumns:g2, gap:10, marginTop:10 }}>
-              <div><label style={lbl}>Hora de Llegada</label><input type='time' value={form.arrival_time||''} onChange={e => set('arrival_time', e.target.value)} style={inp} /></div>
-              <div><label style={lbl}>Hora de Salida de Obra</label><input type='time' value={form.departure_time||''} onChange={e => set('departure_time', e.target.value)} style={inp} /></div>
-            </div>
-          </div>
-        </div>
 
         {/* FIRMAS */}
         <div style={sec}>
@@ -418,6 +350,9 @@ export default function ServiceOrderFormPage() {
             </div>
           </div>
         </div>
+          </>
+        )}
+
         <div style={{ paddingBottom:32 }} />
       </div>
 

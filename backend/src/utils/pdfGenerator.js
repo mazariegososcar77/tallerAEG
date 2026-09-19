@@ -278,35 +278,35 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   return doc;
 }
 
-// Arma el PDF de una ORDEN DE TRABAJO: la ficha del equipo que el cliente
-// dejo en el taller (datos generales, especificaciones tecnicas, trabajo a
-// realizar, partes recibidas) y espacios de firma para el cliente y el
-// tecnico. A proposito NO muestra precios (eso es del modulo de
-// Cotizaciones/Facturacion) — ver nota en backend/CLAUDE.md.
-// Nombres en español, en el mismo orden del papel, para los checkboxes y filas fijas
-// de la Orden de Trabajo (ver 029_work_orders_paper_form.sql -- se guardan como JSON).
-// IMPORTANTE: aqui nunca se lee torno_price/parts_price/labor_price -- la Orden de
-// Trabajo es un documento operativo/tecnico, el precio va solo en la Cotizacion.
-const WORK_TYPE_LABELS = {
-  mantenimiento: 'Mantenimiento',
-  rebobinado: 'Rebobinado',
-  cambio_conexion: 'Cambio de conexión',
-  calculo_voltaje: 'Cálculo de voltaje',
-  extraccion_humedad: 'Extracción de humedad',
-  extraccion_lodo_8m3: 'Extracción de lodo (8 m3)',
-  extraccion_lodo_12m3: 'Extracción de lodo (12 m3)',
+// Arma el PDF de una ORDEN DE TRABAJO: el talonario fisico A.E.G., campo por campo
+// y en el mismo orden del papel (ver frontend/src/lib/workOrderTalonario.js, que es
+// la misma definicion del lado de la pantalla). Muestra solo lo que esta marcado o
+// lleno. A proposito NO muestra precios (eso es del modulo de Cotizaciones/
+// Facturacion) — ver nota en backend/CLAUDE.md: aqui nunca se lee
+// torno_price/parts_price/labor_price.
+const TALONARIO_WORK = [
+  ['rebobinado', 'Rebobinado'], ['cambio_conexion', 'Cambio conexión'], ['calculo_voltaje', 'Cálculo de voltaje'],
+  ['mantenimiento', 'Mantenimiento'], ['extraccion_humedad', 'Extracción de humedad'],
+];
+const TALONARIO_LODO = [['extraccion_lodo_8m3', 'Extracción de lodo 8 mts³'], ['extraccion_lodo_12m3', 'Extracción de lodo 12 mts³']];
+const EQUIPMENT_LABELS = {
+  motor_trifasico: 'Motor trifásico', motor_monofasico: 'Motor monofásico', motor_ventilador: 'Motor ventilador',
+  motor_reductor: 'Motor reductor', bomba_sumergible: 'Bomba sumergible', bomba_centrifuga: 'Bomba centrífuga',
+  blower: 'Blower', generador: 'Generador',
 };
-const EQUIPMENT_CATEGORY_LABELS = { motor: 'Motor', bomba: 'Bomba', blower: 'Blower', generador: 'Generador', aireador: 'Aireador', turbina: 'Turbina' };
-const EQUIPMENT_SUBTYPE_LABELS = {
-  trifasico: 'Trifásico', monofasico: 'Monofásico', reductor: 'Reductor', ventilador: 'Ventilador', otros: 'Otros',
-  sumergible: 'Sumergible', centrifuga: 'Centrífuga',
+const AIREADOR_LABELS = { '1.5Kw': '1.5 Kw', '2Hp': '2Hp', '2.2Kw': '2.2 Kw', '3Hp': '3Hp', '3.7Kw': '3.7 Kw', '5Hp': '5Hp' };
+const LEGACY_EQUIPMENT = {
+  'motor:trifasico': 'motor_trifasico', 'motor:monofasico': 'motor_monofasico', 'motor:ventilador': 'motor_ventilador',
+  'motor:reductor': 'motor_reductor', 'bomba:sumergible': 'bomba_sumergible', 'bomba:centrifuga': 'bomba_centrifuga',
 };
 const PUMP_SEAL_TYPE_LABELS = { viton: 'Vitón', nitrilo: 'Nitrilo', conico: 'Cónico' };
 const PHYSICAL_PART_LABELS = { variador: 'Variador', estator: 'Estator', rotor: 'Rotor', otros: 'Otros' };
 const SCREW_ROWS = [
-  'Motor', 'Tolva', 'Caja de conexión', 'Tapa de conexión', 'Bornera', 'Bomba',
-  'Retén cojinete delantero', 'Retén cojinete trasero', 'Impulsor', 'Turbina',
-  'Castigadores de polea', 'Roldanas tornillo impulsor', 'Tuercas', 'Washas',
+  ['Motor', 'Tornillos de motor'], ['Tolva', 'Tornillos de tolva'], ['Caja de conexión', 'Tornillos de caja de conexión'],
+  ['Tapa de conexión', 'Tornillos de tapa de conexión'], ['Bornera', 'Tornillos de bornera'], ['Bomba', 'Tornillos de bomba'],
+  ['Retén cojinete delantero', 'Tornillos Reten. coj. delantero'], ['Retén cojinete trasero', 'Tornillos Reten. coj. trasero'],
+  ['Impulsor', 'Tornillo Impulsor'], ['Turbina', 'Tornillo Turbina'], ['Castigadores de polea', 'Castigadores de polea'],
+  ['Roldanas tornillo impulsor', 'Roldanas tornillo impulsor'], ['Tuercas', 'Tuercas'], ['Washas', 'Washas'],
 ];
 const MEASUREMENT_LINE_FIELDS = [
   ['insulation', 'Medición de aislamiento'],
@@ -314,7 +314,49 @@ const MEASUREMENT_LINE_FIELDS = [
   ['amperage', 'Medición de amperaje'],
 ];
 
+// Acepta el tipo de equipo en el formato nuevo (casillas) o en el viejo (categoria + subtipos).
+function etiquetasEquipo(et) {
+  const e = et && typeof et === 'object' ? et : {};
+  const tipos = [];
+  let aireadores = Array.isArray(e.aireador_sizes) ? e.aireador_sizes : [];
+  let turbinaKw = e.turbina_kw || '';
+  if ('category' in e) {
+    if (e.category === 'blower') tipos.push('blower');
+    if (e.category === 'generador') tipos.push('generador');
+    for (const s of e.subtypes || []) if (LEGACY_EQUIPMENT[`${e.category}:${s}`]) tipos.push(LEGACY_EQUIPMENT[`${e.category}:${s}`]);
+    aireadores = e.category === 'aireador' && e.aireador_size ? [e.aireador_size] : [];
+    if (e.category !== 'turbina') turbinaKw = '';
+  } else {
+    tipos.push(...(Array.isArray(e.subtypes) ? e.subtypes : []));
+  }
+  return {
+    tipos: tipos.map((t) => EQUIPMENT_LABELS[t] || t),
+    aireadores: aireadores.map((a) => AIREADOR_LABELS[a] || a),
+    turbinaKw, turbinaHp: e.turbina_hp || '',
+  };
+}
+// Conexion y temperatura: tres cajas (L1/L2/L3) en el formato nuevo, un solo texto en el viejo.
+const triple = (v) => (v && typeof v === 'object' ? v : { l1: v || '', l2: '', l3: '' });
+
+const ESTADOS_ORDEN_TRABAJO = {
+  recibido: 'Recibido', en_proceso: 'En Proceso', listo: 'Listo', entregado: 'Entregado',
+  garantia: 'Garantía', devolucion: 'Devolución',
+  // Estados de la Orden de Servicio (que usa este mismo formato).
+  programada: 'Programada', completada: 'Completada', cancelada: 'Cancelada',
+};
+
+// La Orden de Trabajo y la Orden de Servicio comparten el mismo formulario (el talonario
+// fisico), asi que comparten este PDF. La de Servicio ademas imprime las firmas
+// capturadas en pantalla (`firmas`) y su propio titulo/pie.
 export function generarOrdenTrabajoPDF(order, settings) {
+  return armarTalonarioPDF(order, settings, { titulo: 'ORDEN DE TRABAJO', pie: 'Orden de Trabajo' });
+}
+
+export function generarOrdenServicioPDF(order, settings, locales = null) {
+  return armarTalonarioPDF(order, settings, { titulo: 'ORDEN DE SERVICIO', pie: 'Orden de Servicio', firmas: true, locales });
+}
+
+function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, locales = null }) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -336,6 +378,14 @@ export function generarOrdenTrabajoPDF(order, settings) {
     doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text(label, x, y);
     doc.font('Helvetica').text(value || '-', x + labelW, y, { width: CW / 2 - labelW - 10 });
   };
+  // Una fila con dos campos (izquierda / derecha); la fila solo se imprime si alguno tiene dato.
+  const fila = (a, b, labelWA = 110, labelWB = 110) => {
+    if (!a[1] && !(b && b[1])) return;
+    ensureSpace(14);
+    field(a[0], a[1], L, labelWA);
+    if (b) field(b[0], b[1], col2, labelWB);
+    y += 14;
+  };
   const threeColList = (items) => {
     if (!items.length) return;
     const cols3 = Math.floor(CW / 3);
@@ -348,6 +398,7 @@ export function generarOrdenTrabajoPDF(order, settings) {
     });
   };
   const yesNo = (v) => (v === 'si' ? 'Sí' : v === 'no' ? 'No' : null);
+  const marcados = (lista, valores) => lista.filter(([k]) => valores.includes(k)).map(([, label]) => label);
 
   // ── ENCABEZADO ───────────────────────────────────────────
   doc.rect(0, 0, W, 110).fill(AZUL);
@@ -359,7 +410,7 @@ export function generarOrdenTrabajoPDF(order, settings) {
   dibujarDatosEmpresa(doc, cfg);
 
   doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
-     .text('ORDEN DE TRABAJO', 270, 18, { width: 280, align: 'right' });
+     .text(titulo, 270, 18, { width: 280, align: 'right' });
   doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
      .text('No. ' + (order.number || '0001'), 350, 48, { width: 200, align: 'right' });
 
@@ -371,24 +422,57 @@ export function generarOrdenTrabajoPDF(order, settings) {
 
   let y = 122;
 
-  const statusLabels = { recibido: 'Recibido', en_proceso: 'En Proceso', listo: 'Listo', entregado: 'Entregado', cancelado: 'Cancelado' };
-  const statusLabel = statusLabels[order.status] || order.status || '-';
+  const statusLabel = ESTADOS_ORDEN_TRABAJO[order.status] || order.status || '-';
+  const fechaProximo = order.next_service_at ? new Date(order.next_service_at).toLocaleDateString('es-GT') : null;
 
-  // ── INFORMACION GENERAL ──────────────────────────────────
+  // ── DATOS GENERALES (encabezado del talonario) ───────────
   sectionHeader('INFORMACION GENERAL');
   field('Cliente:', order.client_name, L, 60);
   field('Estado:', statusLabel, col2, 50);
   y += 14;
+  fila(['Código:', order.code, ], ['Proyecto:', order.project], 60, 60);
+  fila(['Autorizado por:', order.authorized_by], ['Próximo servicio:', fechaProximo], 90, 100);
+  y += 6;
 
-  field('Autorizado por:', order.authorized_by, L, 90);
-  if (order.project) field('Proyecto:', order.project, col2, 60);
-  y += 14;
-
-  const fechaProximoServicio = order.next_service_at ? new Date(order.next_service_at).toLocaleDateString('es-GT') : null;
-  if (fechaProximoServicio) {
-    field('Próximo servicio:', fechaProximoServicio, L, 110);
+  // ── TRABAJO A REALIZAR (+ aireadores, turbina y tipo de equipo) ──
+  sectionHeader('TRABAJO A REALIZAR', NARANJA);
+  const workTypes = Array.isArray(order.work_types) ? order.work_types : [];
+  threeColList(marcados(TALONARIO_WORK, workTypes));
+  const eq = etiquetasEquipo(order.equipment_type);
+  if (eq.aireadores.length) fila(['Aireadores:', eq.aireadores.join(', ')], null, 75);
+  fila(['Turbina Kw:', eq.turbinaKw], ['Turbina Hp:', eq.turbinaHp], 75, 75);
+  if (eq.tipos.length) {
+    ensureSpace(14);
+    doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Tipo de equipo:', L, y);
     y += 14;
+    threeColList(eq.tipos);
   }
+  y += 6;
+
+  // ── FISICO / TORNO ───────────────────────────────────────
+  sectionHeader('FÍSICO / TORNO', NARANJA);
+  const physicalParts = Array.isArray(order.physical_parts) ? order.physical_parts : [];
+  threeColList(physicalParts.map((p) => PHYSICAL_PART_LABELS[p] || p));
+  fila(['Cambio cojinetes No.:', order.bearings_count], ['Cojinetes medida 1 (mm):', order.bearings_mm], 115, 125);
+  fila(['Cojinetes medida 2 (mm):', order.bearings_mm_2], ['Retenedores No.:', order.retainers_count], 125, 100);
+  fila(['Torno:', order.lathe_note], ['Rectificar eje (mm):', order.shaft_rectify_mm], 45, 115);
+  fila(['Tapa delantera (mm):', order.front_cover_mm], ['Tapa trasera (mm):', order.rear_cover_mm], 115, 105);
+  fila(['HP:', order.lathe_hp], ['KW:', order.lathe_kw], 30, 30);
+  fila(['Camisa sello (mm):', order.seal_liner_mm], ['Perforación ventilador (mm):', order.fan_hole_mm], 105, 145);
+  fila(['Otros:', order.physical_other], null, 45);
+  const lodo = marcados(TALONARIO_LODO, workTypes);
+  if (lodo.length) { y += 4; threeColList(lodo); }
+  y += 6;
+
+  // ── DATOS DEL EQUIPO ──────────────────────────────────────
+  sectionHeader('DATOS DEL EQUIPO');
+  fila(['HP:', order.hp], ['Kw:', order.kw], 30, 30);
+  fila(['Volt.:', order.voltage], ['Amp.:', order.amperage], 40, 40);
+  fila(['Marca:', order.brand], ['RPM:', order.rpm], 45, 40);
+  fila(['Modelo:', order.model], ['Frame:', order.frame], 50, 45);
+  fila(['Bomba marca:', order.pump_brand], ['Serie:', order.serial], 80, 40);
+  fila(['Impeller:', order.pump_impeller], ['B.M.:', order.pump_bm], 55, 35);
+  fila(['Medida de sello:', order.pump_seal_size], ['Tipo de sello:', PUMP_SEAL_TYPE_LABELS[order.pump_seal_type] || order.pump_seal_type], 90, 80);
   if (order.reported_problem) {
     ensureSpace(24);
     doc.fillColor(NEGRO).font('Helvetica-Bold').fontSize(9).text('Falla o problema:', L, y);
@@ -397,147 +481,25 @@ export function generarOrdenTrabajoPDF(order, settings) {
   }
   y += 6;
 
-  // ── TRABAJO A REALIZAR ────────────────────────────────────
-  sectionHeader('TRABAJO A REALIZAR', NARANJA);
-  const workTypes = Array.isArray(order.work_types) ? order.work_types : [];
-  if (workTypes.length > 0) {
-    threeColList(workTypes.map(t => WORK_TYPE_LABELS[t] || t));
-    y += 4;
-  }
-  if (order.work_type) {
-    ensureSpace(14);
-    field('Tipo de trabajo:', order.work_type, L, 95);
-    y += 14;
-  }
-  y += 6;
-
-  // ── TIPO DE EQUIPO ─────────────────────────────────────────
-  sectionHeader('TIPO DE EQUIPO');
-  const et = order.equipment_type || {};
-  field('Categoría:', EQUIPMENT_CATEGORY_LABELS[et.category] || et.category, L, 65);
-  y += 14;
-  if (Array.isArray(et.subtypes) && et.subtypes.length > 0) {
-    threeColList(et.subtypes.map(s => EQUIPMENT_SUBTYPE_LABELS[s] || s));
-  }
-  if (et.aireador_size) {
-    ensureSpace(14);
-    field('Aireador (tamaño):', et.aireador_size, L, 110);
-    y += 14;
-  }
-  if (et.turbina_kw) {
-    ensureSpace(14);
-    field('Turbina (Kw):', et.turbina_kw, L, 90);
-    y += 14;
-  }
-  y += 6;
-
-  // ── DATOS DEL EQUIPO ──────────────────────────────────────
-  sectionHeader('DATOS DEL EQUIPO');
-  field('Equipo:', order.equipment_name, L, 55);
-  field('Marca:', order.brand, col2, 45);
-  y += 14;
-
-  field('Serie/Modelo:', order.serial, L, 80);
-  y += 14;
-
-  const specs = [];
-  if (order.kw) specs.push('KW: ' + order.kw);
-  if (order.voltage) specs.push('Voltaje: ' + order.voltage);
-  if (order.amperage) specs.push('Amp: ' + order.amperage);
-  if (order.rpm) specs.push('RPM: ' + order.rpm);
-  if (order.hp) specs.push('HP: ' + order.hp);
-  if (order.frame) specs.push('Frame: ' + order.frame);
-
-  if (specs.length > 0) {
-    doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Especificaciones:', L, y);
-    doc.font('Helvetica').text(specs.join('   |   '), L + 100, y, { width: CW - 100 });
-    y += 14;
-  }
-  if (order.pump_impeller || order.pump_bm || order.pump_seal_size || order.pump_seal_type) {
-    ensureSpace(28);
-    field('Bomba - Impeller:', order.pump_impeller, L, 100);
-    field('B.M.:', order.pump_bm, col2, 35);
-    y += 14;
-    field('Medida de sello:', order.pump_seal_size, L, 100);
-    field('Tipo de sello:', PUMP_SEAL_TYPE_LABELS[order.pump_seal_type] || order.pump_seal_type, col2, 80);
-    y += 14;
-  }
-  y += 6;
-
-  // ── FISICA / MOTOR ─────────────────────────────────────────
-  sectionHeader('FÍSICA / MOTOR', NARANJA);
-  const physicalParts = Array.isArray(order.physical_parts) ? order.physical_parts : [];
-  if (physicalParts.length > 0) {
-    threeColList(physicalParts.map(p => PHYSICAL_PART_LABELS[p] || p));
-    y += 4;
-  }
-  ensureSpace(28);
-  field('Retenedores No.:', order.retainers_count, L, 100);
-  field('Rectificar eje (mm):', order.shaft_rectify_mm, col2, 120);
-  y += 14;
-  field('Cambio cojinetes No.:', order.bearings_count, L, 130);
-  field('Cojinetes (mm):', order.bearings_mm, col2, 95);
-  y += 14;
-  ensureSpace(28);
-  field('Camisa sello (mm):', order.seal_liner_mm, L, 115);
-  field('Tapa delantera (mm):', order.front_cover_mm, col2, 125);
-  y += 14;
-  field('Tapa trasera (mm):', order.rear_cover_mm, L, 110);
-  field('Perf. ventilador (mm):', order.fan_hole_mm, col2, 130);
-  y += 14;
-  if (order.lathe_kw || order.lathe_hp) {
-    ensureSpace(14);
-    field('Torno - KW:', order.lathe_kw, L, 65);
-    field('Torno - HP:', order.lathe_hp, col2, 65);
-    y += 14;
-  }
-  y += 6;
-
-  // ── TORNILLOS ────────────────────────────────────────────
-  sectionHeader('TORNILLOS');
-  const screws = Array.isArray(order.screws) ? order.screws : [];
-  doc.fontSize(8);
-  const scCols = Math.floor(CW / 2);
-  SCREW_ROWS.forEach((part, idx) => {
-    const row = screws.find(s => s.part === part) || {};
-    const col = idx % 2;
-    const px = L + col * scCols;
-    if (col === 0) ensureSpace(13);
-    doc.fillColor(NEGRO).font('Helvetica-Bold').text(part + ':', px, y, { width: scCols - 60 });
-    doc.font('Helvetica').text(row.quantity || '-', px + scCols - 55, y, { width: 50 });
-    if (col === 1 || idx === SCREW_ROWS.length - 1) y += 13;
-  });
-  doc.fontSize(9);
-  y += 6;
-
-  // ── PARTES DEL EQUIPO RECIBIDAS ───────────────────────────
-  const partes = (order.items || []).filter(i => i.has_item);
-  if (partes.length > 0) {
-    sectionHeader('PARTES DEL EQUIPO RECIBIDAS');
-    threeColList(partes.map(p => p.name));
-    y += 6;
-  }
-
   // ── MEDICION ─────────────────────────────────────────────
   const drawMeasurementBlock = (title, raw, variant) => {
     const m = raw || {};
     sectionHeader(title, NARANJA);
     doc.fontSize(9);
-    for (const [key, label] of MEASUREMENT_LINE_FIELDS) {
-      const row = m[key] || {};
+    const tres = (label, valor) => {
+      const t = triple(valor);
       ensureSpace(13);
       doc.fillColor(NEGRO).font('Helvetica-Bold').text(label + ':', L, y, { width: 150 });
-      doc.font('Helvetica').text('L1: ' + (row.l1 || '-') + '   L2: ' + (row.l2 || '-') + '   L3: ' + (row.l3 || '-'), L + 150, y, { width: CW - 150 });
+      doc.font('Helvetica').text('L1: ' + (t.l1 || '-') + '   L2: ' + (t.l2 || '-') + '   L3: ' + (t.l3 || '-'), L + 150, y, { width: CW - 150 });
       y += 13;
-    }
+    };
+    for (const [key, label] of MEASUREMENT_LINE_FIELDS) tres(label, m[key]);
     ensureSpace(13);
     field('Voltaje aplicado:', m.applied_voltage ? m.applied_voltage + ' V' : null, L, 105);
     field('Medición de tierra:', yesNo(m.ground), col2, 110);
     y += 13;
-    ensureSpace(13);
-    field('Conexión:', m.connection, L, 65);
-    field('Temperatura:', m.temperature, col2, 80);
-    y += 13;
+    tres('Conexión', m.connection);
+    tres('Medición de temperatura', m.temperature);
     ensureSpace(13);
     field('Distancia polea:', m.pulley_distance, L, 90);
     field('Distancia acople:', m.coupling_distance, col2, 100);
@@ -557,288 +519,102 @@ export function generarOrdenTrabajoPDF(order, settings) {
     }
     y += 6;
   };
-  drawMeasurementBlock('MEDICIÓN — COMO INGRESA EQUIPO', order.measurement_intake, 'intake');
-  drawMeasurementBlock('MEDICIÓN — COMO SE ENTREGA EQUIPO', order.measurement_delivery, 'delivery');
+  drawMeasurementBlock('MEDICIÓN COMO INGRESA EQUIPO', order.measurement_intake, 'intake');
+
+  // ── COMPONENTES (partes del equipo recibidas) ─────────────
+  const partes = (order.items || []).filter(i => i.has_item);
+  if (partes.length > 0) {
+    sectionHeader('COMPONENTES RECIBIDOS');
+    threeColList(partes.map(p => p.name));
+    y += 6;
+  }
+
+  // ── TORNILLOS ────────────────────────────────────────────
+  sectionHeader('TORNILLOS');
+  const screws = Array.isArray(order.screws) ? order.screws : [];
+  doc.fontSize(8);
+  const scCols = Math.floor(CW / 2);
+  SCREW_ROWS.forEach(([part, label], idx) => {
+    const row = screws.find(s => s.part === part) || {};
+    const col = idx % 2;
+    const px = L + col * scCols;
+    if (col === 0) ensureSpace(13);
+    doc.fillColor(NEGRO).font('Helvetica-Bold').text(label + ':', px, y, { width: scCols - 60 });
+    doc.font('Helvetica').text(row.quantity || '-', px + scCols - 55, y, { width: 50 });
+    if (col === 1 || idx === SCREW_ROWS.length - 1) y += 13;
+  });
+  doc.fontSize(9);
+  y += 6;
 
   // ── OBSERVACIONES ──────────────────────────────────────────
+  sectionHeader('OBSERVACIONES', NARANJA);
   if (order.observations) {
-    sectionHeader('OBSERVACIONES', NARANJA);
     ensureSpace(20);
     doc.fillColor(NEGRO).font('Helvetica').fontSize(9).text(order.observations, L, y, { width: CW });
-    y += doc.heightOfString(order.observations, { width: CW }) + 10;
+    y += doc.heightOfString(order.observations, { width: CW }) + 6;
   }
+  ensureSpace(14);
+  doc.fillColor('#ef4444').font('Helvetica-Bold').fontSize(8).text('IMPORTANTE: ', L, y, { continued: true })
+     .fillColor(NEGRO).font('Helvetica').text('No nos hacemos responsables por equipos recibidos después de 30 días', { width: CW });
+  y += 18;
+
+  drawMeasurementBlock('MEDICIÓN COMO SE ENTREGA EQUIPO', order.measurement_delivery, 'delivery');
 
   // ── CIERRE ───────────────────────────────────────────────
   sectionHeader('CIERRE');
-  field('Técnico desarma:', order.tech_disarm, L, 105);
-  field('Técnico arma:', order.tech_assemble, col2, 85);
+  field('Técnico A.E.G. desarma:', order.tech_disarm, L, 125);
+  field('Técnico A.E.G. arma:', order.tech_assemble, col2, 105);
   y += 14;
-  field('Superv. AEG recibe:', order.supervisor_aeg_receive, L, 115);
-  field('Superv. AEG entrega:', order.supervisor_aeg_deliver, col2, 120);
+  field('Superv. A.E.G. recibe:', order.supervisor_aeg_receive, L, 115);
+  field('Superv. cliente entrega:', order.supervisor_client_deliver, col2, 130);
   y += 14;
-  field('Superv. cliente entrega:', order.supervisor_client_deliver, L, 135);
-  field('Superv. cliente recibe:', order.supervisor_client_receive, col2, 135);
+  field('Superv. A.E.G. entrega:', order.supervisor_aeg_deliver, L, 125);
+  field('Superv. cliente recibe:', order.supervisor_client_receive, col2, 125);
   y += 14;
   field('Envío:', order.shipping, L, 40);
-  field('WhatsApp:', order.whatsapp_number, col2, 65);
+  field('Cotización #:', order.quotation_number, col2, 75);
   y += 14;
-  field('Cotización #:', order.quotation_number, L, 80);
-  field('DTE #:', order.dte_number, col2, 45);
+  field('DTE #:', order.dte_number, L, 45);
+  field('O.C. #:', order.oc_number, col2, 45);
   y += 14;
-  field('O.C. #:', order.oc_number, L, 55);
+  field('WhatsApp:', order.whatsapp_number, L, 60);
   y += 14;
   y += 6;
 
   // ── FIRMAS ─────────────────────────────────────────────────
-  ensureSpace(60);
+  ensureSpace(firmas ? 120 : 60);
   y += 20;
-  doc.moveTo(L, y + 30).lineTo(L + 150, y + 30).strokeColor('#94a3b8').lineWidth(0.5).stroke();
-  doc.moveTo(R - 150, y + 30).lineTo(R, y + 30).strokeColor('#94a3b8').lineWidth(0.5).stroke();
-  doc.fillColor(GRIS).fontSize(8).font('Helvetica')
-     .text('Firma Cliente', L, y + 34, { width: 150, align: 'center' })
-     .text('Firma Tecnico', R - 150, y + 34, { width: 150, align: 'center' });
+  if (firmas) {
+    const sigW = 200;
+    const sigH = 70;
+    const dibujar = (x, url, nombre, etiqueta) => {
+      doc.rect(x, y, sigW, sigH).lineWidth(0.7).strokeColor('#cbd5e1').stroke();
+      const filePath = archivoLocal(url, locales);
+      if (filePath) {
+        try { doc.image(filePath, x + 5, y + 5, { fit: [sigW - 10, sigH - 10], align: 'center', valign: 'center' }); } catch (e) {}
+      }
+      doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
+         .text(nombre || '_______________________', x, y + sigH + 4, { width: sigW, align: 'center' });
+      doc.fillColor(GRIS).fontSize(7).font('Helvetica').text(etiqueta, x, y + sigH + 16, { width: sigW, align: 'center' });
+    };
+    dibujar(L, order.client_signature_url, order.client_signature_name, 'Firma Cliente');
+    dibujar(R - sigW, order.tech_signature_url, order.tech_signature_name, 'Firma Técnico');
+  } else {
+    doc.moveTo(L, y + 30).lineTo(L + 150, y + 30).strokeColor('#94a3b8').lineWidth(0.5).stroke();
+    doc.moveTo(R - 150, y + 30).lineTo(R, y + 30).strokeColor('#94a3b8').lineWidth(0.5).stroke();
+    doc.fillColor(GRIS).fontSize(8).font('Helvetica')
+       .text('Firma Cliente', L, y + 34, { width: 150, align: 'center' })
+       .text('Firma Tecnico', R - 150, y + 34, { width: 150, align: 'center' });
+  }
 
   // ── PIE DE PÁGINA ─────────────────────────────────────────
   const pageH = doc.page.height;
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Orden de Trabajo - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
+     .text(pie + ' - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text(cfg.company_slogan, L, pageH - 15, { width: CW, align: 'center' });
-
-  return doc;
-}
-
-// Nombres en español, en el mismo orden del papel, para las filas fijas de
-// las tablas de mediciones eléctricas y de componentes instalados (ver
-// 028_service_order_field_report.sql -- se guardan como JSON en la base).
-const MEASUREMENT_ROWS = [
-  { key: 'sin_trabajar',  label: 'Voltaje / Sin trabajar' },
-  { key: 'trabajando',    label: 'Trabajando' },
-  { key: 'resistencia',   label: 'Resistencia línea a línea' },
-  { key: 'monofasico',    label: 'Monofásico' },
-  { key: 'aislamiento',   label: 'Medición de aislamiento' },
-  { key: 'amperios',      label: 'Amperios en placa' },
-];
-const COMPONENT_ROWS = [
-  'Motor', 'Bomba', 'Tanque', 'Ablandador', 'Contactor', 'Flip-On', 'Presostato',
-  'Guardanivel', 'Protector Fase', 'Timer', 'Válv. Pie', 'Válv. Cheque', 'Válv. Esfera',
-];
-const ADDITIONAL_SPEC_FIELDS = [
-  ['hp_motor', 'HP (Motor)'], ['voltaje', 'Voltaje'], ['hp_bomba', 'HP (Bomba)'], ['etapas', 'Etapas'],
-  ['precarga_tanque', 'Precarga del Tanque'], ['tipo_filtro', 'Tipo de Filtro / Lbs.'],
-  ['bimetalico', 'Bimetálico Graduado a'], ['tamano', 'Tamaño'], ['rango_presion', 'Rango de Presión (PSI)'],
-  ['distancia_electrodos', 'Distancia entre Electrodos'], ['alto_volt', 'Alto Volt.'], ['bajo_volt', 'Bajo Volt.'],
-  ['desb', 'Desb.'], ['retardo', 'Retardo'], ['programacion', 'Programación'], ['manometro', 'Manómetro'],
-  ['cheque_bypass', 'Cheque By-Pass'], ['recirculacion', 'Recirculación'], ['valv_flote', 'Válv. Flote'],
-];
-
-// Arma el PDF de una ORDEN DE SERVICIO: el formato real que usa el taller para
-// documentar una VISITA TÉCNICA DE CAMPO (bombas/pozos en el sitio del
-// cliente) -- datos del cliente, fuente de energía, mediciones eléctricas,
-// condiciones del equipo, componentes instalados, especificaciones
-// adicionales, reporte técnico y firmas del técnico y del cliente.
-export function generarOrdenServicioPDF(order, settings, locales = null) {
-  const cfg = empresa(settings);
-  const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
-  const W = doc.page.width;
-  const L = 40;
-  const R = W - 40;
-  const CW = R - L;
-  const col2 = L + CW / 2;
-
-  const ensureSpace = (needed) => {
-    if (y + needed > doc.page.height - 50) { doc.addPage({ margin: 0 }); y = 40; }
-  };
-  const sectionHeader = (title, color = AZUL_MED) => {
-    ensureSpace(26);
-    doc.rect(L, y, CW, 20).fill(color);
-    doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text(title, L + 8, y + 6);
-    y += 26;
-  };
-  const field = (label, value, x, labelW) => {
-    doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text(label, x, y);
-    doc.font('Helvetica').text(value || '-', x + labelW, y, { width: CW / 2 - labelW - 10 });
-  };
-
-  // ── ENCABEZADO ───────────────────────────────────────────
-  doc.rect(0, 0, W, 110).fill(AZUL);
-  try {
-    const logoPath = join(__dirname, '../assets/logo.jpeg');
-    doc.image(logoPath, L, 15, { height: 75 });
-  } catch(e) {}
-
-  dibujarDatosEmpresa(doc, cfg);
-
-  doc.fontSize(18).font('Helvetica-Bold').fillColor(NARANJA)
-     .text('ORDEN DE SERVICIO', 220, 18, { width: 330, align: 'right' });
-  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
-     .text('No. ' + (order.number || '0001'), 350, 48, { width: 200, align: 'right' });
-  doc.fontSize(8).fillColor('#94a3b8')
-     .text('Visita: ' + (order.visit_date ? new Date(order.visit_date).toLocaleDateString('es-GT') : '-'), 350, 68, { width: 200, align: 'right' });
-
-  let y = 122;
-
-  const statusLabels = { programada: 'Programada', en_proceso: 'En Proceso', completada: 'Completada', cancelada: 'Cancelada' };
-
-  // ── DATOS DEL CLIENTE ─────────────────────────────────────
-  sectionHeader('DATOS DEL CLIENTE');
-  field('Cliente:', order.client_name, L, 55);
-  field('Estado:', statusLabels[order.status] || order.status, col2, 50);
-  y += 14;
-  field('Dirección:', order.client_address, L, 60);
-  y += 14;
-  field('Persona que llamó:', order.caller_name, L, 105);
-  field('NIT:', order.client_nit, col2, 30);
-  y += 14;
-  field('Hora:', order.visit_time, L, 40);
-  field('Teléfono:', order.client_phone, col2, 55);
-  y += 14;
-  field('Tipo Equipo:', order.equipment_name, L, 75);
-  y += 16;
-  if (order.reported_problem) {
-    doc.fillColor(NEGRO).font('Helvetica-Bold').text('Problema Reportado:', L, y);
-    doc.font('Helvetica').text(order.reported_problem, L + 120, y, { width: CW - 120 });
-    y += doc.heightOfString(order.reported_problem, { width: CW - 120 }) + 8;
-  }
-  y += 4;
-
-  // ── FUENTE DE ENERGÍA ─────────────────────────────────────
-  sectionHeader('FUENTE DE ENERGÍA');
-  field('Banco de Transformadores:', order.transformer_bank, L, 150);
-  y += 14;
-  field('Generador:', order.generator, L, 60);
-  field('Voltaje:', order.voltage_source, col2, 50);
-  y += 18;
-
-  // ── MEDICIONES ELÉCTRICAS ─────────────────────────────────
-  const measurements = order.electrical_measurements || [];
-  if (measurements.length > 0) {
-    sectionHeader('MEDICIONES ELÉCTRICAS DE LA FUENTE Y EL MOTOR', NARANJA);
-    doc.fontSize(7.5);
-    for (const row of MEASUREMENT_ROWS) {
-      const m = measurements.find(r => r.key === row.key) || {};
-      ensureSpace(12);
-      doc.fillColor(NEGRO).font('Helvetica-Bold').text(row.label, L, y, { width: 140 });
-      const cells = [m.c1, m.c2, m.c3, m.c4, m.c5, m.c6].map(v => v || '-').join('   |   ');
-      doc.font('Helvetica').text(cells, L + 145, y, { width: CW - 265 });
-      if (m.nota) doc.fillColor(GRIS).text(m.nota, R - 110, y, { width: 110, align: 'right' });
-      y += 12;
-    }
-    doc.fontSize(9);
-    y += 8;
-  }
-
-  // ── CONDICIONES DE TRABAJO DEL EQUIPO ─────────────────────
-  sectionHeader('CONDICIONES DE TRABAJO DEL EQUIPO');
-  field('Bombea de/a:', [order.pump_from, order.pump_to].filter(Boolean).join(' a '), L, 75);
-  field('Tipo Pozo:', order.well_type === 'sumergible' ? 'Sumergible' : order.well_type === 'centrifuga' ? 'Centrífuga' : null, col2, 65);
-  y += 14;
-  field('Diámetro:', order.diameter, L, 60);
-  field('Profundidad total:', order.total_depth, col2, 100);
-  y += 14;
-  field('Nivel estático:', order.static_level, L, 85);
-  field('Nivel dinámico:', order.dynamic_level, col2, 90);
-  y += 14;
-  field('GPM:', order.gpm, L, 35);
-  field('Cantidad de tubos:', order.pipe_count, col2, 105);
-  y += 14;
-  field('Línea aire:', order.air_line, L, 60);
-  field('Calibre de cable:', order.cable_gauge, col2, 100);
-  y += 14;
-  field('Funda:', order.sleeve, L, 40);
-  if (order.pool_dimensions) field('Dimensiones piscina:', order.pool_dimensions, col2, 115);
-  y += 18;
-
-  // ── DATOS DEL EQUIPO Y COMPONENTES INSTALADOS ─────────────
-  const components = order.installed_components || [];
-  if (components.length > 0) {
-    sectionHeader('DATOS DEL EQUIPO Y COMPONENTES INSTALADOS', NARANJA);
-    doc.fontSize(7.5).fillColor(BLANCO);
-    ensureSpace(12);
-    const cCols = [90, CW - 90 - 70 - 70 - 90 - 70, 70, 70, 90, 70];
-    let cx = L;
-    doc.rect(L, y, CW, 12).fill(AZUL_MED);
-    ['Componente','Marca','Modelo','Serie','Especificación','Valor'].forEach((h, i) => { doc.fillColor(BLANCO).text(h, cx + 3, y + 2, { width: cCols[i] - 6 }); cx += cCols[i]; });
-    y += 12;
-    for (const name of COMPONENT_ROWS) {
-      const c = components.find(r => r.component === name) || {};
-      ensureSpace(11);
-      cx = L;
-      const cells = [name, c.marca, c.modelo, c.serie, c.especificacion, c.valor];
-      cells.forEach((v, i) => { doc.fillColor(NEGRO).font(i === 0 ? 'Helvetica-Bold' : 'Helvetica').text(v || (i===0?'':'-'), cx + 3, y, { width: cCols[i] - 6 }); cx += cCols[i]; });
-      y += 11;
-    }
-    doc.fontSize(9);
-    y += 8;
-  }
-
-  // ── ESPECIFICACIONES ADICIONALES ──────────────────────────
-  const specs = order.additional_specs || {};
-  if (Object.values(specs).some(v => v)) {
-    sectionHeader('ESPECIFICACIONES ADICIONALES');
-    doc.fontSize(8);
-    let sx = L, col = 0;
-    const specColW = CW / 3;
-    for (const [key, label] of ADDITIONAL_SPEC_FIELDS) {
-      if (!specs[key]) continue;
-      ensureSpace(12);
-      doc.fillColor(NEGRO).font('Helvetica-Bold').text(label + ':', sx, y, { width: specColW - 10, continued: false });
-      doc.font('Helvetica').text(String(specs[key]), sx, y + 10, { width: specColW - 10 });
-      col++;
-      if (col % 3 === 0) { sx = L; y += 24; } else { sx += specColW; }
-    }
-    if (col % 3 !== 0) y += 24;
-    doc.fontSize(9);
-    y += 6;
-  }
-
-  // ── REPORTE TÉCNICO ────────────────────────────────────────
-  sectionHeader('REPORTE TÉCNICO', NARANJA);
-  const reportText = order.technical_report || '-';
-  doc.fillColor(NEGRO).font('Helvetica').text(reportText, L, y, { width: CW });
-  y += doc.heightOfString(reportText, { width: CW }) + 12;
-
-  field('Hora de Llegada:', order.arrival_time, L, 100);
-  field('Hora de Salida:', order.departure_time, col2, 90);
-  y += 20;
-
-  // ── FIRMAS ─────────────────────────────────────────────────
-  ensureSpace(100);
-  doc.moveTo(L, y).lineTo(R, y).strokeColor('#e2e8f0').stroke();
-  y += 14;
-  doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('FIRMAS', L, y);
-  y += 20;
-
-  const sigW = (CW - 30) / 2;
-  const sigH = 70;
-  const sigX2 = L + sigW + 30;
-  const drawSignature = (x, url, name, label) => {
-    doc.rect(x, y, sigW, sigH).lineWidth(0.7).strokeColor('#cbd5e1').stroke();
-    const filePath = archivoLocal(url, locales);
-    if (filePath) {
-      try {
-        doc.image(filePath, x + 5, y + 5, { fit: [sigW - 10, sigH - 10], align: 'center', valign: 'center' });
-      } catch(e) {}
-    }
-    doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
-       .text(name || '_______________________', x, y + sigH + 4, { width: sigW, align: 'center' });
-    doc.fillColor(GRIS).fontSize(7).font('Helvetica')
-       .text(label, x, y + sigH + 16, { width: sigW, align: 'center' });
-  };
-  drawSignature(L, order.tech_signature_url, order.tech_signature_name, 'Firma Técnico');
-  drawSignature(sigX2, order.client_signature_url, order.client_signature_name, 'F) Cliente');
-  y += sigH + 30;
-
-  // ── PIE DE PÁGINA ─────────────────────────────────────────
-  const pageH = doc.page.height;
-  doc.rect(0, pageH - 38, W, 38).fill(AZUL);
-  doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Orden de Servicio - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
-     .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
-  doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Favor de verificar datos para facturación', L, pageH - 15, { width: CW, align: 'center' });
 
   return doc;
 }
