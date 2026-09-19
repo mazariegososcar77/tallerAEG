@@ -37,7 +37,6 @@ import PartCategoriesPage from '../pages/config/PartCategoriesPage.jsx';
 import WorkTypesPage from '../pages/config/WorkTypesPage.jsx';
 import EquipmentTypesPage from '../pages/config/EquipmentTypesPage.jsx';
 import DocumentSeriesPage from '../pages/config/DocumentSeriesPage.jsx';
-import ComingSoonPage from '../pages/config/ComingSoonPage.jsx';
 import ServiceOrdersPage from '../pages/serviceOrders/ServiceOrdersPage.jsx';
 import ServiceOrderFormPage from '../pages/serviceOrders/ServiceOrderFormPage.jsx';
 import PublicSignaturePage from '../pages/public/PublicSignaturePage.jsx';
@@ -91,13 +90,15 @@ export default function AppRoutes() {
              Reusan las mismas pantallas de Ordenes de Trabajo con flowType="post":
              lista y formulario filtran/guardan por flujo, y el formulario muestra
              los 3 campos de precio (torno/repuestos/mano de obra) que Pre no tiene.
-             Cotizaciones/Reportes de Post quedan "Proximamente" (la secuencia
-             invertida, reporte antes que cotizacion, es una fase futura);
+             Cotizaciones y Reportes de Post tambien reusan sus pantallas (la cotizacion
+             se crea desde una orden Post con el reporte ya finalizado);
              Facturacion redirige a /facturacion porque es un solo modulo. --- */}
         <Route path="post/ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
-        <Route path="post/cotizaciones" element={<ProtectedRoute permission="dashboard.view"><ComingSoonPage title="Cotizaciones (Flujo Post)" description="La cotizacion posterior al reporte de desarme esta en construccion." /></ProtectedRoute>} />
+        <Route path="post/cotizaciones" element={<ProtectedRoute permission="dashboard.view"><QuotesPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/cotizaciones/nueva" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/cotizaciones/:id/editar" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage flowType="post" /></ProtectedRoute>} />
         {/* Reusa la misma pantalla de Reportes con flowType="post": lista solo los reportes
             de ordenes Post. Los de Orden de Servicio no tienen flujo y se listan del lado
             Pre, que es donde se venian viendo. */}
