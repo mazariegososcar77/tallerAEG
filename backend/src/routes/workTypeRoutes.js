@@ -3,6 +3,7 @@
 // Trabajo): ver, crear, editar y borrar.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
 import * as workTypeController from '../controllers/workTypeController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -14,7 +15,7 @@ const router = Router();
 const createSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   description: z.string().max(255).optional(),
-  is_active: z.boolean().optional(),
+  is_active: booleanFlag.optional(),
 });
 
 // Para editar un tipo de trabajo: los mismos datos pero opcionales, y debe venir al menos un cambio.
@@ -22,7 +23,7 @@ const updateSchema = z
   .object({
     name: z.string().min(2).optional(),
     description: z.string().max(255).optional(),
-    is_active: z.boolean().optional(),
+    is_active: booleanFlag.optional(),
   })
   .refine((d) => Object.keys(d).length > 0, { message: 'No hay cambios para aplicar' });
 

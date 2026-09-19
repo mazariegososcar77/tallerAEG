@@ -84,6 +84,15 @@ controladores. Si el modelo de datos cambia, sigue esa misma regla.
 4. Registra la ruta en `src/routes/<recurso>Routes.js`, aplica `authenticate` y
    `requirePermission('<code>')` según corresponda, y añade el bloque JSDoc `@openapi` para Swagger.
 5. Validación de body con un esquema **zod** pasado a `validate(schema)`.
+6. **Que "Guardar" en una pantalla de edición no falle** (las pantallas cargan el registro tal como lo
+   devuelve la API y lo reenvían entero):
+   - Casillas `is_active` (y cualquier TINYINT): usa `booleanFlag` de [src/utils/zodHelpers.js](src/utils/zodHelpers.js),
+     **no** `z.boolean()` — MySQL las devuelve como `1`/`0` y `z.boolean()` las rechaza ("Datos inválidos").
+   - Columnas que aceptan `NULL` y se reenvían tal cual: `.nullish()`, no `.optional()` a secas.
+   - Repositorios sin esquema zod (órdenes, cotizaciones, máquinas, mantenimientos…): el INSERT/UPDATE pasa
+     por `pickColumns(tabla, data)` de [src/lib/tableColumns.js](src/lib/tableColumns.js), que descarta las
+     claves que no son columnas reales (las que agrega un JOIN, como `client_name` o `report_number`). Así
+     agregar una columna derivada nueva no rompe el guardado; ya no hace falta acordarse de quitarla en el servicio.
 
 ## Auth y RBAC
 

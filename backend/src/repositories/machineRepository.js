@@ -1,6 +1,7 @@
 // Este archivo guarda y consulta las MÁQUINAS (equipos) que son propiedad de un cliente:
 // marca, modelo, serie y demás datos técnicos. Cada máquina pertenece a un cliente.
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Consulta base reutilizada por getAll y findById: trae también el nombre del cliente
 // dueño de la máquina, para no tener que buscarlo aparte.
@@ -29,6 +30,7 @@ export async function findById(id) {
 
 // Guarda una nueva máquina en la base de datos y devuelve el registro ya creado.
 export async function create(data) {
+  data = await pickColumns('machines', data);
   const fields = Object.keys(data).join(', ');
   const placeholders = Object.keys(data).map(() => '?').join(', ');
   const [result] = await pool.query('INSERT INTO machines (' + fields + ') VALUES (' + placeholders + ')', Object.values(data));
@@ -37,6 +39,7 @@ export async function create(data) {
 
 // Actualiza solo los datos indicados (patch) de una máquina existente.
 export async function update(id, patch) {
+  patch = await pickColumns('machines', patch);
   const fields = Object.keys(patch).map(k => k + ' = ?').join(', ');
   await pool.query('UPDATE machines SET ' + fields + ' WHERE id = ?', [...Object.values(patch), id]);
   return findById(id);

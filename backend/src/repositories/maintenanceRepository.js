@@ -2,6 +2,7 @@
 // máquinas de los clientes: cada cuánto toca darles servicio, cuándo fue el último y
 // cuándo es el próximo, y si están al día, próximos a vencer o vencidos.
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Cuántos días representa cada frecuencia de mantenimiento (mensual, trimestral, etc.).
 const FREQ_DAYS = { mensual: 30, trimestral: 90, semestral: 180, anual: 365 };
@@ -61,6 +62,7 @@ export async function findById(id) {
 // Guarda un nuevo mantenimiento programado. Antes de guardarlo, calcula automáticamente
 // la fecha del próximo servicio y el estado (al día/próximo/vencido) según la frecuencia.
 export async function create(data) {
+  data = await pickColumns('maintenance_schedules', data);
   const next = calcNextService(data.last_service, data.frequency, data.frequency_days);
   const status = calcStatus(next);
   const payload = { ...data, next_service: next, status };
@@ -74,6 +76,7 @@ export async function create(data) {
 // calcular la fecha del próximo servicio y el estado por si cambió la frecuencia o la
 // fecha del último servicio.
 export async function update(id, patch) {
+  patch = await pickColumns('maintenance_schedules', patch);
   const existing = await findById(id);
   const merged = { ...existing, ...patch };
   const next = calcNextService(merged.last_service, merged.frequency, merged.frequency_days);

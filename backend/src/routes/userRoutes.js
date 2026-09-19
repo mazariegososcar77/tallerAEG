@@ -2,6 +2,7 @@
 // (las cuentas con las que la gente inicia sesion): ver, crear, editar y borrar.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
 import * as userController from '../controllers/userController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -16,7 +17,7 @@ const createSchema = z.object({
   email:     z.string().email('Correo invalido'),
   password:  z.string().min(6, 'La contrasena debe tener al menos 6 caracteres'),
   role_id:   z.coerce.number().int().positive('Rol invalido'),
-  is_active: z.boolean().optional(),
+  is_active: booleanFlag.optional(),
 });
 
 // Para editar un usuario: los mismos datos pero opcionales (la contrasena se puede dejar vacia para no cambiarla).
@@ -25,7 +26,7 @@ const updateSchema = z.object({
   email:     z.string().email('Correo invalido').optional(),
   password:  z.string().min(6, 'La contrasena debe tener al menos 6 caracteres').optional().or(z.literal('')),
   role_id:   z.coerce.number().int().positive().optional(),
-  is_active: z.boolean().optional(),
+  is_active: booleanFlag.optional(),
 });
 
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
