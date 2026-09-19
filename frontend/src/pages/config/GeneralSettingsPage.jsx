@@ -264,6 +264,14 @@ export default function GeneralSettingsPage() {
             noUppercase
           />
           <Input
+            label="Eslogan (pie de los PDF)"
+            value={form.company_slogan}
+            onChange={(e) => set('company_slogan', e.target.value)}
+            disabled={!canEdit}
+            maxLength={160}
+            noUppercase
+          />
+          <Input
             label="Direccion"
             value={form.company_address}
             onChange={(e) => set('company_address', e.target.value)}

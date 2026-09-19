@@ -59,6 +59,7 @@ const BLANCO = '#ffffff';
 const EMPRESA_FALLBACK = {
   company_name: 'CENTRO DE SERVICIO AEG',
   company_tagline: 'CENTRO DE SERVICIOS INDUSTRIALES',
+  company_slogan: 'Desde el año 2000, solidez, innovación y servicio',
   company_address: 'Guatemala, Guatemala',
   company_phone: '(+502) 5502-5055',
   company_email: '',
@@ -118,7 +119,7 @@ const pieEmpresa = (cfg) =>
 // de equipos con su mano de obra y repuestos cotizados, y los totales
 // (subtotal, descuento, total). Es el documento que se le entrega al
 // cliente antes de aceptar el trabajo.
-export function generarCotizacionPDF(quote, settings) {
+export function generarCotizacionPDF(quote, settings, { conDescuento = false } = {}) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
   const W = doc.page.width;
@@ -241,9 +242,12 @@ export function generarCotizacionPDF(quote, settings) {
   doc.moveTo(L, y).lineTo(R, y).strokeColor('#e2e8f0').stroke();
   y += 10;
 
+  // "Sin descuento" (el valor por defecto) imprime la cotizacion a precio completo:
+  // sin la linea de descuento y con el total igual al subtotal. Solo es de
+  // presentacion -- el descuento sigue guardado tal cual en la cotizacion.
   const subtotal = Number(quote.subtotal) || 0;
-  const discount = Number(quote.discount) || 0;
-  const total = Number(quote.total) || 0;
+  const discount = conDescuento ? (Number(quote.discount) || 0) : 0;
+  const total = conDescuento ? (Number(quote.total) || 0) : subtotal;
 
   doc.fillColor(NEGRO).fontSize(9).font('Helvetica')
      .text('Subtotal:', R - 180, y, { width: 125, align: 'right' })
@@ -269,7 +273,7 @@ export function generarCotizacionPDF(quote, settings) {
      .text('Esta cotizacion tiene validez de ' + cfg.quote_valid_days + ' dias a partir de la fecha de emision.', L, pageH - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH - 15, { width: CW, align: 'center' });
 
   return doc;
 }
@@ -601,7 +605,7 @@ export function generarOrdenTrabajoPDF(order, settings) {
      .text('Orden de Trabajo - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH - 15, { width: CW, align: 'center' });
 
   return doc;
 }
@@ -958,7 +962,7 @@ export function generarFacturaPDF(invoice, settings) {
      .text('Factura interna - ' + cfg.company_name, L, pageH2 - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH2 - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH2 - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH2 - 15, { width: CW, align: 'center' });
 
   return doc;
 }
@@ -1151,7 +1155,7 @@ export function generarReportePDF(report, settings, locales = null) {
      .text('Reporte de Trabajo - ' + cfg.company_name, L, pageH3 - 28, { width: CW / 2 })
      .text(pieEmpresa(cfg), R - 150, pageH3 - 28, { width: 150, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text('Centro de servicio donde le damos vida a tus equipos', L, pageH3 - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH3 - 15, { width: CW, align: 'center' });
 
   return doc;
 }

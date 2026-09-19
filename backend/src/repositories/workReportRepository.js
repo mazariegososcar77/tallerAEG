@@ -116,13 +116,6 @@ export async function findByPublicToken(token) {
   return row ? findById(row.id) : null;
 }
 
-// Calcula el siguiente número correlativo de reporte de trabajo (busca el número más alto
-// ya usado y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos.
-export async function getNextNumber() {
-  const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM work_reports');
-  return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
-}
-
 // Guarda un nuevo reporte de trabajo (todavía sin fotos; las fotos se agregan después con addPhoto).
 export async function create(data) {
   const fields = Object.keys(data).join(', ');

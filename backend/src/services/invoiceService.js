@@ -8,6 +8,7 @@ import * as quoteRepository from '../repositories/quoteRepository.js';
 import * as workReportRepository from '../repositories/workReportRepository.js';
 import * as felCertifier from './felCertifier.js';
 import * as workOrderDocumentService from './workOrderDocumentService.js';
+import * as numberingService from './numberingService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Devuelve la lista completa de facturas.
@@ -64,7 +65,7 @@ export async function createFromWorkReport(report) {
   const subtotal = items.reduce((s, i) => s + (parseFloat(i.quantity) || 1) * (parseFloat(i.unit_price) || 0), 0);
   const total = order.total > 0 ? Number(order.total) : subtotal;
 
-  const number = await invoiceRepository.getNextNumber();
+  const number = await numberingService.getNextNumber('invoice');
   const invoice = await invoiceRepository.create({
     number,
     work_order_id: order.id,

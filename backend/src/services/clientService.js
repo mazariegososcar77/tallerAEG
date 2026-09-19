@@ -3,6 +3,7 @@
 // sus datos son correctos, sobre todo cuando se dio de alta rapido desde una orden
 // o cotizacion).
 import * as clientRepository from '../repositories/clientRepository.js';
+import * as clientContactRepository from '../repositories/clientContactRepository.js';
 import * as machineRepository from '../repositories/machineRepository.js';
 import * as quoteRepository from '../repositories/quoteRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
@@ -15,7 +16,7 @@ import { ApiError } from '../utils/ApiError.js';
 // como texto vacio, para no confundir "no tiene" con "escribieron nada".
 function normalize(data) {
   // last_name NO se incluye: es obligatorio (NOT NULL); si va vacío se guarda como ''.
-  const nullIfEmpty = ['nit', 'dpi', 'email', 'company_name', 'trade_name', 'contact_name', 'dependency'];
+  const nullIfEmpty = ['nit', 'dpi', 'company_name', 'trade_name', 'contact_name', 'dependency'];
   const result = { ...data };
   for (const key of nullIfEmpty) {
     if (result[key] !== undefined && result[key] !== null && String(result[key]).trim() === '') {
@@ -37,18 +38,25 @@ export async function getById(id) {
   return c;
 }
 
-// Da de alta un cliente nuevo desde la pantalla de Clientes.
-export async function create(data) {
+// Da de alta un cliente nuevo desde la pantalla de Clientes. "contacts" (correo +
+// nombre de cada persona de contacto) no es una columna de "clients" -- vive en su
+// propia tabla (client_contacts), asi que se separa del resto y se guarda aparte,
+// igual que "pieces"/"labor" en articleService.create.
+export async function create({ contacts, ...data }) {
   // is_validated no viaja en el payload (el schema zod lo descarta); la columna
   // usa su DEFAULT (1), asi que las altas del modulo Clientes entran validadas.
-  return clientRepository.create(normalize(data));
+  const created = await clientRepository.create(normalize(data));
+  if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
+  return clientRepository.findById(created.id);
 }
 
 // Alta "de ultima instancia" desde el selector de Ordenes/Cotizaciones: el
 // cliente puede usarse de inmediato pero entra SIN validar para que un
 // administrador revise sus datos despues.
-export async function quickCreate(data) {
-  return clientRepository.create({ ...normalize(data), is_validated: 0 });
+export async function quickCreate({ contacts, ...data }) {
+  const created = await clientRepository.create({ ...normalize(data), is_validated: 0 });
+  if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
+  return clientRepository.findById(created.id);
 }
 
 // Arma el "historial de equipo" de un cliente ("expediente" del cliente, ver plan de la
@@ -79,10 +87,13 @@ export async function validate(id) {
   return clientRepository.update(id, { is_validated: 1 });
 }
 
-// Edita los datos de un cliente existente.
-export async function update(id, patch) {
+// Edita los datos de un cliente existente (y, si vienen, reemplaza por completo su
+// lista de contactos -- ver create).
+export async function update(id, { contacts, ...patch }) {
   const existing = await clientRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Cliente no encontrado');
+  if (contacts !== undefined) await clientContactRepository.replaceForClient(id, contacts);
+  if (Object.keys(patch).length === 0) return clientRepository.findById(id);
   return clientRepository.update(id, normalize(patch));
 }
 

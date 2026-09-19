@@ -80,7 +80,8 @@ export const sendEmail = asyncHandler(async (req, res) => {
 // Cuando el usuario descarga el PDF de una cotización, esto genera el archivo y se lo envía.
 export const pdf = asyncHandler(async (req, res) => {
   const quote = await quoteService.getById(req.params.id);
-  const doc = generarCotizacionPDF(quote, await settingsService.getSettings());
+  const conDescuento = req.query.discount === '1';
+  const doc = generarCotizacionPDF(quote, await settingsService.getSettings(), { conDescuento });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `attachment; filename="cotizacion-${quote.number}.pdf"`);
   doc.pipe(res);

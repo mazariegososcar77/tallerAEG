@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import * as serviceOrderRepository from '../repositories/serviceOrderRepository.js';
 import * as uploadService from './uploadService.js';
 import * as gcs from '../lib/gcsStorage.js';
+import * as numberingService from './numberingService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Campos de fecha/hora opcionales: si llegan vacios ('') se guardan como "sin dato", porque
@@ -40,7 +41,7 @@ export async function getById(id) {
 // Crea una orden de servicio nueva: le asigna el siguiente numero correlativo y convierte
 // los campos opcionales que llegan vacios en "sin dato".
 export async function create(data) {
-  const number = await serviceOrderRepository.getNextNumber();
+  const number = await numberingService.getNextNumber('service_order');
   normalize(data);
   return serviceOrderRepository.create({ ...data, number });
 }

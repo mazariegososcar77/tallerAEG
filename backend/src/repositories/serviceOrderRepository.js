@@ -68,13 +68,6 @@ export async function findByPublicToken(token) {
   return row ? findById(row.id) : null;
 }
 
-// Calcula el siguiente número correlativo de orden de servicio (busca el número más alto
-// ya usado y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos.
-export async function getNextNumber() {
-  const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM service_orders');
-  return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
-}
-
 // Guarda una nueva orden de servicio.
 export async function create(data) {
   stringifyJsonFields(data);

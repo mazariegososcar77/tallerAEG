@@ -42,12 +42,13 @@ import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import { notify } from '../../lib/toast.js';
 import { withUppercase } from '../../lib/text.js';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useWorkTypes } from '../../hooks/useWorkTypes.js';
 import Combobox from '../../components/ui/Combobox.jsx';
+import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import ClientFormModal from '../clients/ClientFormModal.jsx';
 
-const WORK_TYPES = ['Rebobinado','Mantenimiento','Reparacion','Cambio de conexion','Calculo de voltaje','Otros'];
 const STATUS_OPTIONS = [
   { value:'recibido',   label:'Recibido' },
   { value:'en_proceso', label:'En Proceso' },
@@ -270,6 +271,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
+  const { workTypes } = useWorkTypes();
   const [clients, setClients] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
@@ -603,7 +605,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
                 <div style={{ marginTop:12, maxWidth: isMobile ? '100%' : 280 }}>
                   <label style={lbl}>Tipo de Trabajo (general)</label>
                   <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
-                    options={WORK_TYPES.map(t => ({ value:t, label:t }))} placeholder="Seleccionar..." />
+                    options={workTypes.filter(t => t.is_active).map(t => ({ value:t.name, label:t.name }))} placeholder="Seleccionar..." />
                 </div>
               </div>
             </div>
@@ -800,11 +802,11 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
                   <div style={{ display:'grid', gridTemplateColumns: gridCols, gap:10 }}>
                     <div>
                       <label style={lbl}>Precio de Torno</label>
-                      <input type='number' step='0.01' value={form.torno_price||''} onChange={e => set('torno_price', e.target.value)} style={inp} />
+                      <CurrencyInput value={form.torno_price||''} onChange={e => set('torno_price', e.target.value)} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Precio Estimado de Repuestos</label>
-                      <input type='number' step='0.01' value={form.parts_price||''} onChange={e => set('parts_price', e.target.value)} style={inp} />
+                      <CurrencyInput value={form.parts_price||''} onChange={e => set('parts_price', e.target.value)} style={inp} />
                     </div>
                     <div>
                       <label style={lbl}>Mano de Obra (catalogo)</label>
@@ -820,7 +822,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
                     </div>
                     <div>
                       <label style={lbl}>Precio de Mano de Obra</label>
-                      <input type='number' step='0.01' value={form.labor_price||''} onChange={e => set('labor_price', e.target.value)} style={inp} />
+                      <CurrencyInput value={form.labor_price||''} onChange={e => set('labor_price', e.target.value)} style={inp} />
                     </div>
                   </div>
                 </div>

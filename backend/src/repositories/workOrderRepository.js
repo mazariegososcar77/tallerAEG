@@ -105,13 +105,6 @@ export async function findByQuoteId(quoteId) {
   return rows.map(parseJsonFields);
 }
 
-// Calcula el siguiente número correlativo de orden de trabajo (busca el número más alto
-// ya usado y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos.
-export async function getNextNumber() {
-  const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM work_orders');
-  return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
-}
-
 // Guarda una nueva orden de trabajo junto con todas sus piezas/ítems. Todo se hace como
 // una sola operación (transacción): si algo falla a mitad de camino, se deshace todo para
 // no dejar una orden a medio guardar.

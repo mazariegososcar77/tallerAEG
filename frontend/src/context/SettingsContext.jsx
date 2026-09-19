@@ -30,6 +30,7 @@ export const DEFAULT_SETTINGS = {
   color_accent: BRAND_ACCENT,
   company_name: 'CENTRO DE SERVICIO AEG',
   company_tagline: 'Centro de Servicios Industriales',
+  company_slogan: 'Desde el año 2000, solidez, innovación y servicio',
   company_address: 'Guatemala, Guatemala',
   company_phone: '(+502) 0000-0000',
   company_email: '',

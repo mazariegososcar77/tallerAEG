@@ -22,7 +22,9 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import DatePicker from '../../components/ui/DatePicker.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
-import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
+import Modal from '../../components/ui/Modal.jsx';
+import Select from '../../components/ui/Select.jsx';
+import Button from '../../components/ui/Button.jsx';
 import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
 import { Receipt, Search, Download, Eye, ShieldCheck, Network } from 'lucide-react';
 
@@ -45,6 +47,8 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [certifyInvoice, setCertifyInvoice] = useState(null); // factura pendiente que se ve en el visor con el boton flotante "Certificar"
   const [confirmCertify, setConfirmCertify] = useState(null); // factura para la que se esta confirmando la certificacion
+  const [certifyEmail, setCertifyEmail] = useState(''); // a cual contacto del cliente se le va a mandar (o correo escrito a mano)
+  const [certifying, setCertifying] = useState(false);
   const [pdfInvoice, setPdfInvoice] = useState(null); // factura que se esta viendo en el visor de PDF
   const [flowSource, setFlowSource] = useState(null); // { type: 'invoice', id } para el Mapa de Relaciones
   const [searchParams, setSearchParams] = useSearchParams();
@@ -95,17 +99,30 @@ export default function InvoicesPage() {
     } catch (e) { notify.error('Error al generar PDF'); }
   };
 
-  // Se llama al confirmar el dialogo "¿Está seguro de certificar...?": le
-  // pide al servidor que marque la factura como certificada (misma accion de
-  // siempre, invoicesApi.certify) y refresca la lista. El correo ya no se
-  // pide en este flujo: se usa el que ya tiene el cliente registrado.
+  // Abre el paso de confirmacion, proponiendo el primer contacto del cliente
+  // (si tiene) como correo por defecto -- se puede elegir otro o escribir uno a mano.
+  const openConfirmCertify = (inv) => {
+    setConfirmCertify(inv);
+    setCertifyEmail(inv.client_contacts?.[0]?.email || '');
+  };
+
+  // Se llama al confirmar "Certificar factura": le pide al servidor que la
+  // marque como certificada con el correo elegido (invoicesApi.certify) y
+  // refresca la lista.
   const handleCertifyConfirmed = async () => {
     if (!confirmCertify) return;
-    await invoicesApi.certify(confirmCertify.id, confirmCertify.client_default_email || '');
-    notify.success('Factura certificada');
-    setConfirmCertify(null);
-    setCertifyInvoice(null);
-    reload();
+    setCertifying(true);
+    try {
+      await invoicesApi.certify(confirmCertify.id, certifyEmail.trim());
+      notify.success('Factura certificada');
+      setConfirmCertify(null);
+      setCertifyInvoice(null);
+      reload();
+    } catch (e) {
+      notify.error(e.response?.data?.message || e.response?.data?.error || 'No se pudo certificar la factura');
+    } finally {
+      setCertifying(false);
+    }
   };
 
   return (
@@ -209,20 +226,52 @@ export default function InvoicesPage() {
         title={certifyInvoice ? `Factura No. ${certifyInvoice.number}` : ''}
         floatingAction={
           certifyInvoice && certifyInvoice.status === 'pendiente_certificacion'
-            ? { icon: ShieldCheck, label: 'Certificar', onClick: () => setConfirmCertify(certifyInvoice) }
+            ? { icon: ShieldCheck, label: 'Certificar', onClick: () => openConfirmCertify(certifyInvoice) }
             : null
         }
       />
 
-      <ConfirmDialog
+      {/* Confirmar certificacion: elige a cual contacto del cliente se le manda
+          (o se escribe un correo a mano si no hay ninguno guardado). */}
+      <Modal
         open={confirmCertify != null}
-        onClose={() => setConfirmCertify(null)}
-        onConfirm={handleCertifyConfirmed}
+        onClose={certifying ? undefined : () => setConfirmCertify(null)}
         title="Certificar factura"
-        confirmText="Confirmar"
-        variant="primary"
-        message={confirmCertify ? `¿Está seguro de certificar la factura de ${confirmCertify.client_name || 'este cliente'}, por Q ${Number(confirmCertify.total).toFixed(2)}, con fecha ${confirmCertify.date?.slice(0, 10)}?` : ''}
-      />
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setConfirmCertify(null)} disabled={certifying}>Cancelar</Button>
+            <Button variant="primary" onClick={handleCertifyConfirmed} loading={certifying}>Confirmar</Button>
+          </>
+        }
+      >
+        {confirmCertify && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              ¿Está seguro de certificar la factura de {confirmCertify.client_name || 'este cliente'}, por Q {Number(confirmCertify.total).toFixed(2)}, con fecha {confirmCertify.date?.slice(0, 10)}?
+            </p>
+            {confirmCertify.client_contacts?.length > 0 && (
+              <Select
+                label="Contacto del cliente"
+                value={certifyEmail}
+                onChange={setCertifyEmail}
+                options={confirmCertify.client_contacts.map((c) => ({ value: c.email, label: c.name ? `${c.email} — ${c.name}` : c.email }))}
+                placeholder="Elegir un contacto..."
+              />
+            )}
+            <input
+              type="email"
+              value={certifyEmail}
+              onChange={(e) => setCertifyEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
+              style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--c-line)', background: 'var(--c-surface-2)', color: 'var(--c-text)', fontSize: 13, boxSizing: 'border-box' }}
+            />
+            {!confirmCertify.client_contacts?.length && (
+              <p className="-mt-2 text-[11px] text-muted">Este cliente no tiene contactos guardados en su ficha, así que hay que escribirlo.</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

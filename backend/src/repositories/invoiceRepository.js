@@ -3,6 +3,15 @@
 // de la cotización de la que vino esa orden).
 import pool from '../lib/db.js';
 
+// Reemplaza `client_contacts_json` (el JSON crudo que devuelve MySQL, o null si el
+// cliente no tiene contactos) por `client_contacts`, un arreglo normal ya parseado.
+function parseClientContacts(row) {
+  if (!row) return row;
+  const { client_contacts_json, ...rest } = row;
+  rest.client_contacts = client_contacts_json ? JSON.parse(client_contacts_json) : [];
+  return rest;
+}
+
 // Trae todas las facturas, la más reciente primero. Junto con cada factura trae también
 // el número de la orden de trabajo, el número de la cotización (si tiene) y el nombre y
 // correo del cliente, para no tener que buscarlos aparte. Si se indica un clientId, solo
@@ -15,7 +24,10 @@ export async function getAll(clientId) {
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
       END as client_name,
-      c.email as client_default_email
+      (
+        SELECT JSON_ARRAYAGG(JSON_OBJECT('id', cc.id, 'email', cc.email, 'name', cc.name))
+        FROM client_contacts cc WHERE cc.client_id = c.id
+      ) as client_contacts_json
     FROM invoices i
     JOIN work_orders wo ON i.work_order_id = wo.id
     LEFT JOIN quotes q ON i.quote_id = q.id
@@ -23,7 +35,7 @@ export async function getAll(clientId) {
     ${clientId ? 'WHERE i.client_id = ?' : ''}
     ORDER BY i.created_at DESC
   `, clientId ? [clientId] : []);
-  return rows;
+  return rows.map(parseClientContacts);
 }
 
 // Busca una factura por su id, con los mismos datos extra que getAll, y además le agrega
@@ -36,7 +48,10 @@ export async function findById(id) {
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
       END as client_name,
-      c.email as client_default_email
+      (
+        SELECT JSON_ARRAYAGG(JSON_OBJECT('id', cc.id, 'email', cc.email, 'name', cc.name))
+        FROM client_contacts cc WHERE cc.client_id = c.id
+      ) as client_contacts_json
     FROM invoices i
     JOIN work_orders wo ON i.work_order_id = wo.id
     LEFT JOIN quotes q ON i.quote_id = q.id
@@ -44,9 +59,10 @@ export async function findById(id) {
     WHERE i.id = ?
   `, [id]);
   if (!invoice) return null;
+  const invoiceWithContacts = parseClientContacts(invoice);
   const [items] = await pool.query('SELECT * FROM invoice_items WHERE invoice_id = ?', [id]);
-  invoice.items = items;
-  return invoice;
+  invoiceWithContacts.items = items;
+  return invoiceWithContacts;
 }
 
 // Busca la factura que corresponde a una orden de trabajo (cada orden tiene como máximo
@@ -54,13 +70,6 @@ export async function findById(id) {
 export async function findByWorkOrderId(workOrderId) {
   const [[row]] = await pool.query('SELECT id FROM invoices WHERE work_order_id = ?', [workOrderId]);
   return row ? findById(row.id) : null;
-}
-
-// Calcula el siguiente número correlativo de factura (busca el número más alto ya usado
-// y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos (por ejemplo "0007").
-export async function getNextNumber() {
-  const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM invoices');
-  return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
 }
 
 // Guarda una nueva factura junto con todas sus líneas de detalle. Todo se hace como una

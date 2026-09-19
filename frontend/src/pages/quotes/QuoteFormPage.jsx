@@ -19,12 +19,15 @@ import ClientFormModal from '../clients/ClientFormModal.jsx';
 import ArticleQuickModal from '../../components/quotes/ArticleQuickModal.jsx';
 import Combobox from '../../components/ui/Combobox.jsx';
 import AutocompleteInput from '../../components/ui/AutocompleteInput.jsx';
+import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useSettings } from '../../hooks/useSettings.js';
+import { useWorkTypes } from '../../hooks/useWorkTypes.js';
 import { withUppercase } from '../../lib/text.js';
+import { formatCurrency } from '../../lib/currency.js';
 import { notify } from '../../lib/toast.js';
 
 const STATUS_OPTIONS = [
@@ -35,7 +38,6 @@ const STATUS_OPTIONS = [
   { value:'vencida',   label:'Vencida' },
 ];
 const STATUS_COLORS = { borrador:'#94a3b8', enviada:'#3b82f6', aprobada:'#10b981', rechazada:'#ef4444', vencida:'#f59e0b' };
-const WORK_TYPES = ['Rebobinado','Mantenimiento','Reparacion','Cambio de conexion','Calculo de voltaje','Otros'];
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#10b981' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
@@ -108,11 +110,11 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
                 </div>
                 <div>
                   <span style={{ ...lbl, marginBottom:3, fontSize:9 }}>Precio</span>
-                  <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
+                  <CurrencyInput value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
                 </div>
                 <div>
                   <span style={{ ...lbl, marginBottom:3, fontSize:9 }}>Subtotal</span>
-                  <input readOnly tabIndex={-1} value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
+                  <CurrencyInput readOnly tabIndex={-1} value={sub} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
                 </div>
               </div>
             </div>
@@ -122,8 +124,8 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
           <div key={i} style={{ display:'grid', gridTemplateColumns:ITEM_COLS, gap:8, marginBottom:10, alignItems:'start' }}>
             <div style={{ minWidth:0 }}>{description}</div>
             <input type="number" min="0" step="1" value={item.quantity} onChange={e => onChange(i,'quantity',e.target.value)} style={{ ...inp, textAlign:'right' }} />
-            <input type="number" min="0" step="0.01" value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
-            <input readOnly tabIndex={-1} value={sub.toFixed(2)} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
+            <CurrencyInput value={item.unit_price} onChange={e => onChange(i,'unit_price',e.target.value)} style={{ ...inp, textAlign:'right' }} />
+            <CurrencyInput readOnly tabIndex={-1} value={sub} style={{ ...inp, color:C.green, fontWeight:700, textAlign:'right', cursor:'default' }} />
             {removeBtn}
           </div>
         );
@@ -144,6 +146,7 @@ export default function QuoteFormPage() {
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
   const { settings, loading: settingsLoading } = useSettings();
+  const { workTypes } = useWorkTypes();
   const [clients, setClients] = useState([]);
   const [clientTypes, setClientTypes] = useState([]);
   const [loyaltyTiers, setLoyaltyTiers] = useState([]);
@@ -341,7 +344,7 @@ export default function QuoteFormPage() {
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Tipo de Trabajo</label>
                 <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
-                  options={WORK_TYPES.map(t => ({ value:t, label:t }))} placeholder="Seleccionar..." />
+                  options={workTypes.filter(t => t.is_active).map(t => ({ value:t.name, label:t.name }))} placeholder="Seleccionar..." />
               </div>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Estado</label>
@@ -402,19 +405,19 @@ export default function QuoteFormPage() {
               <div style={{ marginTop:14, background:C.dark, borderRadius:8, padding:'12px 14px', border:'1px solid #3b82f633' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
                   <span style={{ fontSize:13 }}>Mano de Obra</span>
-                  <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>Q {calcSub(eq.labor).toFixed(2)}</span>
+                  <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>{formatCurrency(calcSub(eq.labor))}</span>
                 </div>
                 <ItemsTable items={eq.labor} onChange={(li,k,v) => setLineField(ei,'labor',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'labor',li,art)} onAdd={() => addLine(ei,'labor')} onRemove={li => removeLine(ei,'labor',li)} color="#3b82f6" articles={laborArticles} onOpenModal={() => setArticleModal('labor')} isMobile={isMobile} />
               </div>
               <div style={{ marginTop:10, background:C.dark, borderRadius:8, padding:'12px 14px', border:'1px solid #10b98133' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10 }}>
                   <span style={{ fontSize:13 }}>Repuestos</span>
-                  <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>Q {calcSub(eq.parts).toFixed(2)}</span>
+                  <span style={{ fontSize:11, color:C.muted, marginLeft:'auto' }}>{formatCurrency(calcSub(eq.parts))}</span>
                 </div>
                 <ItemsTable items={eq.parts} onChange={(li,k,v) => setLineField(ei,'parts',li,k,v)} onPickArticle={(li,art) => applyArticle(ei,'parts',li,art)} onAdd={() => addLine(ei,'parts')} onRemove={li => removeLine(ei,'parts',li)} color="#10b981" articles={partArticles} onOpenModal={() => setArticleModal('part')} isMobile={isMobile} />
               </div>
               <div style={{ marginTop:10, textAlign:'right', fontSize:12, color:C.muted }}>
-                Subtotal equipo: <strong style={{ color:C.text }}>Q {(calcSub(eq.labor)+calcSub(eq.parts)).toFixed(2)}</strong>
+                Subtotal equipo: <strong style={{ color:C.text }}>{formatCurrency(calcSub(eq.labor)+calcSub(eq.parts))}</strong>
               </div>
             </div>
           </div>
@@ -435,15 +438,15 @@ export default function QuoteFormPage() {
               <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:10 }}>
                 <div style={{ display:'flex', gap:16, alignItems:'center' }}>
                   <span style={lbl}>Subtotal</span>
-                  <span style={{ color:C.text, fontWeight:600, fontSize:14, minWidth:120, textAlign:'right' }}>Q {grandSubtotal.toFixed(2)}</span>
+                  <span style={{ color:C.text, fontWeight:600, fontSize:14, minWidth:120, textAlign:'right' }}>{formatCurrency(grandSubtotal)}</span>
                 </div>
                 <div style={{ display:'flex', gap:16, alignItems:'center' }}>
                   <span style={lbl}>Descuento (Q)</span>
-                  <input type="number" value={form.discount} onChange={e => set('discount',e.target.value)} style={{ ...inp, width:120, textAlign:'right' }} />
+                  <CurrencyInput value={form.discount} onChange={e => set('discount',e.target.value)} style={{ ...inp, width:120, textAlign:'right' }} />
                 </div>
                 <div style={{ display:'flex', gap:16, alignItems:'center', borderTop:'2px solid '+C.orange+'44', paddingTop:10 }}>
                   <span style={{ fontSize:14, fontWeight:800, color:C.orange, textTransform:'uppercase', letterSpacing:1 }}>Total</span>
-                  <span style={{ color:C.orange, fontWeight:800, fontSize:24, minWidth:120, textAlign:'right' }}>Q {grandTotal.toFixed(2)}</span>
+                  <span style={{ color:C.orange, fontWeight:800, fontSize:24, minWidth:120, textAlign:'right' }}>{formatCurrency(grandTotal)}</span>
                 </div>
               </div>
             </div>
