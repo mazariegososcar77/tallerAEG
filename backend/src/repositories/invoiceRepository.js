@@ -8,7 +8,7 @@ import pool from '../lib/db.js';
 function parseClientContacts(row) {
   if (!row) return row;
   const { client_contacts_json, ...rest } = row;
-  rest.client_contacts = client_contacts_json ? JSON.parse(client_contacts_json) : [];
+  rest.client_contacts = typeof client_contacts_json === 'string' ? JSON.parse(client_contacts_json) : (client_contacts_json || []);
   return rest;
 }
 
