@@ -10,6 +10,7 @@ import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as serviceOrderRepository from '../repositories/serviceOrderRepository.js';
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
 import { ApiError } from '../utils/ApiError.js';
+import { normalizeNit, normalizeDpi, formatPhone } from '../utils/guatemala.js';
 
 // Limpia los datos del cliente antes de guardarlos: si un campo opcional (NIT, DPI,
 // correo, nombre comercial, etc.) llega vacio, se guarda como "sin dato" en vez de
@@ -23,7 +24,42 @@ function normalize(data) {
       result[key] = null;
     }
   }
+  // Formato uniforme: NIT y DPI sin guiones ni espacios, telefono como 5555-1234. Asi el mismo
+  // dato escrito de dos maneras no se cuela dos veces.
+  if (result.nit) result.nit = normalizeNit(result.nit);
+  if (result.dpi) result.dpi = normalizeDpi(result.dpi);
+  if (result.phone) result.phone = formatPhone(result.phone);
   return result;
+}
+
+// Aviso claro cuando el NIT o el DPI ya pertenece a otro cliente (en vez de un error de la base de datos).
+function duplicado(nombreDato, valor, otro, campo) {
+  const cliente = [otro.first_name, otro.last_name].filter(Boolean).join(' ');
+  return new ApiError(
+    409,
+    `El ${nombreDato} ${valor} ya está registrado en el sistema (cliente: ${cliente}).`,
+    [{ field: campo, message: `Este ${nombreDato} ya está registrado en el sistema (cliente: ${cliente}).` }],
+  );
+}
+
+// Revisa que el NIT/DPI no lo tenga otro cliente. `excludeId`: el propio cliente al editarlo.
+async function assertNoDuplicado({ nit, dpi }, excludeId = null) {
+  if (nit) {
+    const otro = await clientRepository.findByNit(nit, excludeId);
+    if (otro) throw duplicado('NIT', nit, otro, 'nit');
+  }
+  if (dpi) {
+    const otro = await clientRepository.findByDpi(dpi, excludeId);
+    if (otro) throw duplicado('DPI', dpi, otro, 'dpi');
+  }
+}
+
+// Todo cliente lleva al menos NIT o DPI (para poder facturarle).
+function assertTieneNitODpi({ nit, dpi }) {
+  if (!nit && !dpi) {
+    const message = 'Indica al menos el NIT o el DPI del cliente.';
+    throw new ApiError(400, message, [{ field: 'nit', message }, { field: 'dpi', message }]);
+  }
 }
 
 // Devuelve la lista completa de clientes.
@@ -45,7 +81,10 @@ export async function getById(id) {
 export async function create({ contacts, ...data }) {
   // is_validated no viaja en el payload (el schema zod lo descarta); la columna
   // usa su DEFAULT (1), asi que las altas del modulo Clientes entran validadas.
-  const created = await clientRepository.create(normalize(data));
+  const limpio = normalize(data);
+  assertTieneNitODpi(limpio);
+  await assertNoDuplicado(limpio);
+  const created = await clientRepository.create(limpio);
   if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
   return clientRepository.findById(created.id);
 }
@@ -54,7 +93,10 @@ export async function create({ contacts, ...data }) {
 // cliente puede usarse de inmediato pero entra SIN validar para que un
 // administrador revise sus datos despues.
 export async function quickCreate({ contacts, ...data }) {
-  const created = await clientRepository.create({ ...normalize(data), is_validated: 0 });
+  const limpio = normalize(data);
+  assertTieneNitODpi(limpio);
+  await assertNoDuplicado(limpio);
+  const created = await clientRepository.create({ ...limpio, is_validated: 0 });
   if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
   return clientRepository.findById(created.id);
 }
@@ -92,9 +134,16 @@ export async function validate(id) {
 export async function update(id, { contacts, ...patch }) {
   const existing = await clientRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Cliente no encontrado');
+  const limpio = normalize(patch);
+  // Se valida ANTES de tocar nada: antes, si el NIT chocaba con otro cliente, los contactos ya
+  // habian sido reemplazados cuando aparecia el error.
+  if ('nit' in limpio || 'dpi' in limpio) {
+    assertTieneNitODpi({ nit: 'nit' in limpio ? limpio.nit : existing.nit, dpi: 'dpi' in limpio ? limpio.dpi : existing.dpi });
+    await assertNoDuplicado({ nit: limpio.nit, dpi: limpio.dpi }, Number(id));
+  }
   if (contacts !== undefined) await clientContactRepository.replaceForClient(id, contacts);
-  if (Object.keys(patch).length === 0) return clientRepository.findById(id);
-  return clientRepository.update(id, normalize(patch));
+  if (Object.keys(limpio).length === 0) return clientRepository.findById(id);
+  return clientRepository.update(id, limpio);
 }
 
 // Elimina un cliente.

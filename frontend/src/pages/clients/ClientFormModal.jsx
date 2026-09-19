@@ -12,6 +12,7 @@
 import { useState, useEffect } from 'react';
 import { clientsApi } from '../../api/clientsApi.js';
 import { notify } from '../../lib/toast.js';
+import { isValidNit, isValidDpi, isValidPhone, isValidEmail, MENSAJES } from '../../lib/validators.js';
 import Modal from '../../components/ui/Modal.jsx';
 import Input from '../../components/ui/Input.jsx';
 import Select from '../../components/ui/Select.jsx';
@@ -81,8 +82,39 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
   // datos del formulario y los envía al servidor. Según el caso, actualiza
   // un cliente existente, lo crea normalmente, o lo crea en modo "alta
   // rápida" (queda pendiente de validación).
+  // Revisa los datos antes de enviarlos y dice QUE campo esta mal y POR QUE (el servidor vuelve a validar).
+  const validateForm = () => {
+    const found = {};
+    const nombre = category === 'empresa' || category === 'company' ? 'La razón social' : 'El nombre';
+    if (form.first_name.trim().length < 2) found.first_name = `${nombre} debe tener al menos 2 letras.`;
+    if (form.nit.trim() && !isValidNit(form.nit)) found.nit = MENSAJES.nit;
+    if (form.dpi.trim() && !isValidDpi(form.dpi)) found.dpi = MENSAJES.dpi;
+    if (!form.nit.trim() && !form.dpi.trim()) {
+      found.nit = 'Indica al menos el NIT o el DPI.';
+      found.dpi = 'Indica al menos el NIT o el DPI.';
+    }
+    if (!form.phone.trim()) found.phone = 'El teléfono es obligatorio.';
+    else if (!isValidPhone(form.phone)) found.phone = MENSAJES.phone;
+    const malos = form.contacts
+      .map((c, i) => ({ email: c.email.trim(), n: i + 1 }))
+      .filter((c) => c.email && !isValidEmail(c.email));
+    if (malos.length) found.contacts = malos.map((c) => `Correo del contacto ${c.n}: ${MENSAJES.email}`).join(' ');
+    return found;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.client_type_id) {
+      setErrors({});
+      notify.error('Elige primero el tipo de cliente.');
+      return;
+    }
+    const found = validateForm();
+    if (Object.keys(found).length) {
+      setErrors(found);
+      notify.error('Revisa los campos marcados en rojo: ' + Object.values(found)[0]);
+      return;
+    }
     setSaving(true);
     setErrors({});
     const payload = {
@@ -110,7 +142,14 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
       else { saved = await clientsApi.create(payload); notify.success('Cliente creado'); }
       onSaved(saved);
     } catch (err) {
-      if (err.details?.length) setErrors(Object.fromEntries(err.details.map(d => [d.field, d.message])));
+      if (err.details?.length) {
+        const byField = {};
+        for (const d of err.details) {
+          const key = d.field.startsWith('contacts') ? 'contacts' : d.field;
+          byField[key] = byField[key] ? `${byField[key]} ${d.message}` : d.message;
+        }
+        setErrors(byField);
+      }
       notify.error(err.message);
     } finally { setSaving(false); }
   };
@@ -146,7 +185,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
         </>
       }
     >
-      <form id="client-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="client-form" onSubmit={handleSubmit} className="space-y-4" noValidate>
 
         {/* Aviso de alta rapida: el cliente entra pendiente de validacion. */}
         {quick && !isEdit && (
@@ -232,7 +271,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
         {category && (
           <div>
             <label className="mb-1 block text-sm font-medium text-muted">Contactos (correo)</label>
-            <ClientContactsInput contacts={form.contacts} onChange={(contacts) => setForm(p => ({ ...p, contacts }))} />
+            <ClientContactsInput contacts={form.contacts} onChange={(contacts) => setForm(p => ({ ...p, contacts }))} error={errors.contacts} />
           </div>
         )}
 

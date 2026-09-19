@@ -12,7 +12,7 @@ import Button from '../ui/Button.jsx';
  * `contacts`: [{ email, name }]. `onChange` recibe la lista completa ya
  * actualizada (el padre la reemplaza tal cual, no hace falta ids).
  */
-export default function ClientContactsInput({ contacts, onChange }) {
+export default function ClientContactsInput({ contacts, onChange, error }) {
   const [draftEmail, setDraftEmail] = useState('');
   const [draftName, setDraftName] = useState('');
 
@@ -31,6 +31,7 @@ export default function ClientContactsInput({ contacts, onChange }) {
 
   return (
     <div className="space-y-3">
+      {error && <p className="text-sm font-medium text-red-600" role="alert">{error}</p>}
       {contacts.length === 0 ? (
         <p className="text-xs text-slate-500">Aún no hay contactos. Agrega el correo y, si lo sabes, el nombre de quien lo usa.</p>
       ) : (

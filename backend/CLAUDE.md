@@ -94,6 +94,24 @@ controladores. Si el modelo de datos cambia, sigue esa misma regla.
      claves que no son columnas reales (las que agrega un JOIN, como `client_name` o `report_number`). Así
      agregar una columna derivada nueva no rompe el guardado; ya no hace falta acordarse de quitarla en el servicio.
 
+## Mensajes de error (para el usuario final)
+
+Regla: **nunca "Datos inválidos" a secas** — el mensaje debe decir QUÉ campo y POR QUÉ, en español.
+- **Validación (zod):** `config/zodEs.js` traduce los mensajes por defecto de zod y les antepone el nombre
+  del campo (`utils/fieldLabels.js`: "Teléfono: es obligatorio."). `validate.middleware.js` arma el mensaje
+  principal (con varios problemas: "Revisa los datos: … (y N más)") y deja el detalle por campo en `details`.
+  Un mensaje propio en el esquema (`.min(2, 'El nombre debe…')`) se respeta tal cual y debe ser una frase completa.
+  Un campo nuevo que se quiera nombrar bien va en `fieldLabels.js`.
+- **Formato de Guatemala:** `utils/guatemala.js` (NIT ≥ 6 caracteres sin contar el guion, DPI = 13 números,
+  teléfono = 8 números). El frontend tiene la misma regla en `frontend/src/lib/validators.js` y avisa **antes**
+  de enviar; el servidor vuelve a validar. Al guardar se normaliza (NIT y DPI sin guiones, teléfono `5555-1234`).
+- **Duplicados:** `clientService` revisa NIT/DPI antes de insertar y responde 409 "El NIT X ya está registrado
+  en el sistema (cliente: NOMBRE)". Para lo demás, `utils/dbError.js` traduce el error de MySQL con el valor:
+  "Código «021» ya está registrado en el sistema." Bloqueos de la base (`ER_LOCK_WAIT_TIMEOUT`) → 503 con aviso
+  de reintentar.
+- Antes de tocar datos relacionados (p. ej. los contactos de un cliente) se valida todo: un error a mitad de
+  camino no debe dejar el registro a medias.
+
 ## Auth y RBAC
 
 - `POST /api/auth/login` valida con **bcryptjs** y emite un JWT con `{ sub, roleId, permissions[] }`
