@@ -90,16 +90,38 @@ function archivoLocal(valor, locales) {
   return null;
 }
 
-// Dibuja el bloque de datos del taller dentro de la banda azul del encabezado
-// (la misma en los 5 PDF). Los datos vacios simplemente no se imprimen, y las
-// lineas se van acomodando hacia abajo segun cuantos haya.
+// Alto que ocupa un texto dentro de un ancho dado (para no encimar lo que se dibuja debajo).
+function altoTexto(doc, texto, ancho, size = 9, font = 'Helvetica') {
+  doc.font(font).fontSize(size);
+  return doc.heightOfString(String(texto ?? ''), { width: ancho });
+}
+
+// Tamano de letra mas grande (entre `max` y `min`) con el que `texto` cabe en UNA linea de `ancho`.
+function tamanoAjustado(doc, texto, font, max, min, ancho) {
+  let size = max;
+  doc.font(font);
+  while (size > min) {
+    doc.fontSize(size);
+    if (doc.widthOfString(String(texto ?? '')) <= ancho) break;
+    size -= 0.5;
+  }
+  return size;
+}
+
+// Dibuja el bloque de datos del taller dentro de la banda azul del encabezado (la misma en los
+// PDF). El nombre ocupa el ancho completo de la primera fila (se achica si es largo en vez de
+// pisar el titulo del documento, que va debajo a la derecha) y los demas datos van en una columna
+// angosta a la izquierda; lo que no cabe se corta con "…" en vez de invadir la columna derecha.
 function dibujarDatosEmpresa(doc, cfg, x = 160) {
-  doc.fillColor(BLANCO).fontSize(18).font('Helvetica-Bold').text(cfg.company_name, x, 20);
+  const nombre = String(cfg.company_name || '');
+  const sizeNombre = tamanoAjustado(doc, nombre, 'Helvetica-Bold', 18, 10, 390);
+  doc.fillColor(BLANCO).fontSize(sizeNombre).font('Helvetica-Bold')
+     .text(nombre, x, 18, { width: 390, height: sizeNombre + 3, ellipsis: true });
   doc.fontSize(9).font('Helvetica');
   let y = 42;
   const linea = (texto) => {
     if (!texto) return;
-    doc.text(texto, x, y);
+    doc.text(texto, x, y, { width: 185, height: 11, ellipsis: true });
     y += 13;
   };
   linea(cfg.company_tagline);
@@ -109,6 +131,45 @@ function dibujarDatosEmpresa(doc, cfg, x = 160) {
     cfg.company_nit && 'NIT: ' + cfg.company_nit,
   ].filter(Boolean).join('   '));
   linea(cfg.company_email);
+}
+
+// Banda azul del encabezado de TODOS los PDF: logo, datos del taller y, a la derecha, el titulo del
+// documento con su numero y hasta dos lineas de fechas/referencias. El titulo se achica solo si es
+// largo ("REPORTE DE TRABAJO") y va debajo de la fila del nombre del taller: en la misma fila no
+// caben los dos cuando el nombre es largo.
+function dibujarEncabezado(doc, cfg, { titulo, numero, lineas = [] }) {
+  const W = doc.page.width;
+  doc.rect(0, 0, W, 110).fill(AZUL);
+  try {
+    doc.image(join(__dirname, '../assets/logo.jpeg'), 40, 15, { height: 75 });
+  } catch (e) {}
+  dibujarDatosEmpresa(doc, cfg);
+
+  const sizeTitulo = tamanoAjustado(doc, titulo, 'Helvetica-Bold', 18, 11, 200);
+  doc.fontSize(sizeTitulo).font('Helvetica-Bold').fillColor(NARANJA)
+     .text(titulo, 350, 44, { width: 200, align: 'right', lineBreak: false });
+  const yNumero = 44 + sizeTitulo + 5;
+  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
+     .text('No. ' + numero, 350, yNumero, { width: 200, align: 'right', height: 14, ellipsis: true });
+  lineas.forEach((texto, i) => {
+    doc.fontSize(8).fillColor('#94a3b8')
+       .text(texto, 350, yNumero + 17 + i * 11, { width: 200, align: 'right', height: 10, ellipsis: true });
+  });
+}
+
+// Una fila de tabla de items (cotizacion / factura): la descripcion puede ocupar varias lineas, asi
+// que la fila crece con ella (antes era de alto fijo y la segunda linea quedaba cortada) y salta de
+// pagina si ya no cabe. Devuelve la nueva posicion vertical.
+function filaItem(doc, y, { L, R, CW }, { idx, par, descripcion, cantidad, precio, subtotal, gris = false }) {
+  const alto = Math.max(15, altoTexto(doc, descripcion, CW - 220, 8) + 8);
+  if (y + alto > doc.page.height - 50) { doc.addPage({ margin: 0 }); y = 40; }
+  doc.rect(L, y, CW, alto).fill(idx % 2 === 0 ? par : BLANCO);
+  doc.fillColor(gris ? '#94a3b8' : NEGRO).fontSize(8).font('Helvetica')
+     .text(descripcion, L + 8, y + 4, { width: CW - 220 })
+     .text(cantidad, R - 175, y + 4, { width: 45, align: 'center' })
+     .text(precio, R - 125, y + 4, { width: 65, align: 'right' })
+     .text(subtotal, R - 55, y + 4, { width: 55, align: 'right' });
+  return y + alto + 1;
 }
 
 // Texto del taller que va en la esquina derecha del pie de pagina.
@@ -128,25 +189,9 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   const CW = R - L;
 
   // ── HEADER ──────────────────────────────────────────────
-  doc.rect(0, 0, W, 110).fill(AZUL);
-
-  try {
-    const logoPath = join(__dirname, '../assets/logo.jpeg');
-    doc.image(logoPath, L, 15, { height: 75 });
-  } catch(e) {}
-
-  dibujarDatosEmpresa(doc, cfg);
-
-  doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
-     .text('COTIZACION', 350, 18, { width: 200, align: 'right' });
-  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
-     .text('No. ' + (quote.number || '0001'), 350, 48, { width: 200, align: 'right' });
-
   const fechaDoc = quote.date ? new Date(quote.date).toLocaleDateString('es-GT') : '-';
   const validaDoc = quote.valid_until ? new Date(quote.valid_until).toLocaleDateString('es-GT') : '-';
-  doc.fontSize(8).fillColor('#94a3b8')
-     .text('Fecha: ' + fechaDoc, 350, 68, { width: 200, align: 'right' })
-     .text('Valida hasta: ' + validaDoc, 350, 80, { width: 200, align: 'right' });
+  dibujarEncabezado(doc, cfg, { titulo: 'COTIZACION', numero: quote.number || '0001', lineas: ['Fecha: ' + fechaDoc, 'Valida hasta: ' + validaDoc] });
 
   let y = 122;
 
@@ -157,18 +202,18 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   y += 26;
 
   doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Cliente:', L, y);
-  doc.font('Helvetica').text(quote.client_name || '-', L + 55, y);
-  y += 14;
+  doc.font('Helvetica').text(quote.client_name || '-', L + 55, y, { width: CW - 55 });
+  y += Math.max(14, altoTexto(doc, quote.client_name || '-', CW - 55) + 2);
 
   if (quote.work_type) {
     doc.font('Helvetica-Bold').text('Trabajo:', L, y);
-    doc.font('Helvetica').text(quote.work_type, L + 55, y);
-    y += 14;
+    doc.font('Helvetica').text(quote.work_type, L + 55, y, { width: CW - 55 });
+    y += Math.max(14, altoTexto(doc, quote.work_type, CW - 55) + 2);
   }
   if (quote.observations) {
     doc.font('Helvetica-Bold').text('Observaciones:', L, y);
     doc.font('Helvetica').text(quote.observations, L + 95, y, { width: CW - 95 });
-    y += 14;
+    y += Math.max(14, altoTexto(doc, quote.observations, CW - 95) + 2);
   }
   y += 10;
 
@@ -196,13 +241,10 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
          .text('SUBTOTAL', R - 55, y + 5, { width: 55, align: 'right' });
       y += 19;
       laborItems.forEach((item, idx) => {
-        doc.rect(L, y, CW, 15).fill(idx % 2 === 0 ? '#f1f5f9' : BLANCO);
-        doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
-           .text(item.description || '-', L + 8, y + 4, { width: CW - 220 })
-           .text(Number(item.quantity).toFixed(2), R - 175, y + 4, { width: 45, align: 'center' })
-           .text('Q ' + Number(item.unit_price).toFixed(2), R - 125, y + 4, { width: 65, align: 'right' })
-           .text('Q ' + Number(item.subtotal).toFixed(2), R - 55, y + 4, { width: 55, align: 'right' });
-        y += 16;
+        y = filaItem(doc, y, { L, R, CW }, {
+          idx, par: '#f1f5f9', descripcion: item.description || '-',
+          cantidad: Number(item.quantity).toFixed(2), precio: 'Q ' + Number(item.unit_price).toFixed(2), subtotal: 'Q ' + Number(item.subtotal).toFixed(2),
+        });
       });
     }
 
@@ -217,14 +259,11 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
          .text('SUBTOTAL', R - 55, y + 5, { width: 55, align: 'right' });
       y += 19;
       partItems.forEach((item, idx) => {
-        doc.rect(L, y, CW, 15).fill(idx % 2 === 0 ? '#f0fdf4' : BLANCO);
         const sinStock = Number(item.unit_price) === 0;
-        doc.fillColor(sinStock ? '#94a3b8' : NEGRO).fontSize(8).font('Helvetica')
-           .text((item.description || '-') + (sinStock ? ' (sin precio)' : ''), L + 8, y + 4, { width: CW - 220 })
-           .text(Number(item.quantity).toFixed(2), R - 175, y + 4, { width: 45, align: 'center' })
-           .text(sinStock ? '-' : 'Q ' + Number(item.unit_price).toFixed(2), R - 125, y + 4, { width: 65, align: 'right' })
-           .text(sinStock ? '-' : 'Q ' + Number(item.subtotal).toFixed(2), R - 55, y + 4, { width: 55, align: 'right' });
-        y += 16;
+        y = filaItem(doc, y, { L, R, CW }, {
+          idx, par: '#f0fdf4', gris: sinStock, descripcion: (item.description || '-') + (sinStock ? ' (sin precio)' : ''),
+          cantidad: Number(item.quantity).toFixed(2), precio: sinStock ? '-' : 'Q ' + Number(item.unit_price).toFixed(2), subtotal: sinStock ? '-' : 'Q ' + Number(item.subtotal).toFixed(2),
+        });
       });
     }
 
@@ -250,20 +289,20 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   const total = conDescuento ? (Number(quote.total) || 0) : subtotal;
 
   doc.fillColor(NEGRO).fontSize(9).font('Helvetica')
-     .text('Subtotal:', R - 180, y, { width: 125, align: 'right' })
-     .text('Q ' + subtotal.toFixed(2), R - 50, y, { width: 50, align: 'right' });
+     .text('Subtotal:', R - 200, y, { width: 125, align: 'right' })
+     .text('Q ' + subtotal.toFixed(2), R - 70, y, { width: 70, align: 'right' });
   y += 16;
 
   if (discount > 0) {
-    doc.text('Descuento:', R - 180, y, { width: 125, align: 'right' })
-       .text('- Q ' + discount.toFixed(2), R - 50, y, { width: 50, align: 'right' });
+    doc.text('Descuento:', R - 200, y, { width: 125, align: 'right' })
+       .text('- Q ' + discount.toFixed(2), R - 70, y, { width: 70, align: 'right' });
     y += 16;
   }
 
   doc.rect(R - 200, y, 200, 26).fill(NARANJA);
   doc.fillColor(BLANCO).fontSize(11).font('Helvetica-Bold')
-     .text('TOTAL:', R - 200, y + 8, { width: 140, align: 'right' })
-     .text('Q ' + total.toFixed(2), R - 55, y + 8, { width: 55, align: 'right' });
+     .text('TOTAL:', R - 200, y + 8, { width: 100, align: 'right' })
+     .text('Q ' + total.toFixed(2), R - 96, y + 8, { width: 88, align: 'right' });
   y += 36;
 
   // ── PIE DE PÁGINA ─────────────────────────────────────────
@@ -271,9 +310,9 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
      .text('Esta cotizacion tiene validez de ' + cfg.quote_valid_days + ' dias a partir de la fecha de emision.', L, pageH - 28, { width: CW / 2 })
-     .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
+     .text(pieEmpresa(cfg), R - 230, pageH - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text(cfg.company_slogan, L, pageH - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
   return doc;
 }
@@ -371,22 +410,29 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
     if (y + needed > doc.page.height - 50) { doc.addPage({ margin: 0 }); y = 40; }
   };
   const sectionHeader = (title, color = AZUL_MED) => {
-    ensureSpace(26);
+    ensureSpace(26 + 30);
     doc.rect(L, y, CW, 20).fill(color);
     doc.fillColor(BLANCO).fontSize(9).font('Helvetica-Bold').text(title, L + 8, y + 6);
     y += 26;
   };
+  // Cada fila mide lo que ocupe su valor mas alto (un cliente o proyecto largo se parte en dos
+  // lineas): finFila() baja lo que corresponda. Con un alto fijo de 14 el texto partido se
+  // encimaba con la fila de abajo.
+  let filaAlto = 14;
   const field = (label, value, x, labelW) => {
+    const ancho = CW / 2 - labelW - 10;
     doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text(label, x, y);
-    doc.font('Helvetica').text(value || '-', x + labelW, y, { width: CW / 2 - labelW - 10 });
+    doc.font('Helvetica').text(value || '-', x + labelW, y, { width: ancho });
+    filaAlto = Math.max(filaAlto, altoTexto(doc, value || '-', ancho) + 3);
   };
+  const finFila = () => { y += filaAlto; filaAlto = 14; };
   // Una fila con dos campos (izquierda / derecha); la fila solo se imprime si alguno tiene dato.
   const fila = (a, b, labelWA = 110, labelWB = 110) => {
     if (!a[1] && !(b && b[1])) return;
     ensureSpace(14);
     field(a[0], a[1], L, labelWA);
     if (b) field(b[0], b[1], col2, labelWB);
-    y += 14;
+    finFila();
   };
   const threeColList = (items) => {
     if (!items.length) return;
@@ -403,24 +449,9 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   const marcados = (lista, valores) => lista.filter(([k]) => valores.includes(k)).map(([, label]) => label);
 
   // ── ENCABEZADO ───────────────────────────────────────────
-  doc.rect(0, 0, W, 110).fill(AZUL);
-  try {
-    const logoPath = join(__dirname, '../assets/logo.jpeg');
-    doc.image(logoPath, L, 15, { height: 75 });
-  } catch(e) {}
-
-  dibujarDatosEmpresa(doc, cfg);
-
-  doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
-     .text(titulo, 270, 18, { width: 280, align: 'right' });
-  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
-     .text('No. ' + (order.number || '0001'), 350, 48, { width: 200, align: 'right' });
-
   const fechaRecibido = order.received_at ? new Date(order.received_at).toLocaleDateString('es-GT') : '-';
   const fechaEntrega = order.delivery_at ? new Date(order.delivery_at).toLocaleDateString('es-GT') : '-';
-  doc.fontSize(8).fillColor('#94a3b8')
-     .text('Recibido: ' + fechaRecibido, 350, 68, { width: 200, align: 'right' })
-     .text('Entrega: ' + fechaEntrega, 350, 80, { width: 200, align: 'right' });
+  dibujarEncabezado(doc, cfg, { titulo, numero: order.number || '0001', lineas: ['Recibido: ' + fechaRecibido, 'Entrega: ' + fechaEntrega] });
 
   let y = 122;
 
@@ -431,7 +462,7 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   sectionHeader('INFORMACION GENERAL');
   field('Cliente:', order.client_name, L, 60);
   field('Estado:', statusLabel, col2, 50);
-  y += 14;
+  finFila();
   fila(['Código:', order.code, ], ['Proyecto:', order.project], 60, 60);
   fila(['Autorizado por:', order.authorized_by], ['Próximo servicio:', fechaProximo], 90, 100);
   y += 6;
@@ -486,6 +517,7 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   // ── MEDICION ─────────────────────────────────────────────
   const drawMeasurementBlock = (title, raw, variant) => {
     const m = raw || {};
+    ensureSpace(175); // el bloque de medicion completo (~9 filas) no se parte entre dos paginas
     sectionHeader(title, NARANJA);
     doc.fontSize(9);
     const tres = (label, valor) => {
@@ -563,24 +595,25 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   drawMeasurementBlock('MEDICIÓN COMO SE ENTREGA EQUIPO', order.measurement_delivery, 'delivery');
 
   // ── CIERRE ───────────────────────────────────────────────
+  ensureSpace(firmas ? 300 : 215); // el cierre y las firmas van juntos: no dejar solo las lineas de firma en otra pagina
   sectionHeader('CIERRE');
   field('Técnico A.E.G. desarma:', order.tech_disarm, L, 125);
   field('Técnico A.E.G. arma:', order.tech_assemble, col2, 105);
-  y += 14;
+  finFila();
   field('Superv. A.E.G. recibe:', order.supervisor_aeg_receive, L, 115);
   field('Superv. cliente entrega:', order.supervisor_client_deliver, col2, 130);
-  y += 14;
+  finFila();
   field('Superv. A.E.G. entrega:', order.supervisor_aeg_deliver, L, 125);
   field('Superv. cliente recibe:', order.supervisor_client_receive, col2, 125);
-  y += 14;
+  finFila();
   field('Envío:', order.shipping, L, 40);
   field('Cotización #:', order.quotation_number, col2, 75);
-  y += 14;
+  finFila();
   field('DTE #:', order.dte_number, L, 45);
   field('O.C. #:', order.oc_number, col2, 45);
-  y += 14;
+  finFila();
   field('WhatsApp:', order.whatsapp_number, L, 60);
-  y += 14;
+  finFila();
   y += 6;
 
   // ── FIRMAS ─────────────────────────────────────────────────
@@ -613,10 +646,10 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   const pageH = doc.page.height;
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text(pie + ' - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 })
-     .text(pieEmpresa(cfg), R - 150, pageH - 28, { width: 150, align: 'right' });
+     .text(pie + ' - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 - 10, height: 9, ellipsis: true })
+     .text(pieEmpresa(cfg), R - 230, pageH - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text(cfg.company_slogan, L, pageH - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
   return doc;
 }
@@ -634,23 +667,8 @@ export function generarFacturaPDF(invoice, settings) {
   const CW = R - L;
 
   // ── ENCABEZADO ───────────────────────────────────────────
-  doc.rect(0, 0, W, 110).fill(AZUL);
-  try {
-    const logoPath = join(__dirname, '../assets/logo.jpeg');
-    doc.image(logoPath, L, 15, { height: 75 });
-  } catch(e) {}
-
-  dibujarDatosEmpresa(doc, cfg);
-
-  doc.fontSize(22).font('Helvetica-Bold').fillColor(NARANJA)
-     .text('FACTURA', 350, 18, { width: 200, align: 'right' });
-  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
-     .text('No. ' + (invoice.number || '0001'), 350, 48, { width: 200, align: 'right' });
-
   const fechaDoc = invoice.date ? new Date(invoice.date).toLocaleDateString('es-GT') : '-';
-  doc.fontSize(8).fillColor('#94a3b8')
-     .text('Fecha: ' + fechaDoc, 350, 68, { width: 200, align: 'right' })
-     .text('Orden No. ' + (invoice.work_order_number || '-'), 350, 80, { width: 200, align: 'right' });
+  dibujarEncabezado(doc, cfg, { titulo: 'FACTURA', numero: invoice.number || '0001', lineas: ['Fecha: ' + fechaDoc, 'Orden No. ' + (invoice.work_order_number || '-')] });
 
   let y = 122;
 
@@ -661,12 +679,12 @@ export function generarFacturaPDF(invoice, settings) {
   y += 26;
 
   doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Cliente:', L, y);
-  doc.font('Helvetica').text(invoice.client_name || '-', L + 55, y);
-  y += 14;
+  doc.font('Helvetica').text(invoice.client_name || '-', L + 55, y, { width: CW - 55 });
+  y += Math.max(14, altoTexto(doc, invoice.client_name || '-', CW - 55) + 2);
   if (invoice.client_email) {
     doc.font('Helvetica-Bold').text('Correo:', L, y);
-    doc.font('Helvetica').text(invoice.client_email, L + 55, y);
-    y += 14;
+    doc.font('Helvetica').text(invoice.client_email, L + 55, y, { width: CW - 55 });
+    y += Math.max(14, altoTexto(doc, invoice.client_email, CW - 55) + 2);
   }
   y += 10;
 
@@ -680,14 +698,10 @@ export function generarFacturaPDF(invoice, settings) {
      .text('SUBTOTAL', R - 55, y + 5, { width: 55, align: 'right' });
   y += 19;
   items.forEach((item, idx) => {
-    if (y > 680) { doc.addPage({ margin: 0 }); y = 40; }
-    doc.rect(L, y, CW, 15).fill(idx % 2 === 0 ? '#f1f5f9' : BLANCO);
-    doc.fillColor(NEGRO).fontSize(8).font('Helvetica')
-       .text(item.description || '-', L + 8, y + 4, { width: CW - 220 })
-       .text(Number(item.quantity).toFixed(2), R - 175, y + 4, { width: 45, align: 'center' })
-       .text('Q ' + Number(item.unit_price).toFixed(2), R - 125, y + 4, { width: 65, align: 'right' })
-       .text('Q ' + Number(item.subtotal).toFixed(2), R - 55, y + 4, { width: 55, align: 'right' });
-    y += 16;
+    y = filaItem(doc, y, { L, R, CW }, {
+      idx, par: '#f1f5f9', descripcion: item.description || '-',
+      cantidad: Number(item.quantity).toFixed(2), precio: 'Q ' + Number(item.unit_price).toFixed(2), subtotal: 'Q ' + Number(item.subtotal).toFixed(2),
+    });
   });
 
   // ── TOTALES ──────────────────────────────────────────────
@@ -701,20 +715,20 @@ export function generarFacturaPDF(invoice, settings) {
   const total = Number(invoice.total) || 0;
 
   doc.fillColor(NEGRO).fontSize(9).font('Helvetica')
-     .text('Subtotal:', R - 180, y, { width: 125, align: 'right' })
-     .text('Q ' + subtotal.toFixed(2), R - 50, y, { width: 50, align: 'right' });
+     .text('Subtotal:', R - 200, y, { width: 125, align: 'right' })
+     .text('Q ' + subtotal.toFixed(2), R - 70, y, { width: 70, align: 'right' });
   y += 16;
 
   if (discount > 0) {
-    doc.text('Descuento:', R - 180, y, { width: 125, align: 'right' })
-       .text('- Q ' + discount.toFixed(2), R - 50, y, { width: 50, align: 'right' });
+    doc.text('Descuento:', R - 200, y, { width: 125, align: 'right' })
+       .text('- Q ' + discount.toFixed(2), R - 70, y, { width: 70, align: 'right' });
     y += 16;
   }
 
   doc.rect(R - 200, y, 200, 26).fill(NARANJA);
   doc.fillColor(BLANCO).fontSize(11).font('Helvetica-Bold')
-     .text('TOTAL:', R - 200, y + 8, { width: 140, align: 'right' })
-     .text('Q ' + total.toFixed(2), R - 55, y + 8, { width: 55, align: 'right' });
+     .text('TOTAL:', R - 200, y + 8, { width: 100, align: 'right' })
+     .text('Q ' + total.toFixed(2), R - 96, y + 8, { width: 88, align: 'right' });
   y += 36;
 
   // ── CERTIFICACION FEL ────────────────────────────────────
@@ -737,10 +751,10 @@ export function generarFacturaPDF(invoice, settings) {
   const pageH2 = doc.page.height;
   doc.rect(0, pageH2 - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Factura interna - ' + cfg.company_name, L, pageH2 - 28, { width: CW / 2 })
-     .text(pieEmpresa(cfg), R - 150, pageH2 - 28, { width: 150, align: 'right' });
+     .text('Factura interna - ' + cfg.company_name, L, pageH2 - 28, { width: CW / 2 - 10, height: 9, ellipsis: true })
+     .text(pieEmpresa(cfg), R - 230, pageH2 - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text(cfg.company_slogan, L, pageH2 - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH2 - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
   return doc;
 }
@@ -787,20 +801,7 @@ export function generarReportePDF(report, settings, locales = null) {
   const CW = R - L;
 
   // ── ENCABEZADO ───────────────────────────────────────────
-  doc.rect(0, 0, W, 110).fill(AZUL);
-  try {
-    const logoPath = join(__dirname, '../assets/logo.jpeg');
-    doc.image(logoPath, L, 15, { height: 75 });
-  } catch(e) {}
-
-  dibujarDatosEmpresa(doc, cfg);
-
-  doc.fontSize(18).font('Helvetica-Bold').fillColor(NARANJA)
-     .text('REPORTE DE TRABAJO', 220, 20, { width: 330, align: 'right' });
-  doc.fontSize(12).font('Helvetica').fillColor(BLANCO)
-     .text('No. ' + (report.number || '0001'), 350, 48, { width: 200, align: 'right' });
-  doc.fontSize(8).fillColor('#94a3b8')
-     .text('Orden No. ' + (report.work_order_number || '-'), 350, 68, { width: 200, align: 'right' });
+  dibujarEncabezado(doc, cfg, { titulo: 'REPORTE DE TRABAJO', numero: report.number || '0001', lineas: ['Orden No. ' + (report.work_order_number || '-')] });
 
   let y = 122;
 
@@ -810,10 +811,11 @@ export function generarReportePDF(report, settings, locales = null) {
   y += 26;
 
   doc.fillColor(NEGRO).fontSize(9).font('Helvetica-Bold').text('Cliente:', L, y);
-  doc.font('Helvetica').text(report.client_name || '-', L + 55, y);
-  doc.font('Helvetica-Bold').text('Equipo:', L + 280, y);
-  doc.font('Helvetica').text(report.equipment_name || '-', L + 330, y, { width: CW - 290 });
-  y += 16;
+  doc.font('Helvetica').text(report.client_name || '-', L + 55, y, { width: CW - 55 });
+  y += Math.max(14, altoTexto(doc, report.client_name || '-', CW - 55) + 2);
+  doc.font('Helvetica-Bold').text('Equipo:', L, y);
+  doc.font('Helvetica').text(report.equipment_name || '-', L + 55, y, { width: CW - 55 });
+  y += Math.max(16, altoTexto(doc, report.equipment_name || '-', CW - 55) + 4);
 
   if (report.general_notes) {
     doc.font('Helvetica-Bold').text('Notas generales:', L, y);
@@ -930,10 +932,10 @@ export function generarReportePDF(report, settings, locales = null) {
   const pageH3 = doc.page.height;
   doc.rect(0, pageH3 - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
-     .text('Reporte de Trabajo - ' + cfg.company_name, L, pageH3 - 28, { width: CW / 2 })
-     .text(pieEmpresa(cfg), R - 150, pageH3 - 28, { width: 150, align: 'right' });
+     .text('Reporte de Trabajo - ' + cfg.company_name, L, pageH3 - 28, { width: CW / 2 - 10, height: 9, ellipsis: true })
+     .text(pieEmpresa(cfg), R - 230, pageH3 - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
-     .text(cfg.company_slogan, L, pageH3 - 15, { width: CW, align: 'center' });
+     .text(cfg.company_slogan, L, pageH3 - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
   return doc;
 }
