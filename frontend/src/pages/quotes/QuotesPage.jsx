@@ -7,7 +7,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
-import { FileText, Plus, Search, Eye, Pencil, Trash2, Download, ClipboardList, Network, Mail } from 'lucide-react';
+import { FileText, Plus, Search, Eye, Pencil, Trash2, ClipboardList, Network, Mail } from 'lucide-react';
+import DownloadSplitButton from '../../components/quotes/DownloadSplitButton.jsx';
 import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
@@ -34,9 +35,9 @@ export default function QuotesPage() {
   const navigate = useNavigate();
 
   // Descarga el PDF de la cotizacion (lo pide al servidor y lo baja como archivo).
-  const handleDownloadPDF = async (q) => {
+  const handleDownloadPDF = async (q, withDiscount = false) => {
     try {
-      await downloadPdf(`/api/quotes/${q.id}/pdf`, `cotizacion-${q.number}.pdf`);
+      await downloadPdf(`/api/quotes/${q.id}/pdf${withDiscount ? '?discount=1' : ''}`, `cotizacion-${q.number}${withDiscount ? '-con-descuento' : ''}.pdf`);
     } catch(e) { notify.error('Error al generar PDF'); }
   };
 
@@ -134,7 +135,7 @@ export default function QuotesPage() {
                     <button onClick={() => setFlowSource({ type: 'quote', id: q.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
                     <button onClick={() => setEmailQuote(q)} title="Enviar por correo al cliente" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><Mail size={16} /></button>
                     <button onClick={() => setPdfQuote(q)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
-                    <button onClick={() => handleDownloadPDF(q)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
+                    <DownloadSplitButton onDownload={(withDiscount) => handleDownloadPDF(q, withDiscount)} />
                     <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
                     <button onClick={() => setToDelete(q)} title="Eliminar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
                   </div>
