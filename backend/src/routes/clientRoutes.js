@@ -12,8 +12,16 @@ const router = Router();
 // Una referencia (a un tipo de cliente o nivel de fidelizacion) es opcional: puede venir vacia (null).
 const optionalRef = z.union([z.coerce.number().int().positive(), z.null()]).optional();
 
+// Un contacto del cliente: correo (obligatorio, formato valido) + el nombre de la
+// persona dueña de ese correo (opcional -- puede que solo se sepa el correo).
+const contactSchema = z.object({
+  email: z.string().trim().max(190).email('Correo invalido'),
+  name:  z.string().trim().max(150).optional().or(z.literal('')),
+});
+
 // Datos que se piden para crear o editar un cliente: el nombre y el telefono son obligatorios,
-// el correo (si viene) debe tener formato valido, y debe existir NIT o DPI (se revisa aparte en el servicio).
+// y debe existir NIT o DPI (se revisa aparte en el servicio). "contacts", si viene, REEMPLAZA
+// por completo la lista de contactos del cliente (no es un patch fila por fila).
 const baseShape = {
   nit:           z.string().trim().max(20).optional(),
   dpi:           z.string().trim().max(20).optional(),
@@ -22,7 +30,7 @@ const baseShape = {
   trade_name:    z.string().trim().max(255).optional().or(z.literal('')),
   contact_name:  z.string().trim().max(150).optional().or(z.literal('')),
   dependency:    z.string().trim().max(150).optional().or(z.literal('')),
-  email:         z.string().trim().max(190).email('Correo invalido').optional().or(z.literal('')),
+  contacts:      z.array(contactSchema).optional(),
   address:       z.string().max(255).optional(),
   phone:         z.string().trim().min(5, 'El telefono es obligatorio'),
   client_type_id:  optionalRef,

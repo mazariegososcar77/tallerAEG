@@ -18,11 +18,12 @@ import Select from '../../components/ui/Select.jsx';
 import Textarea from '../../components/ui/Textarea.jsx';
 import Checkbox from '../../components/ui/Checkbox.jsx';
 import Button from '../../components/ui/Button.jsx';
+import ClientContactsInput from '../../components/clients/ClientContactsInput.jsx';
 
 // Formulario vacío: valores iniciales cuando se crea un cliente nuevo.
 const emptyForm = {
   nit: '', dpi: '', first_name: '', last_name: '',
-  email: '', address: '', phone: '',
+  contacts: [], address: '', phone: '',
   client_type_id: '', loyalty_tier_id: '',
   is_active: true,
   company_name: '', trade_name: '', contact_name: '', dependency: '',
@@ -58,7 +59,8 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
     setForm(client ? {
       nit: client.nit || '', dpi: client.dpi || '',
       first_name: client.first_name || '', last_name: client.last_name || '',
-      email: client.email || '', address: client.address || '',
+      contacts: (client.contacts || []).map(c => ({ email: c.email || '', name: c.name || '' })),
+      address: client.address || '',
       phone: client.phone || '',
       client_type_id: client.client_type_id ?? UNASSIGNED,
       loyalty_tier_id: client.loyalty_tier_id ?? UNASSIGNED,
@@ -88,7 +90,9 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
       dpi: form.dpi.trim(),
       first_name: form.first_name,
       last_name: form.last_name,
-      email: form.email.trim(),
+      contacts: form.contacts
+        .filter(c => c.email.trim())
+        .map(c => ({ email: c.email.trim(), name: c.name.trim() })),
       address: form.address,
       phone: form.phone,
       client_type_id: form.client_type_id ? Number(form.client_type_id) : null,
@@ -188,7 +192,6 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="DPI" value={form.dpi} onChange={setField('dpi')} error={errors.dpi} />
               <Input label="NIT" value={form.nit} onChange={setField('nit')} error={errors.nit} />
               <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
-              <Input label="Correo" type="email" value={form.email} onChange={setField('email')} error={errors.email} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />
             </div>
             <Textarea label="Direccion" rows={2} value={form.address} onChange={setField('address')} error={errors.address} />
@@ -203,7 +206,6 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="Nombre Comercial" value={form.trade_name} onChange={setField('trade_name')} error={errors.trade_name} />
               <Input label="NIT *" value={form.nit} onChange={setField('nit')} error={errors.nit} required />
               <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
-              <Input label="Correo" type="email" value={form.email} onChange={setField('email')} error={errors.email} />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />
             </div>
@@ -219,11 +221,19 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="Dependencia / Unidad" value={form.dependency} onChange={setField('dependency')} error={errors.dependency} />
               <Input label="NIT" value={form.nit} onChange={setField('nit')} error={errors.nit} />
               <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
-              <Input label="Correo" type="email" value={form.email} onChange={setField('email')} error={errors.email} />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
             </div>
             <Textarea label="Direccion" rows={2} value={form.address} onChange={setField('address')} error={errors.address} />
           </>
+        )}
+
+        {/* Contactos: correo(s) del cliente, cada uno con el nombre de quien lo usa.
+            Se muestra para cualquier categoria una vez elegido el tipo de cliente. */}
+        {category && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-muted">Contactos (correo)</label>
+            <ClientContactsInput contacts={form.contacts} onChange={(contacts) => setForm(p => ({ ...p, contacts }))} />
+          </div>
         )}
 
         {/* El estado activo solo se gestiona al editar; un cliente nuevo entra activo por defecto. */}

@@ -4,6 +4,7 @@
 // las piezas/mano de obra que se agregan, con su cantidad, precio y descuento.
 import * as quoteRepository from '../repositories/quoteRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
+import * as numberingService from './numberingService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Limpia los datos de la cotizacion antes de guardarlos: los montos vacios se
@@ -59,8 +60,8 @@ export async function getById(id) {
 // de vuelta esa orden con la cotizacion recien creada (work_orders.quote_id) —
 // no es una columna de "quotes", asi que se separa del resto del payload antes
 // de guardar.
-export async function create({ items, work_order_id, client_name, client_email, ...data }) {
-  const number = await quoteRepository.getNextNumber();
+export async function create({ items, work_order_id, client_name, client_contacts, ...data }) {
+  const number = await numberingService.getNextNumber('quote');
   normalize(data);
   items = dropBlankItems(items);
   if (items.length > 0) {
@@ -76,12 +77,12 @@ export async function create({ items, work_order_id, client_name, client_email, 
 }
 
 // Edita una cotizacion existente, recalculando subtotal/total igual que al crear.
-// Se descartan client_name y client_email (no son columnas reales, las agrega el
-// repositorio por JOIN solo para mostrarlas -- client_email lo usa la pantalla
-// para proponer a quien mandarle la cotizacion) y created_at/updated_at (fechas
-// que MySQL controla solas; si el formulario las reenvia tal como las mando el
-// servidor, rompen el guardado porque no vienen en el formato que espera la base).
-export async function update(id, { items, client_name, client_email, created_at, updated_at, ...data }) {
+// Se descartan client_name y client_contacts (no son columnas reales, las agrega el
+// repositorio por JOIN/subconsulta solo para mostrarlas -- client_contacts lo usa la
+// pantalla para proponer a quien mandarle la cotizacion) y created_at/updated_at
+// (fechas que MySQL controla solas; si el formulario las reenvia tal como las mando
+// el servidor, rompen el guardado porque no vienen en el formato que espera la base).
+export async function update(id, { items, client_name, client_contacts, created_at, updated_at, ...data }) {
   const existing = await quoteRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Cotización no encontrada');
   normalize(data);

@@ -59,11 +59,26 @@ export default function ClientViewModal({ open, onClose, client }) {
           <Field label="NIT">{client.nit || '—'}</Field>
           <Field label="DPI">{client.dpi || '—'}</Field>
           <Field label="Telefono">{client.phone || '—'}</Field>
-          <Field label="Correo">{client.email || '—'}</Field>
           <div className="col-span-2">
             <Field label="Direccion">{client.address || '—'}</Field>
           </div>
         </dl>
+
+        {/* Contactos: correo(s) del cliente, cada uno con el nombre de quien lo usa. */}
+        <div className="mt-4">
+          <dt className="text-xs font-medium uppercase tracking-wide text-muted">Contactos</dt>
+          {client.contacts?.length > 0 ? (
+            <ul className="mt-1.5 space-y-1">
+              {client.contacts.map((c) => (
+                <li key={c.id} className="text-sm text-navy-800">
+                  {c.email}{c.name && <span className="text-muted"> — {c.name}</span>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <dd className="mt-0.5 text-navy-800">—</dd>
+          )}
+        </div>
 
         {/* Fidelizacion */}
         <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
