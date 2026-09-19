@@ -80,7 +80,7 @@ export default function ArticleFormPage() {
           image_url: a.image_url,
           // Solo para la vista previa: es una direccion temporal, no se guarda.
           image_display_url: a.image_display_url,
-          is_active: a.is_active,
+          is_active: Boolean(a.is_active),
           pieces: (a.pieces || []).map((p) => p.name),
           labor: (a.labor || []).map((l) => l.name),
         }),
