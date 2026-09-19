@@ -24,7 +24,12 @@ const STATUS_LABELS = {
   vencida:   { label: 'Vencida',   color: '#f59e0b' },
 };
 
-export default function QuotesPage() {
+// Esta misma pantalla se reusa para el flujo "Post" (prop flowType="post"): lista solo las
+// cotizaciones que nacieron de una Orden de Trabajo Post (despues del reporte de desarme),
+// y navega a las rutas /post/cotizaciones. La lista de Pre (/cotizaciones) queda sin ellas.
+export default function QuotesPage({ flowType = 'pre' }) {
+  const isPost = flowType === 'post';
+  const basePath = isPost ? '/post/cotizaciones' : '/cotizaciones';
   const [quotes, setQuotes] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -46,7 +51,7 @@ export default function QuotesPage() {
   }, []);
 
   // Filtra la lista de cotizaciones segun lo que el usuario busco (por numero, cliente o equipo).
-  const filtered = quotes.filter(q =>
+  const filtered = quotes.filter(q => (q.flow_type || 'pre') === flowType).filter(q =>
     q.number?.toLowerCase().includes(search.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(search.toLowerCase()) ||
     q.equipment_name?.toLowerCase().includes(search.toLowerCase())
@@ -73,17 +78,25 @@ export default function QuotesPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <FileText size={26} color="var(--c-accent)" />
           <div>
-            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Cotizaciones</h1>
-            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{quotes.length} cotizaciones registradas</p>
+            <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{isPost ? 'Cotizaciones (Flujo Post)' : 'Cotizaciones'}</h1>
+            <p style={{ fontSize: 13, color: '#64748b', margin: 0 }}>{filtered.length} cotizaciones registradas</p>
           </div>
         </div>
-        <button
+        {/* En Post la cotizacion no se abre en blanco: nace de una orden con el reporte
+            finalizado (icono de cotizacion en Post > Ordenes de Trabajo). */}
+        {!isPost && (<button
           onClick={() => navigate('/cotizaciones/nueva')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#CA8A04', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
         >
           <Plus size={18} /> Nueva Cotización
-        </button>
+        </button>)}
       </div>
+
+      {isPost && (
+        <p style={{ fontSize: 12, color: '#64748b', margin: '0 0 12px' }}>
+          Las cotizaciones de este flujo se crean desde Post &gt; Órdenes de Trabajo, con el botón de cotización de una orden cuyo reporte ya está finalizado.
+        </p>
+      )}
 
       {/* Buscador */}
       <div style={{ position: 'relative', marginBottom: 16 }}>
@@ -127,7 +140,7 @@ export default function QuotesPage() {
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
                     {/* Solo aparece si la cotizacion ya esta "aprobada": abre el formulario de
                         Orden de Trabajo prellenado con los datos de este equipo/cotizacion. */}
-                    {q.status === 'aprobada' && (
+                    {!isPost && q.status === 'aprobada' && (
                       <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
                         <ClipboardList size={15} /> Crear Orden
                       </button>
@@ -136,7 +149,7 @@ export default function QuotesPage() {
                     <button onClick={() => setEmailQuote(q)} title="Enviar por correo al cliente" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><Mail size={16} /></button>
                     <button onClick={() => setPdfQuote(q)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <DownloadSplitButton onDownload={(withDiscount) => handleDownloadPDF(q, withDiscount)} />
-                    <button onClick={() => navigate('/cotizaciones/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
+                    <button onClick={() => navigate(basePath + '/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
                     <button onClick={() => setToDelete(q)} title="Eliminar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
                   </div>
                 </div>

@@ -137,7 +137,11 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
   );
 }
 
-export default function QuoteFormPage() {
+// Se reusa para el flujo "Post" (prop flowType="post"): es el mismo formulario, solo que al
+// guardar o volver regresa a /post/cotizaciones. En Post la cotizacion llega de una orden
+// (?fromWorkOrder=) -- ver el prellenado de mas abajo.
+export default function QuoteFormPage({ flowType = 'pre' }) {
+  const basePath = flowType === 'post' ? '/post/cotizaciones' : '/cotizaciones';
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -278,7 +282,7 @@ export default function QuoteFormPage() {
       if (isEdit) await quotesApi.update(id, payload);
       else await quotesApi.create(payload);
       notify.success(isEdit ? 'Cotización actualizada' : 'Cotización creada');
-      navigate('/cotizaciones');
+      navigate(basePath);
     } catch(e) { notify.error(e.response?.data?.message||e.response?.data?.error||e.message||'Error al guardar'); }
     finally { setSaving(false); }
   };
@@ -290,7 +294,7 @@ export default function QuoteFormPage() {
     <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <button onClick={() => navigate('/cotizaciones')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate(basePath)} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             Volver
           </button>
           <span style={{ fontSize:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Cotizacion' : 'Nueva Cotizacion'}</span>

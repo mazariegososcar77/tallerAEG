@@ -100,7 +100,10 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   es de Cotizaciones/Facturación (administración). `work_orders.total` se sigue llenando internamente
   (heredado de la cotización de origen), solo no hay UI para verlo/editarlo aquí.
 - **Cotizaciones** (`pages/quotes/`, ruta `/cotizaciones`): `QuotesPage` y `QuoteFormPage` (página
-  completa, `/cotizaciones/nueva` y `/cotizaciones/:id/editar`).
+  completa, `/cotizaciones/nueva` y `/cotizaciones/:id/editar`). Las dos se reusan en el flujo **Post**
+  (`flowType="post"`, rutas `/post/cotizaciones…`): la lista muestra solo las cotizaciones cuya orden es Post
+  (`flow_type` calculado en `quoteRepository`) y no tiene "Nueva"/"Crear Orden" — la cotización Post nace
+  del botón de cotización de una orden Post con reporte finalizado (`?fromWorkOrder=`).
 - **Máquinas y mantenimiento** (`pages/machines/`, `pages/maintenance/`, rutas `/maquinas` y
   `/mantenimientos`): `MachinesPage`, `MaintenancePage`.
 - **Reportes de trabajo** (`pages/workReports/`, ruta `/reportes/:id/editar`): `WorkReportFormPage`
@@ -137,7 +140,7 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `name/prefix/is_active`—). `LoyaltyTiersPage` (fidelización: nivel, descuento %, beneficios) es una
   página propia porque no encaja en ese catálogo simple. Las pantallas placeholder
   `SystemParamsPage` y `CatalogsPage` se eliminaron junto con sus entradas de menú y sus rutas;
-  `ComingSoonPage` sigue existiendo porque la usa la ruta `post/cotizaciones`.
+  `ComingSoonPage` sigue existiendo pero ya ninguna ruta la usa.
 - **Notificaciones** (`pages/config/NotificationsPage`, ruta `/configuracion/notificaciones`, mismos
   permisos `settings.view`/`settings.update`): qué se avisa por correo y a quién. Los ajustes son de
   `system_settings` como los de Configuración general, así que usa el **mismo `useSettings`** — no

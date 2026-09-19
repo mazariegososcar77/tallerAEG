@@ -26,7 +26,8 @@ export async function getAll(clientId) {
       (
         SELECT JSON_ARRAYAGG(JSON_OBJECT('id', cc.id, 'email', cc.email, 'name', cc.name))
         FROM client_contacts cc WHERE cc.client_id = c.id
-      ) as client_contacts_json
+      ) as client_contacts_json,
+      COALESCE((SELECT wo.flow_type FROM work_orders wo WHERE wo.quote_id = q.id LIMIT 1), 'pre') as flow_type
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
     ${clientId ? 'WHERE q.client_id = ?' : ''}
