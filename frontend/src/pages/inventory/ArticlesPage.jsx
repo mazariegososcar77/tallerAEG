@@ -3,7 +3,7 @@
 // buscar, filtrar por tipo o bodega, ver el detalle de un artículo, editarlo,
 // eliminarlo, crear uno nuevo o subir varios de una vez con un archivo de Excel
 // (carga masiva).
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Upload, Package, Search, Eye } from 'lucide-react';
 import { useArticles } from '../../hooks/useArticles.js';
@@ -13,8 +13,10 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
+import { formatCurrency } from '../../lib/currency.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import Combobox from '../../components/ui/Combobox.jsx';
+import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import BulkUploadModal from './BulkUploadModal.jsx';
 import ArticleViewModal from './ArticleViewModal.jsx';
 
@@ -30,6 +32,27 @@ function Thumb({ url, name }) {
     </div>
   );
   return <img src={url} alt={name} onError={() => setBroken(true)} style={{ width:38, height:38, borderRadius:6, objectFit:'cover', border:'1px solid '+C.border }} />;
+}
+
+// Precio de venta editable directo en la lista (sin entrar a "Editar articulo"):
+// si el usuario tiene permiso, muestra un campo con formato de moneda que guarda
+// solo, al salir del campo (onBlur) y solo si el valor realmente cambio. Sin
+// permiso, se ve igual que antes: texto de solo lectura.
+function InlinePrice({ article, editable, onCommit, style }) {
+  const [draft, setDraft] = useState(article.price);
+  useEffect(() => { setDraft(article.price); }, [article.price]);
+
+  if (!editable) {
+    return <span style={style}>{formatCurrency(article.price)}</span>;
+  }
+  return (
+    <CurrencyInput
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={() => { if (Number(draft) !== Number(article.price)) onCommit(article, draft); }}
+      style={{ background:'transparent', border:'1px solid transparent', borderRadius:6, padding:'2px 6px', outline:'none', width:90, ...style }}
+    />
+  );
 }
 
 export default function ArticlesPage() {
@@ -58,6 +81,22 @@ export default function ArticlesPage() {
     });
   }, [articles, search, typeFilter, warehouseFilter]);
 
+  // Agrupa los articulos ya filtrados por su Tipo, en el mismo orden del
+  // catalogo de tipos (no alfabetico). Los que quedaron sin tipo valido (dato
+  // viejo, o el tipo se elimino) caen en un grupo aparte al final, en vez de
+  // desaparecer de la lista.
+  const grouped = useMemo(() => {
+    const byType = new Map(types.map(t => [t.id, { type:t, items:[] }]));
+    const sinTipo = { type:null, items:[] };
+    for (const a of filtered) {
+      const g = byType.get(a.type_id);
+      (g || sinTipo).items.push(a);
+    }
+    const groups = types.map(t => byType.get(t.id)).filter(g => g.items.length > 0);
+    if (sinTipo.items.length > 0) groups.push(sinTipo);
+    return groups;
+  }, [filtered, types]);
+
   // Elimina el articulo seleccionado (despues de confirmar en el dialogo) y recarga la lista.
   const handleDelete = async () => {
     try {
@@ -66,6 +105,19 @@ export default function ArticlesPage() {
       setDeleting(null);
       reload();
     } catch(err) { notify.error(err.message); }
+  };
+
+  // Guarda el precio editado directo desde la lista (sin abrir "Editar articulo").
+  const handlePriceCommit = async (article, rawValue) => {
+    const price = Number(rawValue) || 0;
+    try {
+      await articlesApi.update(article.id, { price });
+      notify.success(`Precio de "${article.name}" actualizado`);
+      reload();
+    } catch (err) {
+      notify.error(err.response?.data?.message || err.message || 'No se pudo actualizar el precio');
+      reload(); // revierte el campo al valor real guardado
+    }
   };
 
   return (
@@ -120,21 +172,29 @@ export default function ArticlesPage() {
               <Package size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
-          ) : filtered.map(a => (
-            <div key={a.id} style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
-              <div><Thumb url={a.image_display_url} name={a.name} /></div>
-              <span style={{ fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</span>
-              <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
-              <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
-              <span style={{ fontSize:13, color:C.muted }}>{a.warehouse_name}</span>
-              <span style={{ fontSize:13, color:C.text }}>{a.quantity} {a.unit}</span>
-              <span style={{ fontSize:13, fontWeight:600, color:'#10b981' }}>Q {Number(a.price).toFixed(2)}</span>
-              <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
-                <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
-                {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
-                {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
+          ) : grouped.map(g => (
+            <Fragment key={g.type?.id ?? 'sin-tipo'}>
+              <div style={{ padding:'7px 16px', background:C.bg, borderBottom:'1px solid '+C.border, display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:11, fontWeight:800, color:C.orange, textTransform:'uppercase', letterSpacing:'.6px' }}>{g.type?.name || 'Sin tipo'}</span>
+                <span style={{ fontSize:11, color:C.muted }}>({g.items.length})</span>
               </div>
-            </div>
+              {g.items.map(a => (
+                <div key={a.id} style={{ display:'grid', gridTemplateColumns:'50px 100px 1fr 120px 140px 100px 100px 100px', padding:'12px 16px', borderBottom:'1px solid '+C.border, alignItems:'center' }}>
+                  <div><Thumb url={a.image_display_url} name={a.name} /></div>
+                  <span style={{ fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</span>
+                  <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
+                  <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
+                  <span style={{ fontSize:13, color:C.muted }}>{a.warehouse_name}</span>
+                  <span style={{ fontSize:13, color:C.text }}>{a.quantity} {a.unit}</span>
+                  <InlinePrice article={a} editable={hasPermission('articles.update')} onCommit={handlePriceCommit} style={{ fontSize:13, fontWeight:600, color:'#10b981', textAlign:'right' }} />
+                  <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
+                    <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
+                    {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Pencil size={14}/></button>}
+                    {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'5px 8px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={14}/></button>}
+                  </div>
+                </div>
+              ))}
+            </Fragment>
           ))}
         </div>
       )}
@@ -149,23 +209,32 @@ export default function ArticlesPage() {
               <Package size={48} style={{ opacity:.3, margin:'0 auto 12px' }} />
               <p>No hay articulos. Crea uno nuevo o usa la carga masiva.</p>
             </div>
-          ) : filtered.map(a => (
-            <div key={a.id} style={{ display:'flex', gap:12, padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
-              <Thumb url={a.image_display_url} name={a.name} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
-                <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>
-                <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{a.warehouse_name || '—'} · {a.quantity} {a.unit} · <span style={{ color:'#10b981', fontWeight:600 }}>Q {Number(a.price).toFixed(2)}</span></p>
-                <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
-                  {a.type_name && <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{a.type_name}</span>}
+          ) : grouped.map(g => (
+            <Fragment key={g.type?.id ?? 'sin-tipo'}>
+              <div style={{ padding:'7px 16px', background:C.bg, borderBottom:'1px solid '+C.border, display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:11, fontWeight:800, color:C.orange, textTransform:'uppercase', letterSpacing:'.6px' }}>{g.type?.name || 'Sin tipo'}</span>
+                <span style={{ fontSize:11, color:C.muted }}>({g.items.length})</span>
+              </div>
+              {g.items.map(a => (
+                <div key={a.id} style={{ display:'flex', gap:12, padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
+                  <Thumb url={a.image_display_url} name={a.name} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
+                    <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>
+                    <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{a.warehouse_name || '—'} · {a.quantity} {a.unit}</p>
+                    <InlinePrice article={a} editable={hasPermission('articles.update')} onCommit={handlePriceCommit} style={{ fontSize:13, fontWeight:700, color:'#10b981' }} />
+                    <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
+                      {a.type_name && <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{a.type_name}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                    <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Eye size={15}/></button>
+                    {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>}
+                    {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'8px 10px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={15}/></button>}
+                  </div>
                 </div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Eye size={15}/></button>
-                {hasPermission('articles.update') && <button onClick={() => navigate(`/inventario/${a.id}/editar`)} title="Editar" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'8px 10px', cursor:'pointer', color:C.muted }}><Pencil size={15}/></button>}
-                {hasPermission('articles.delete') && <button onClick={() => setDeleting(a)} title="Eliminar" style={{ background:'#ef444415', border:'1px solid #ef444440', borderRadius:6, padding:'8px 10px', cursor:'pointer', color:'#ef4444' }}><Trash2 size={15}/></button>}
-              </div>
-            </div>
+              ))}
+            </Fragment>
           ))}
         </div>
       )}

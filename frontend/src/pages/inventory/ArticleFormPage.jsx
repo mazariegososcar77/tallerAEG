@@ -12,6 +12,7 @@ import { useWarehouses } from '../../hooks/useWarehouses.js';
 import { notify } from '../../lib/toast.js';
 import Card from '../../components/ui/Card.jsx';
 import Input from '../../components/ui/Input.jsx';
+import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import Textarea from '../../components/ui/Textarea.jsx';
 import Select from '../../components/ui/Select.jsx';
 import Checkbox from '../../components/ui/Checkbox.jsx';
@@ -224,8 +225,25 @@ export default function ArticleFormPage() {
               {/* Los dos precios juntos y etiquetados sin ambiguedad: el de compra es lo que
                   le cuesta a AEG (valua el inventario) y el de venta lo que se le cobra al
                   cliente. Confundirlos deja el costo de los trabajos mal calculado. */}
-              <Input label="Precio de compra (Q)" type="number" min="0" step="any" value={form.cost} onChange={setField('cost')} error={errors.cost} placeholder="Sin capturar" />
-              <Input label="Precio de venta (Q)" type="number" min="0" step="any" value={form.price} onChange={setField('price')} error={errors.price} />
+              <div>
+                <label className="mb-1 block text-sm font-medium text-muted">Precio de compra (Q)</label>
+                <CurrencyInput
+                  value={form.cost}
+                  onChange={setField('cost')}
+                  placeholder="Sin capturar"
+                  className={`w-full rounded-md border bg-surface2 px-3 py-2 text-sm text-content placeholder:text-slate-500 focus-brand ${errors.cost ? 'border-red-400' : 'border-line'}`}
+                />
+                {errors.cost && <p className="mt-1 text-xs text-red-400">{errors.cost}</p>}
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-muted">Precio de venta (Q)</label>
+                <CurrencyInput
+                  value={form.price}
+                  onChange={setField('price')}
+                  className={`w-full rounded-md border bg-surface2 px-3 py-2 text-sm text-content placeholder:text-slate-500 focus-brand ${errors.price ? 'border-red-400' : 'border-line'}`}
+                />
+                {errors.price && <p className="mt-1 text-xs text-red-400">{errors.price}</p>}
+              </div>
               {/* Punto de reorden: por debajo de este nivel el articulo se considera
                   "stock bajo". A diferencia de la existencia, esto si se puede editar
                   despues de crear el articulo -- no es un saldo, es una regla de aviso. */}
