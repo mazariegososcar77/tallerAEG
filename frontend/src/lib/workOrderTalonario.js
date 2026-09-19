@@ -137,11 +137,13 @@ export function normalizeMeasurement(m, variant) {
 // del sistema (listas, PDF, cotizaciones) los sigue usando: se derivan de lo que se
 // marco en el papel si nadie los trajo ya (de una maquina o de una cotizacion).
 const WORK_TYPE_NAME = { rebobinado:'Rebobinado', mantenimiento:'Mantenimiento', cambio_conexion:'Cambio de conexion', calculo_voltaje:'Calculo de voltaje' };
-export function deriveEquipmentName(form) {
+// `catalog`: los tipos de equipo del catalogo ([{ code, name }]); sirve para nombrar los tipos
+// creados desde Configuracion, que no estan en EQUIPMENT_CHECKS.
+export function deriveEquipmentName(form, catalog = []) {
   if (form.equipment_name) return form.equipment_name;
   const et = normalizeEquipmentType(form.equipment_type);
   const names = [
-    ...et.subtypes.map(v => EQUIPMENT_CHECKS.find(c => c.value === v)?.label).filter(Boolean),
+    ...et.subtypes.map(v => catalog.find(c => c.code === v)?.name || EQUIPMENT_CHECKS.find(c => c.value === v)?.label).filter(Boolean),
     ...(et.aireador_sizes.length ? ['Aireador ' + et.aireador_sizes.map(v => AIREADOR_SIZES.find(a => a.value === v)?.label || v).join(', ')] : []),
     ...(et.turbina_kw || et.turbina_hp ? ['Turbina'] : []),
   ];

@@ -16,6 +16,7 @@ import { serviceOrdersApi } from '../../api/serviceOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
+import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
@@ -63,6 +64,7 @@ export default function ServiceOrderFormPage() {
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
+  const { equipmentTypes } = useEquipmentTypes({ quiet: true });
   const [clients, setClients] = useState([]);
   const [laborArticles, setLaborArticles] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -126,7 +128,7 @@ export default function ServiceOrderFormPage() {
     try {
       const payload = {
         ...form, visit_date: form.received_at,
-        equipment_name: deriveEquipmentName(form), work_type: deriveWorkType(form), items,
+        equipment_name: deriveEquipmentName(form, equipmentTypes), work_type: deriveWorkType(form), items,
       };
       if (isEdit) await serviceOrdersApi.update(id, payload);
       else await serviceOrdersApi.create(payload);

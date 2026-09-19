@@ -3,6 +3,7 @@
 // presentacion: reciben el formulario y sus funciones de cambio, y no saben nada de
 // guardar. Los usan la Orden de Trabajo (Pre y Post) y la Orden de Servicio.
 import { withUppercase } from '../../lib/text.js';
+import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
 import {
   WORK_CHECKS, LODO_CHECKS, EQUIPMENT_CHECKS, AIREADOR_SIZES, PHYSICAL_CHECKS, PUMP_SEAL_TYPES,
   SCREW_ROWS, VOLTAGES, normalizeEquipmentType,
@@ -47,6 +48,43 @@ export function CheckGroup({ options, values, onToggle, cols = 3, isMobile, mobi
         <Check key={o.value} label={o.label} checked={(values || []).includes(o.value)} onClick={() => onToggle(o.value)} />
       ))}
     </div>
+  );
+}
+
+// Casillas de "Tipo de equipo": salen del catalogo configurable (Configuracion > Tipos de
+// equipo), agrupadas por su categoria. Si el catalogo no carga o esta vacio se usa la lista
+// fija de siempre, y un tipo ya marcado en la orden que se desactivo o borro sigue apareciendo
+// para no perder el dato.
+export function EquipmentTypeChecks({ values, onToggle, isMobile }) {
+  const { equipmentTypes } = useEquipmentTypes({ quiet: true });
+  const active = equipmentTypes.filter((t) => t.is_active);
+  const base = active.length
+    ? active.map((t) => ({ value: t.code, label: t.name, category: t.category }))
+    : EQUIPMENT_CHECKS.map((t) => ({ ...t, category: '' }));
+  const known = new Set(base.map((o) => o.value));
+  const extra = (values || []).filter((v) => !known.has(v)).map((v) => ({
+    value: v,
+    label: equipmentTypes.find((t) => t.code === v)?.name || EQUIPMENT_CHECKS.find((t) => t.value === v)?.label || v,
+    category: equipmentTypes.find((t) => t.code === v)?.category || 'Otros',
+  }));
+  const all = [...base, ...extra];
+  const groups = [];
+  for (const o of all) {
+    let g = groups.find((x) => x.category === o.category);
+    if (!g) { g = { category: o.category, options: [] }; groups.push(g); }
+    g.options.push(o);
+  }
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.category} style={{ marginBottom: 8 }}>
+          {groups.length > 1 && g.category && (
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.6px', margin: '4px 0 6px' }}>{g.category}</div>
+          )}
+          <CheckGroup options={g.options} values={values} onToggle={onToggle} cols={4} isMobile={isMobile} />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -118,7 +156,7 @@ export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker 
           </div>
 
           <div style={sub}>Tipo de equipo</div>
-          <CheckGroup options={EQUIPMENT_CHECKS} values={et.subtypes} onToggle={(v) => toggleEt('subtypes', v)} cols={4} isMobile={isMobile} />
+          <EquipmentTypeChecks values={et.subtypes} onToggle={(v) => toggleEt('subtypes', v)} isMobile={isMobile} />
 
           <div style={sub}>Físico</div>
           <CheckGroup options={PHYSICAL_CHECKS} values={form.physical_parts} onToggle={(v) => toggleIn('physical_parts', v)} cols={4} isMobile={isMobile} />

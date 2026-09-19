@@ -35,6 +35,7 @@ import WorkReportFormPage from '../pages/workReports/WorkReportFormPage.jsx';
 import InvoicesPage from '../pages/billing/InvoicesPage.jsx';
 import PartCategoriesPage from '../pages/config/PartCategoriesPage.jsx';
 import WorkTypesPage from '../pages/config/WorkTypesPage.jsx';
+import EquipmentTypesPage from '../pages/config/EquipmentTypesPage.jsx';
 import DocumentSeriesPage from '../pages/config/DocumentSeriesPage.jsx';
 import ComingSoonPage from '../pages/config/ComingSoonPage.jsx';
 import ServiceOrdersPage from '../pages/serviceOrders/ServiceOrdersPage.jsx';
@@ -126,6 +127,7 @@ export default function AppRoutes() {
         <Route path="configuracion/bodegas" element={<ProtectedRoute permission="warehouses.view"><WarehousesPage /></ProtectedRoute>} />
         <Route path="configuracion/categorias-pieza" element={<ProtectedRoute permission="part-categories.view"><PartCategoriesPage /></ProtectedRoute>} />
         <Route path="configuracion/tipos-trabajo" element={<ProtectedRoute permission="work-types.view"><WorkTypesPage /></ProtectedRoute>} />
+        <Route path="configuracion/tipos-equipo" element={<ProtectedRoute permission="equipment-types.view"><EquipmentTypesPage /></ProtectedRoute>} />
         {/* Ajustes generales del sistema (colores, tema por defecto, datos del taller) */}
         <Route path="configuracion/general" element={<ProtectedRoute permission="settings.view"><GeneralSettingsPage /></ProtectedRoute>} />
         <Route path="configuracion/notificaciones" element={<ProtectedRoute permission="settings.view"><NotificationsPage /></ProtectedRoute>} />
