@@ -33,7 +33,7 @@ const SELECT = `
 function withContacts(row) {
   if (!row) return row;
   const { contacts_json, ...rest } = row;
-  rest.contacts = contacts_json ? JSON.parse(contacts_json) : [];
+  rest.contacts = typeof contacts_json === 'string' ? JSON.parse(contacts_json) : (contacts_json || []);
   return rest;
 }
 
