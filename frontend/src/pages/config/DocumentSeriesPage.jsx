@@ -21,6 +21,8 @@ import PageHeader from '../../components/common/PageHeader.jsx';
 import Input from '../../components/ui/Input.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Spinner from '../../components/ui/Spinner.jsx';
+import Tabs from '../../components/ui/Tabs.jsx';
+import PartCategoriesPage from './PartCategoriesPage.jsx';
 
 // Arma el numero de ejemplo que saldria con el prefijo/digitos/siguiente numero
 // actuales (lo mismo que calcula el backend al emitir un documento nuevo).
@@ -73,7 +75,7 @@ function SeriesRow({ row, canEdit, onSaved }) {
   );
 }
 
-export default function DocumentSeriesPage() {
+function DocumentsTab() {
   const { series, loading, reload } = useDocumentSeries();
   const { hasPermission } = useAuth();
   const canEdit = hasPermission('document-series.update');
@@ -95,6 +97,26 @@ export default function DocumentSeriesPage() {
           ))
         )}
       </section>
+    </div>
+  );
+}
+
+// La numeracion se reparte en dos pestañas: la de los documentos (cotizaciones, ordenes,
+// facturas, reportes) y la de los articulos, cuyo codigo sale del prefijo de su categoria
+// de pieza (ver PartCategoriesPage).
+export default function DocumentSeriesPage() {
+  const { hasPermission } = useAuth();
+  const canSeeArticles = hasPermission('part-categories.view');
+  const [tab, setTab] = useState('documentos');
+  const tabs = [
+    { key: 'documentos', label: 'Documentos' },
+    ...(canSeeArticles ? [{ key: 'articulos', label: 'Artículos' }] : []),
+  ];
+
+  return (
+    <div>
+      <Tabs tabs={tabs} active={tab} onChange={setTab} className="mb-5" />
+      {tab === 'documentos' ? <DocumentsTab /> : <PartCategoriesPage />}
     </div>
   );
 }
