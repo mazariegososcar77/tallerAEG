@@ -16,9 +16,9 @@ import LoyaltyTierTag from '../../components/clients/LoyaltyTierTag.jsx';
 // (por ejemplo: "NIT" arriba y el número de NIT abajo).
 function Field({ label, children }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-navy-800">{children}</dd>
+      <dd className="break-words mt-0.5 text-navy-800">{children}</dd>
     </div>
   );
 }
@@ -55,11 +55,11 @@ export default function ClientViewModal({ open, onClose, client }) {
           )}
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
           <Field label="NIT">{client.nit || '—'}</Field>
           <Field label="DPI">{client.dpi || '—'}</Field>
           <Field label="Telefono">{client.phone || '—'}</Field>
-          <div className="col-span-2">
+          <div className="sm:col-span-2">
             <Field label="Direccion">{client.address || '—'}</Field>
           </div>
         </dl>
@@ -87,7 +87,7 @@ export default function ClientViewModal({ open, onClose, client }) {
             <span className="text-sm font-semibold text-navy-800">Fidelizacion</span>
           </div>
           {client.loyalty_tier_name ? (
-            <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
               <Field label="Nivel">
                 <LoyaltyTierTag
                   name={client.loyalty_tier_name}
@@ -99,7 +99,7 @@ export default function ClientViewModal({ open, onClose, client }) {
               <Field label="Descuento">
                 {client.loyalty_discount != null ? `${Number(client.loyalty_discount).toFixed(0)}%` : '—'}
               </Field>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <Field label="Beneficios">{client.loyalty_benefits || '—'}</Field>
               </div>
             </dl>

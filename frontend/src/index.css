@@ -100,3 +100,47 @@
     display: none;
   }
 }
+
+/*
+ * Ajustes para pantallas tactiles (celulares y tablets).
+ * - iOS Safari hace zoom automatico al enfocar un campo con letra menor a 16px y la pagina
+ *   se queda "agrandada"; muchos formularios usan letra de 11-13px, asi que en dispositivos
+ *   tactiles los campos de texto van a 16px. En escritorio (mouse) no cambia nada.
+ * - touch-action: manipulation quita el retraso y el zoom por doble toque en botones y enlaces.
+ * - text-size-adjust evita que el celular agrande el texto solo al girar la pantalla.
+ */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  button, a, [role='button'], label, select {
+    touch-action: manipulation;
+  }
+  /* Casillas de marcar (toda la fila es tocable): altura minima comoda para el dedo. */
+  [role='checkbox'] {
+    min-height: 40px;
+  }
+  /* Botones que son solo un icono (editar, borrar, ver PDF...): area tactil de 40px como minimo. */
+  button:has(> svg:only-child) {
+    min-width: 40px;
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/*
+ * Alturas de pantalla. 100vh en celulares INCLUYE la barra del navegador y corta lo de abajo;
+ * 100dvh es la altura visible real. Cada clase declara primero vh (respaldo para navegadores
+ * viejos que no conocen dvh) y luego dvh, en ese orden dentro de la misma regla.
+ */
+@layer utilities {
+  .h-app { height: 100vh; height: 100dvh; }
+  .min-h-app { min-height: 100vh; min-height: 100dvh; }
+  .max-h-modal { max-height: 90vh; max-height: 90dvh; }
+  .max-h-pdf { max-height: 95vh; max-height: 95dvh; }
+}

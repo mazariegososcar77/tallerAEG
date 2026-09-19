@@ -50,7 +50,7 @@ export default function Topbar({ onMenu }) {
         >
           {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
         </button>
-        <div style={{ textAlign:'right', display:'flex', flexDirection:'column' }} className="hidden sm:block">
+        <div style={{ textAlign:'right' }} className="hidden sm:block">
           <p style={{ fontSize:13, fontWeight:600, color:'var(--c-text)', margin:0 }}>{user?.name}</p>
           <p style={{ fontSize:11, color:'var(--c-muted)', margin:0 }}>{user?.role?.name}</p>
         </div>

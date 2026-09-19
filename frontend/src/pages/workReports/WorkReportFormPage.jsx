@@ -279,10 +279,10 @@ export default function WorkReportFormPage() {
   };
 
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
+    <div className="-m-4 min-h-app sm:-m-6" style={{ background:C.bg, padding:0 }}>
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <button onClick={() => navigate('/reportes')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#93a8c8', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate('/reportes')} style={{ background:C.dark, border:'1px solid '+C.border, color:C.muted, padding:'9px 14px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             Volver
           </button>
           <span style={{ fontSize:15, fontWeight:700, color:C.text }}>Reporte No. {report.number}</span>
@@ -404,7 +404,7 @@ export default function WorkReportFormPage() {
           </div>
           {/* Firma de quien entrega el equipo (tecnico) y de quien lo recibe (cliente),
               dibujadas a mano en la pantalla */}
-          <div style={{ ...secBody, display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:20 }}>
+          <div style={{ ...secBody, display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)', gap:20 }}>
             <SignaturePad
               label="Tecnico que entrega"
               signatureUrl={report.tech_signature_url}

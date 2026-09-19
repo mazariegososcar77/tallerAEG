@@ -114,8 +114,8 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
   // este catalogo en particular. Asi la misma tabla se adapta a cada caso.
   // El punto de color va dentro de la celda del nombre (no es una columna
   // propia), asi que las columnas de la grilla NO reservan hueco para el.
-  const middleCols = [...(withCategory?["150px"]:[]), ...(withPrefix?["90px"]:[]), ...(withDescription?["1fr"]:[])];
-  const cols = isMobile ? "1fr 80px" : ["1fr", ...middleCols, "100px 100px"].join(" ");
+  const middleCols = [...(withCategory?["150px"]:[]), ...(withPrefix?["90px"]:[]), ...(withDescription?["minmax(0, 1fr)"]:[])];
+  const cols = isMobile ? "1fr 80px" : ["minmax(0, 1fr)", ...middleCols, "100px 100px"].join(" ");
   const headers = isMobile ? ["Nombre","Acciones"] : ["Nombre", ...(withCategory?["Categoria"]:[]), ...(withPrefix?["Prefijo"]:[]), ...(withDescription?["Descripcion"]:[]), "Estado","Acciones"];
 
   return (

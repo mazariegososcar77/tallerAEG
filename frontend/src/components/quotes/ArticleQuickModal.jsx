@@ -121,7 +121,7 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
         {type === 'part' && (
           <div>
             <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--c-muted)', marginBottom:6 }}>CATEGORIA *</label>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:6 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(96px, 1fr))', gap:6 }}>
               {categories.map(cat => (
                 <button key={cat.id} onClick={() => setSelectedCat(cat)}
                   style={{

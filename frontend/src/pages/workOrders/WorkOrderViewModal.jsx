@@ -22,9 +22,9 @@ const STATUS_LABELS = {
 
 function Field({ label, children }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm text-content">{children || '—'}</dd>
+      <dd className="break-words mt-0.5 text-sm text-content">{children || '—'}</dd>
     </div>
   );
 }

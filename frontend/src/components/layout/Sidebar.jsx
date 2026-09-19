@@ -30,11 +30,11 @@ export default function Sidebar({ mobileOpen, onClose }) {
   // Cambia entre menu angosto y menu completo, y guarda la preferencia.
   const toggleCollapsed = () => {
     setOpenGroup(null);
-    setCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
-      return next;
-    });
+    const next = !collapsed;
+    localStorage.setItem(STORAGE_KEY, next ? '1' : '0');
+    setCollapsed(next);
+    // useIsMobile mide el ancho que le queda al contenido, que cambia con el menu: lo avisamos.
+    window.dispatchEvent(new Event('resize'));
   };
 
   // Cierra los flyouts al hacer clic fuera o al redimensionar (la posicion fija quedaria desfasada).
