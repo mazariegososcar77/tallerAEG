@@ -136,7 +136,7 @@ export default function QuotesPage({ flowType = 'pre' }) {
                       {q.valid_until ? ' · Válida hasta: ' + q.valid_until.slice(0,10) : ''}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
                     {/* Solo aparece si la cotizacion ya esta "aprobada": abre el formulario de
                         Orden de Trabajo prellenado con los datos de este equipo/cotizacion. */}

@@ -40,6 +40,7 @@ import { workReportsApi } from '../../api/workReportsApi.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import { notify } from '../../lib/toast.js';
+import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
@@ -102,6 +103,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const fromQuoteId = searchParams.get('fromQuote');
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
+  const { equipmentTypes } = useEquipmentTypes({ quiet: true });
   const { hasPermission } = useAuth();
   const [clients, setClients] = useState([]);
   const [quotes, setQuotes] = useState([]);
@@ -224,7 +226,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const handleSubmit = async () => {
     if (!form.client_id) return notify.error('Selecciona un cliente');
     setSaving(true);
-    const payload = { ...form, equipment_name: deriveEquipmentName(form), work_type: deriveWorkType(form), items };
+    const payload = { ...form, equipment_name: deriveEquipmentName(form, equipmentTypes), work_type: deriveWorkType(form), items };
     try {
       if (isEdit) {
         await workOrdersApi.update(id, payload);
@@ -267,14 +269,14 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
 
   const statusColor = STATUS_COLORS[form.status] || '#1D9E75';
   const statusLabel = STATUS_OPTIONS.find(s => s.value === form.status)?.label || 'Recibido';
-  const gridCols = isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr';
+  const gridCols = isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)';
 
   // Lo que el sistema necesita y NO esta en el papel: va arriba de la primera pestaña.
   const extras = (
     <div style={sec}>
       <SectionHeader title="Datos del sistema" />
       <div style={secBody}>
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap:10 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1fr 2fr', gap:10 }}>
           <div>
             <label style={lbl}>Estado</label>
             <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
@@ -334,12 +336,12 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   );
 
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
+    <div className="-m-4 min-h-app sm:-m-6" style={{ background:C.bg, padding:0 }}>
 
       {/* Topbar */}
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => navigate(ordersBasePath)} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate(ordersBasePath)} style={{ background:C.dark, border:'1px solid '+C.border, color:C.muted, padding:'9px 14px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             ← Volver
           </button>
           <span style={{ fontSize:isMobile?13:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Orden' : 'Nueva Orden de Trabajo'}</span>
@@ -349,7 +351,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
             {statusLabel}
           </span>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        {!isMobile && <div style={{ display:'flex', gap:8 }}>
           {isEdit && (
             <button onClick={handleViewPDF} title="Visualizar el PDF de la orden" style={{ background:'#10b981', border:'none', color:'#fff', padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
               <ViewPdfIcon /> PDF
@@ -358,7 +360,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
           <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'8px 18px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7, opacity:saving?0.7:1 }}>
             <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Orden'}
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Botón guardar sticky en móvil */}

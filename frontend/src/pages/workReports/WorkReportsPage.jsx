@@ -99,7 +99,7 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{report.client_name || '—'}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>Orden No. {report.work_order_number}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     {/* Solo tiene sentido para reportes de Orden de Trabajo: los de Orden de
                         Servicio no tienen cotizacion ni factura detras (nunca facturan). */}
                     {report.order_kind === 'work_order' && (

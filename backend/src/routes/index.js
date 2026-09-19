@@ -17,6 +17,7 @@ import machineRoutes from './machineRoutes.js';
 import maintenanceRoutes from './maintenanceRoutes.js';
 import quoteRoutes from './quoteRoutes.js';
 import workTypeRoutes from './workTypeRoutes.js';
+import equipmentTypeRoutes from './equipmentTypeRoutes.js';
 import documentSeriesRoutes from './documentSeriesRoutes.js';
 import partCategoryRoutes from './partCategoryRoutes.js';
 import workReportRoutes from './workReportRoutes.js';
@@ -63,6 +64,7 @@ router.use('/quotes', quoteRoutes);
 router.use('/part-categories', partCategoryRoutes);
 // Administrar tipos de trabajo (catalogo usado en cotizaciones y ordenes de trabajo).
 router.use('/work-types', workTypeRoutes);
+router.use('/equipment-types', equipmentTypeRoutes);
 // Numeracion de documentos (prefijo/digitos/siguiente numero de cada tipo de documento).
 router.use('/document-series', documentSeriesRoutes);
 // Administrar reportes de trabajo (fotos y notas de una orden).

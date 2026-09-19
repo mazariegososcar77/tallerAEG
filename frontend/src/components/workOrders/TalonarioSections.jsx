@@ -3,6 +3,8 @@
 // presentacion: reciben el formulario y sus funciones de cambio, y no saben nada de
 // guardar. Los usan la Orden de Trabajo (Pre y Post) y la Orden de Servicio.
 import { withUppercase } from '../../lib/text.js';
+import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
+import { useIsTablet } from '../../hooks/useIsMobile.js';
 import {
   WORK_CHECKS, LODO_CHECKS, EQUIPMENT_CHECKS, AIREADOR_SIZES, PHYSICAL_CHECKS, PUMP_SEAL_TYPES,
   SCREW_ROWS, VOLTAGES, normalizeEquipmentType,
@@ -24,7 +26,9 @@ export const SectionHeader = ({ title }) => (
   </div>
 );
 
-const grid = (isMobile, cols, mobileCols = 2) => ({ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? mobileCols : cols}, 1fr)`, gap: 10, marginBottom: 10 });
+// Columnas segun el dispositivo: escritorio `cols`; tablet hasta 4 (aprovecha el ancho); celular `mobileCols`.
+const colsFor = (isMobile, tablet, cols, mobileCols) => (!isMobile ? cols : tablet ? Math.min(cols, 4) : mobileCols);
+const gridBase = (isMobile, tablet, cols, mobileCols = 2) => ({ display: 'grid', gridTemplateColumns: `repeat(${colsFor(isMobile, tablet, cols, mobileCols)}, minmax(0, 1fr))`, gap: 10, marginBottom: 10 });
 
 // Una casilla clicable completa (mismo estilo de siempre).
 function Check({ label, checked, onClick }) {
@@ -41,12 +45,50 @@ function Check({ label, checked, onClick }) {
 
 // Grupo de casillas (varias pueden estar marcadas).
 export function CheckGroup({ options, values, onToggle, cols = 3, isMobile, mobileCols = 2 }) {
+  const tablet = useIsTablet();
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isMobile ? mobileCols : cols}, 1fr)`, gap: 6 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${colsFor(isMobile, tablet, cols, mobileCols)}, minmax(0, 1fr))`, gap: 6 }}>
       {options.map((o) => (
         <Check key={o.value} label={o.label} checked={(values || []).includes(o.value)} onClick={() => onToggle(o.value)} />
       ))}
     </div>
+  );
+}
+
+// Casillas de "Tipo de equipo": salen del catalogo configurable (Configuracion > Tipos de
+// equipo), agrupadas por su categoria. Si el catalogo no carga o esta vacio se usa la lista
+// fija de siempre, y un tipo ya marcado en la orden que se desactivo o borro sigue apareciendo
+// para no perder el dato.
+export function EquipmentTypeChecks({ values, onToggle, isMobile }) {
+  const { equipmentTypes } = useEquipmentTypes({ quiet: true });
+  const active = equipmentTypes.filter((t) => t.is_active);
+  const base = active.length
+    ? active.map((t) => ({ value: t.code, label: t.name, category: t.category }))
+    : EQUIPMENT_CHECKS.map((t) => ({ ...t, category: '' }));
+  const known = new Set(base.map((o) => o.value));
+  const extra = (values || []).filter((v) => !known.has(v)).map((v) => ({
+    value: v,
+    label: equipmentTypes.find((t) => t.code === v)?.name || EQUIPMENT_CHECKS.find((t) => t.value === v)?.label || v,
+    category: equipmentTypes.find((t) => t.code === v)?.category || 'Otros',
+  }));
+  const all = [...base, ...extra];
+  const groups = [];
+  for (const o of all) {
+    let g = groups.find((x) => x.category === o.category);
+    if (!g) { g = { category: o.category, options: [] }; groups.push(g); }
+    g.options.push(o);
+  }
+  return (
+    <>
+      {groups.map((g) => (
+        <div key={g.category} style={{ marginBottom: 8 }}>
+          {groups.length > 1 && g.category && (
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.muted, textTransform: 'uppercase', letterSpacing: '.6px', margin: '4px 0 6px' }}>{g.category}</div>
+          )}
+          <CheckGroup options={g.options} values={values} onToggle={onToggle} cols={4} isMobile={isMobile} />
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -71,6 +113,8 @@ const Txt = ({ form, set, name, upper = true, type = 'text', ...rest }) => (
 // cliente, cotizacion vinculada) -- va arriba, aparte del papel. `clientPicker`: el
 // selector de cliente que ocupa el lugar de "Cliente" del papel.
 export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker }) {
+  const tablet = useIsTablet();
+  const grid = (m, cols, mobileCols) => gridBase(m, tablet, cols, mobileCols);
   const toggleIn = (key, value) => setForm((f) => {
     const arr = f[key] || [];
     return { ...f, [key]: arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value] };
@@ -118,7 +162,7 @@ export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker 
           </div>
 
           <div style={sub}>Tipo de equipo</div>
-          <CheckGroup options={EQUIPMENT_CHECKS} values={et.subtypes} onToggle={(v) => toggleEt('subtypes', v)} cols={4} isMobile={isMobile} />
+          <EquipmentTypeChecks values={et.subtypes} onToggle={(v) => toggleEt('subtypes', v)} isMobile={isMobile} />
 
           <div style={sub}>Físico</div>
           <CheckGroup options={PHYSICAL_CHECKS} values={form.physical_parts} onToggle={(v) => toggleIn('physical_parts', v)} cols={4} isMobile={isMobile} />
@@ -190,13 +234,15 @@ export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker 
 
 // ═══ PESTAÑAS 2 y 6: MEDICIÓN (ingreso / entrega) ═══
 export function MeasurementTab({ title, value, onChange, variant, isMobile }) {
+  const tablet = useIsTablet();
+  const grid = (m, cols, mobileCols) => gridBase(m, tablet, cols, mobileCols);
   const v = value;
   const setField = (k, val) => onChange({ ...v, [k]: val });
   const setRow = (rowKey, col, val) => onChange({ ...v, [rowKey]: { ...v[rowKey], [col]: val } });
   const triple = (key, label) => (
     <div key={key} style={{ marginBottom: 10 }}>
       <label style={lbl}>{label}</label>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: 8 }}>
         {['l1', 'l2', 'l3'].map((col) => (
           <input key={col} placeholder={col.toUpperCase()} value={v[key]?.[col] || ''} onChange={(e) => setRow(key, col, e.target.value)} style={inp} />
         ))}
@@ -257,13 +303,14 @@ export function MeasurementTab({ title, value, onChange, variant, isMobile }) {
 // ═══ PESTAÑA 3: COMPONENTES ═══
 // Tres columnas, como en el papel (7 + 7 + 6), leyendo cada columna de arriba abajo.
 export function ComponentsTab({ items, onToggle, isMobile }) {
+  const tablet = useIsTablet();
   const size = Math.ceil(items.length / 3);
   const columns = [0, 1, 2].map((c) => items.slice(c * size, (c + 1) * size).map((it, i) => ({ it, index: c * size + i })));
   return (
     <div style={sec}>
       <SectionHeader title="Componentes" />
       <div style={secBody}>
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: isMobile ? 6 : 14, alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile && !tablet ? 'minmax(0, 1fr)' : 'repeat(3, minmax(0, 1fr))', gap: isMobile && !tablet ? 6 : 14, alignItems: 'start' }}>
           {columns.map((col, ci) => (
             <div key={ci} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {col.map(({ it, index }) => (
@@ -317,6 +364,8 @@ export function ObservationsTab({ form, set }) {
 
 // ═══ PESTAÑA 7: CIERRE (los campos del pie del talonario) ═══
 export function ClosingFields({ form, set, isMobile }) {
+  const tablet = useIsTablet();
+  const grid = (m, cols, mobileCols) => gridBase(m, tablet, cols, mobileCols);
   return (
     <div style={sec}>
       <SectionHeader title="Cierre" />

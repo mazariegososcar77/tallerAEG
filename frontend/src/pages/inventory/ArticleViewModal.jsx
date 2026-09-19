@@ -12,9 +12,9 @@ import Tabs from '../../components/ui/Tabs.jsx';
 // Pequeño bloque de "etiqueta: valor" que se repite varias veces en la pantalla de información.
 function Field({ label, children }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-xs font-medium uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-navy-800">{children}</dd>
+      <dd className="break-words mt-0.5 text-navy-800">{children}</dd>
     </div>
   );
 }
@@ -119,7 +119,7 @@ export default function ArticleViewModal({ open, onClose, article }) {
                 )}
               </div>
 
-              <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+              <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 text-sm">
                 <Field label="Bodega">
                   <span className="inline-flex items-center gap-2">
                     <span

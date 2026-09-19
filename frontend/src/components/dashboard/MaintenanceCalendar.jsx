@@ -175,12 +175,12 @@ export default function MaintenanceCalendar() {
       </div>
 
       {/* Dias de la semana */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4, marginBottom:4 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, minmax(0, 1fr))', gap:4, marginBottom:4 }}>
         {DOW.map(d => <span key={d} style={{ textAlign:'center', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase' }}>{d}</span>)}
       </div>
 
       {/* Rejilla del mes */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap:4 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(7, minmax(0, 1fr))', gap:4 }}>
         {cells.map((day, i) => {
           if (day === null) return <div key={'b' + i} />;
           const key = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;

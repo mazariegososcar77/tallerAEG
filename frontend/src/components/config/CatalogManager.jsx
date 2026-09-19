@@ -42,11 +42,13 @@ const DEFAULT_COLOR = "#164B2C";
  * - withPrefix: si es true, cada registro tiene un "prefijo" de texto corto
  *   (ej. "ROD") que luego se usa para generar codigos automaticos; el
  *   formulario pide ese campo. Lo usa, por ejemplo, Categorias de Pieza.
+ * - withCategory: si es true, cada registro tiene una "categoria" de texto (ej. "Motores") que
+ *   agrupa los registros en otras pantallas; el formulario la pide. Lo usa Tipos de equipo.
  * - withDescription: si es true (el valor por defecto), el formulario y la
  *   tabla incluyen un campo de descripcion libre. Se pone en false para
  *   catalogos que no manejan descripcion (ej. Categorias de Pieza).
  */
-export default function CatalogManager({ title, subtitle, emoji, entityLabel, items, loading, reload, api, permPrefix, withColor=false, withPrefix=false, withDescription=true }) {
+export default function CatalogManager({ title, subtitle, emoji, entityLabel, items, loading, reload, api, permPrefix, withColor=false, withPrefix=false, withCategory=false, withDescription=true }) {
   const { hasPermission } = useAuth();
   // Segun los permisos del usuario que inicio sesion, se decide si puede ver
   // los botones de crear, editar o eliminar registros de este catalogo.
@@ -57,7 +59,7 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
   const [formOpen, setFormOpen] = useState(false); // si la ventana de crear/editar esta abierta
   const [editing, setEditing] = useState(null); // el registro que se esta editando (null = se esta creando uno nuevo)
   const [deleting, setDeleting] = useState(null); // el registro que se va a eliminar (muestra el dialogo de confirmacion)
-  const [form, setForm] = useState({ name:"", description:"", prefix:"", color:DEFAULT_COLOR, is_active:true });
+  const [form, setForm] = useState({ name:"", description:"", prefix:"", category:"", color:DEFAULT_COLOR, is_active:true });
   const [errors, setErrors] = useState({}); // mensajes de error por campo, si el servidor rechaza los datos
   const [saving, setSaving] = useState(false); // true mientras se esta guardando (crear o editar)
 
@@ -68,8 +70,8 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
     if (!formOpen) return;
     setErrors({});
     setForm(editing
-      ? { name:editing.name, description:editing.description||"", prefix:editing.prefix||"", color:editing.color||DEFAULT_COLOR, is_active:editing.is_active }
-      : { name:"", description:"", prefix:"", color:DEFAULT_COLOR, is_active:true });
+      ? { name:editing.name, description:editing.description||"", prefix:editing.prefix||"", category:editing.category||"", color:editing.color||DEFAULT_COLOR, is_active:editing.is_active }
+      : { name:"", description:"", prefix:"", category:"", color:DEFAULT_COLOR, is_active:true });
   }, [formOpen, editing]);
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
@@ -87,6 +89,7 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
     if (withDescription) payload.description = form.description;
     if (withColor) payload.color = form.color;
     if (withPrefix) payload.prefix = form.prefix.trim().toUpperCase();
+    if (withCategory) payload.category = form.category.trim() || 'Otros';
     try {
       if (editing) { await api.update(editing.id, payload); notify.success(`${entityLabel} actualizado`); }
       else { await api.create(payload); notify.success(`${entityLabel} creado`); }
@@ -111,9 +114,9 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
   // este catalogo en particular. Asi la misma tabla se adapta a cada caso.
   // El punto de color va dentro de la celda del nombre (no es una columna
   // propia), asi que las columnas de la grilla NO reservan hueco para el.
-  const middleCols = [...(withPrefix?["90px"]:[]), ...(withDescription?["1fr"]:[])];
-  const cols = isMobile ? "1fr 80px" : ["1fr", ...middleCols, "100px 100px"].join(" ");
-  const headers = isMobile ? ["Nombre","Acciones"] : ["Nombre", ...(withPrefix?["Prefijo"]:[]), ...(withDescription?["Descripcion"]:[]), "Estado","Acciones"];
+  const middleCols = [...(withCategory?["150px"]:[]), ...(withPrefix?["90px"]:[]), ...(withDescription?["minmax(0, 1fr)"]:[])];
+  const cols = isMobile ? "1fr 80px" : ["minmax(0, 1fr)", ...middleCols, "100px 100px"].join(" ");
+  const headers = isMobile ? ["Nombre","Acciones"] : ["Nombre", ...(withCategory?["Categoria"]:[]), ...(withPrefix?["Prefijo"]:[]), ...(withDescription?["Descripcion"]:[]), "Estado","Acciones"];
 
   return (
     <div style={{ padding:"20px 16px", maxWidth:900, margin:"0 auto" }}>
@@ -147,8 +150,9 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
                 {withColor && <span style={{ width:14, height:14, borderRadius:"50%", background:item.color||DEFAULT_COLOR, display:"inline-block", border:"1px solid "+C.border, flexShrink:0 }} />}
                 <span style={{ fontWeight:600, color:C.text }}>{item.name}</span>
               </div>
-              {isMobile && <p style={{ margin:"3px 0 0", fontSize:12, color:C.muted }}>{withPrefix ? item.prefix : (item.description || "—")} · {item.is_active ? "Activo" : "Inactivo"}</p>}
+              {isMobile && <p style={{ margin:"3px 0 0", fontSize:12, color:C.muted }}>{withCategory ? item.category : withPrefix ? item.prefix : (item.description || "—")} · {item.is_active ? "Activo" : "Inactivo"}</p>}
             </div>
+            {!isMobile && withCategory && <span style={{ fontSize:13, color:C.muted }}>{item.category}</span>}
             {!isMobile && withPrefix && <span style={{ fontSize:13, color:C.muted, fontWeight:700 }}>{item.prefix}</span>}
             {!isMobile && withDescription && <span style={{ fontSize:13, color:C.muted }}>{item.description || "—"}</span>}
             {!isMobile && <span style={{ background:item.is_active?"#10b98122":"#ef444422", color:item.is_active?"#10b981":"#ef4444", border:"1px solid "+(item.is_active?"#10b98144":"#ef444444"), borderRadius:20, padding:"2px 8px", fontSize:11, fontWeight:600, width:"fit-content" }}>
@@ -172,6 +176,7 @@ export default function CatalogManager({ title, subtitle, emoji, entityLabel, it
         }>
         <form id="catalog-form" onSubmit={handleSubmit} className="space-y-4">
           <Input label="Nombre" value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))} error={errors.name} required />
+          {withCategory && <Input label="Categoria (agrupa las casillas, ej. Motores, Bombas)" value={form.category} onChange={e=>setForm(p=>({...p,category:e.target.value}))} error={errors.category} maxLength={100} placeholder="Otros" />}
           {withPrefix && <Input label="Prefijo (para el codigo, ej. ROD)" value={form.prefix} onChange={e=>setForm(p=>({...p,prefix:e.target.value.toUpperCase()}))} error={errors.prefix} maxLength={10} required />}
           {withDescription && <Input label="Descripcion" value={form.description} onChange={e=>setForm(p=>({...p,description:e.target.value}))} error={errors.description} />}
           {withColor && <ColorPicker label="Color" value={form.color} onChange={color=>setForm(p=>({...p,color}))} />}

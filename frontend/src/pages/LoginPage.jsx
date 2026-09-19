@@ -19,7 +19,7 @@ export default function LoginPage() {
   // indicador de "cargando" en vez del formulario.
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-100">
+      <div className="flex h-app items-center justify-center bg-slate-100">
         <Spinner size={32} className="text-orange-500" />
       </div>
     );
@@ -32,7 +32,7 @@ export default function LoginPage() {
   if (user) return <Navigate to="/" replace />;
 
   return (
-    <div className="flex h-screen">
+    <div className="flex min-h-app">
       {/* Carrusel (oculto en pantallas pequenas) */}
       <div className="hidden lg:block lg:w-1/2">
         <ImageCarousel />

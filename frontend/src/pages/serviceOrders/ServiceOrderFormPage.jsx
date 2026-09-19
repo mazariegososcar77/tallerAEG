@@ -16,6 +16,7 @@ import { serviceOrdersApi } from '../../api/serviceOrdersApi.js';
 import { clientsApi } from '../../api/clientsApi.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
+import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
@@ -63,6 +64,7 @@ export default function ServiceOrderFormPage() {
   const navigate = useNavigate();
   const isEdit = Boolean(id);
   const isMobile = useIsMobile();
+  const { equipmentTypes } = useEquipmentTypes({ quiet: true });
   const [clients, setClients] = useState([]);
   const [laborArticles, setLaborArticles] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -126,7 +128,7 @@ export default function ServiceOrderFormPage() {
     try {
       const payload = {
         ...form, visit_date: form.received_at,
-        equipment_name: deriveEquipmentName(form), work_type: deriveWorkType(form), items,
+        equipment_name: deriveEquipmentName(form, equipmentTypes), work_type: deriveWorkType(form), items,
       };
       if (isEdit) await serviceOrdersApi.update(id, payload);
       else await serviceOrdersApi.create(payload);
@@ -167,14 +169,14 @@ export default function ServiceOrderFormPage() {
 
   const statusColor = STATUS_COLORS[form.status] || '#3b82f6';
   const statusLabel = STATUS_OPTIONS.find(s => s.value === form.status)?.label || 'Programada';
-  const gridCols = isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr';
+  const gridCols = isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)';
 
   // Lo que el sistema necesita y NO esta en el papel: va arriba de la primera pestaña.
   const extras = (
     <div style={sec}>
       <SectionHeader title="Datos del sistema" />
       <div style={secBody}>
-        <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap:10 }}>
+        <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1fr 2fr', gap:10 }}>
           <div>
             <label style={lbl}>Estado</label>
             <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
@@ -199,10 +201,10 @@ export default function ServiceOrderFormPage() {
   );
 
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
+    <div className="-m-4 min-h-app sm:-m-6" style={{ background:C.bg, padding:0 }}>
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 16px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-          <button onClick={() => navigate('/ordenes-servicio')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate('/ordenes-servicio')} style={{ background:C.dark, border:'1px solid '+C.border, color:C.muted, padding:'9px 14px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             ← Volver
           </button>
           <span style={{ fontSize:isMobile?13:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Orden de Servicio' : 'Nueva Orden de Servicio'}</span>
@@ -212,7 +214,7 @@ export default function ServiceOrderFormPage() {
             {statusLabel}
           </span>
         </div>
-        <div style={{ display:'flex', gap:8 }}>
+        {!isMobile && <div style={{ display:'flex', gap:8 }}>
           {isEdit && (
             <button onClick={handleViewPDF} title="Visualizar el PDF de la orden" style={{ background:'#10b981', border:'none', color:'#fff', padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
               <FileSearch size={14} strokeWidth={2.5} /> PDF
@@ -221,8 +223,24 @@ export default function ServiceOrderFormPage() {
           <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'8px 18px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7, opacity:saving?0.7:1 }}>
             <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Orden'}
           </button>
-        </div>
+        </div>}
       </div>
+
+      {/* Botón guardar fijo en móvil (igual que la Orden de Trabajo) */}
+      {isMobile && (
+        <div style={{ position:'sticky', top:0, zIndex:100, padding:'8px 16px', background:C.bg, borderBottom:'1px solid '+C.border }}>
+          <div style={{ display:'flex', gap:8 }}>
+            {isEdit && (
+              <button onClick={handleViewPDF} title="Visualizar el PDF de la orden" style={{ background:'#10b981', border:'none', color:'#fff', padding:'10px 14px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7 }}>
+                <FileSearch size={14} strokeWidth={2.5} /> PDF
+              </button>
+            )}
+            <button onClick={handleSubmit} disabled={saving} style={{ background:C.orange, border:'none', color:'#fff', padding:'10px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:7, flex:1, opacity:saving?0.7:1 }}>
+              <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Orden'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Pestañas: las mismas que la Orden de Trabajo */}
       <div style={{ display:'flex', gap:6, overflowX:'auto', padding: isMobile ? '10px 12px' : '10px 20px', background:C.card, borderBottom:'1px solid '+C.border }}>
@@ -303,7 +321,7 @@ export default function ServiceOrderFormPage() {
         {/* FIRMAS */}
         <div style={sec}>
           <SectionHeader title="Firmas" />
-          <div style={{ ...secBody, display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:20 }}>
+          <div style={{ ...secBody, display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr)', gap:20 }}>
             <SignaturePad
               label="Firma Técnico"
               signatureUrl={form.tech_signature_url}
