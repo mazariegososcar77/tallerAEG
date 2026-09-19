@@ -165,8 +165,9 @@ Módulo 7 (reportes de trabajo, `018_work_reports.sql`):
 Módulo 8 (facturación, `019_invoices.sql`):
 - **invoices**: 1 por orden (`UNIQUE work_order_id`), FKs a `work_orders`/`work_reports`/`quotes`/`clients`,
   `status` enum `pendiente_certificacion/certificada/anulada`, `client_email`, y campos `fel_*`
-  (`fel_certifier, fel_uuid, fel_series, fel_number, fel_certified_at`) que **quedan NULL** hasta
-  integrar un certificador FEL real — ver `src/services/felCertifier.js`.
+  (`fel_certifier, fel_uuid, fel_series, fel_number, fel_certified_at`) que **quedan NULL** mientras
+  falten las credenciales de Digifact; con ellas se llenan al certificar (`047_invoice_fel.sql` agrega
+  `fel_issued_at`, `fel_environment`, los datos de anulación y `invoice_fel_documents`) — ver la sección FEL abajo.
 - **invoice_items**: snapshot de líneas al momento de facturar. Si la orden tiene `quote_id`, se copian
   de `quote_items`; si no, es una sola línea "Servicio según orden de trabajo No. X" con
   `work_orders.total` (`work_order_items` no tiene precio, es solo checklist de piezas).
@@ -358,21 +359,42 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
 - `workReportService.createForOrder(workOrderId)` es **idempotente**: si la orden ya tiene reporte, lo
   devuelve en vez de crear otro (es lo que llama el botón "Reporte" de `WorkOrdersPage`).
   `invoiceService.createFromWorkReport(report)` es igual de idempotente vía `UNIQUE work_order_id`.
-- **Certificación FEL:** `invoiceService.certify(id, email)` llama a `felCertifier.certify(invoice)`
-  (`src/services/felCertifier.js`). Ya está conectado a **Digifact** (`src/lib/digifactClient.js` +
-  `src/lib/nucBuilder.js`, basados en `documentacion.digifact.com/gt/api` y el PDF
-  `Documentacion_Tecnica_API_NUC_Digifact_GT_V2_0_6.pdf` que entrega Digifact con las credenciales),
-  pero **sigue comportándose como el stub original mientras falten credenciales**:
-  `felCertifier.certify` revisa `digifactClient._internal.isConfigured()` (¿hay
-  `DIGIFACT_NIT/USERNAME/PASSWORD` en `.env`?) y si no las hay devuelve todo `null` sin llamar a
-  nadie — el estado interno de la factura avanza a `certificada` igual (uso administrativo), pero
-  **no genera un UUID/serie fiscal real**. No "arregles" esto rellenando datos falsos.
-  `generarFacturaPDF` imprime un aviso visible cuando `fel_uuid` es null. Antes de poner
-  credenciales reales: confirmar con Digifact/el contador el régimen de IVA (`AfiliacionIVA`), el
-  establecimiento y el código geográfico SAT (variables `DIGIFACT_*` en `.env.example`), y probar
-  primero contra `DIGIFACT_ENV=test`.
-- El envío del correo de certificación **no está implementado** (no hay SMTP/nodemailer en el backend).
-  El frontend captura y guarda el correo (`invoices.client_email`), pero no se envía nada todavía.
+- **Facturación electrónica (FEL) con Digifact** — `invoiceService.certify(id, email)` →
+  `felCertifier.certify` → [src/lib/nucBuilder.js](src/lib/nucBuilder.js) (arma el NUC JSON) +
+  [src/lib/digifactClient.js](src/lib/digifactClient.js) (token, certificar, anular, consultar NIT y bajar
+  documentos). Referencia: `documentacion.digifact.com/gt/api` (hay versión Markdown en `/gt/api.md`) y
+  el PDF técnico que entrega Digifact con las credenciales (manda ante una discrepancia).
+  - **Ambientes:** `DIGIFACT_ENV=test` (sandbox `testnucgt.digifact.com`, no exige firma electrónica) o
+    `prod` (`nucgt.digifact.com/gt.com.apinuc`, exige la firma electrónica registrada). Cada factura
+    guarda `fel_environment`: una certificada en `test` tiene UUID **pero no existe para la SAT** — la
+    pantalla la marca "PRUEBAS", el PDF interno lo dice y `cancel` se niega a anular una factura de otro
+    ambiente del que está configurado.
+  - **Sin credenciales** (`DIGIFACT_NIT/USERNAME/PASSWORD`) sigue siendo el stub: no llama a nadie, deja
+    `fel_*` en `null` y la factura pasa a `certificada` solo para uso administrativo. No "arregles"
+    esto rellenando datos falsos. `GET /invoices/fel/status` le dice a la pantalla en qué modo está.
+  - **Al certificar** se guardan `fel_uuid/series/number`, `fel_certified_at`, `fel_environment` y
+    `fel_issued_at` (la fecha de emisión EXACTA enviada: la anulación la cita igual), los archivos
+    oficiales en `invoice_fel_documents` (XML certificado + PDF de Digifact; tabla aparte para no
+    arrastrarlos en la lista) y el número fiscal en `work_orders.dte_number`. Los archivos se clasifican
+    por su **contenido** (`%PDF` / `<?xml`), no por la posición de `responseData1..3`, que depende de los
+    formatos pedidos. Si faltan, `getFelFile` los baja de Digifact por UUID (`/api/GetDocument`).
+  - **Candado anti-doble emisión:** `certificando` (Set por id) rechaza un segundo `certify` simultáneo
+    con 409 — un doble clic mandaría dos veces el documento y la SAT emitiría **dos** facturas. Si
+    Digifact certifica pero guardar falla, se reintenta una vez y el UUID queda en el log.
+  - **Correo:** tras certificar se manda el PDF **oficial** al cliente por el mismo webhook de n8n de
+    las cotizaciones (evento `invoice_email`, mismos campos `adjunto_*`; el flujo de n8n no cambia).
+    Es "mejor esfuerzo": sin webhook la factura queda certificada igual y la respuesta trae
+    `email_result`. `POST /invoices/:id/send-email` lo reenvía.
+  - **Anular** (`POST /invoices/:id/cancel`, permiso `billing.cancel`, id 75, solo Administrador, motivo
+    obligatorio): llama a `/api/CancelFelGT` con UUID, NIT/CUI del receptor (`receiverTaxId`) y
+    `fel_issued_at`; guarda el UUID de la anulación y sus archivos. **Límite conocido:** `invoices` tiene
+    `UNIQUE work_order_id`, así que una orden anulada no se puede volver a facturar desde el sistema.
+  - **NIT:** `GET /invoices/nit/:nit` consulta la SAT (`SHARED_GETINFONITcom`); el modal de certificar
+    avisa si el NIT no existe (la causa más común de rechazo). El NIT/CUI viaja sin guiones.
+  - **Supuestos de negocio** (confirmar con el contador): `unit_price` incluye IVA y se extrae 12/112
+    (`AfiliacionIVA=GEN`); toda línea de `invoice_items` es "Servicio" (no guarda `item_type`).
+  - Pruebas: `scripts/test_digifact_token.mjs` y `scripts/test_digifact_certify.mjs` (sandbox, no tocan
+    la base). Antes de producción: probar todo con `DIGIFACT_ENV=test`.
 - **Editar un reporte finalizado:** por defecto, un reporte `finalizado` queda de solo lectura (fotos y
   notas) para todos. El permiso `work-reports.force-edit` (id 44, `021_work_reports_force_edit.sql`,
   solo rol Administrador) salta ese bloqueo — `workReportService.update/addPhoto/removePhoto` reciben
