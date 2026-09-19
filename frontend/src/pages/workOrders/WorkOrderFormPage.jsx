@@ -53,7 +53,7 @@ import {
 } from '../../components/workOrders/TalonarioSections.jsx';
 import {
   DEFAULT_ITEMS, emptyScrews, emptyEquipmentType, emptyMeasurementIntake, emptyMeasurementDelivery,
-  normalizeEquipmentType, normalizeMeasurement, EQUIPMENT_CHECKS, AIREADOR_SIZES,
+  normalizeEquipmentType, normalizeMeasurement, deriveEquipmentName, deriveWorkType,
 } from '../../lib/workOrderTalonario.js';
 
 const STATUS_OPTIONS = [
@@ -77,27 +77,6 @@ const TABS = [
   { id:'medicion_entrega', label:'Med. de entrega' },
   { id:'cierre', label:'Cierre' },
 ];
-
-// El talonario no tiene "Nombre del equipo" ni "Tipo de trabajo general", pero el resto
-// del sistema (listas, PDF, cotizaciones) los sigue usando: se derivan de lo que se
-// marco en el papel si nadie los trajo ya (de una maquina o de una cotizacion).
-const WORK_TYPE_NAME = { rebobinado:'Rebobinado', mantenimiento:'Mantenimiento', cambio_conexion:'Cambio de conexion', calculo_voltaje:'Calculo de voltaje' };
-function deriveEquipmentName(form) {
-  if (form.equipment_name) return form.equipment_name;
-  const et = normalizeEquipmentType(form.equipment_type);
-  const names = [
-    ...et.subtypes.map(v => EQUIPMENT_CHECKS.find(c => c.value === v)?.label).filter(Boolean),
-    ...(et.aireador_sizes.length ? ['Aireador ' + et.aireador_sizes.map(v => AIREADOR_SIZES.find(a => a.value === v)?.label || v).join(', ')] : []),
-    ...(et.turbina_kw || et.turbina_hp ? ['Turbina'] : []),
-  ];
-  return names.join(' / ');
-}
-function deriveWorkType(form) {
-  if (form.work_type) return form.work_type;
-  const first = (form.work_types || []).find(v => WORK_TYPE_NAME[v]);
-  if (first) return WORK_TYPE_NAME[first];
-  return (form.work_types || []).length ? 'Otros' : '';
-}
 
 const SaveIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
