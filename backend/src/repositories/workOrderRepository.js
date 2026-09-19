@@ -2,6 +2,7 @@
 // que se recibió a reparar, con sus piezas/ítems (work_order_items) y su estado
 // (recibido, en proceso, listo, entregado, garantia o devolucion).
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Campos que se guardan como JSON (checkboxes multiples y tablas de filas fijas del
 // talonario) en vez de columnas rigidas — ver 029_work_orders_paper_form.sql.
@@ -109,6 +110,7 @@ export async function findByQuoteId(quoteId) {
 // una sola operación (transacción): si algo falla a mitad de camino, se deshace todo para
 // no dejar una orden a medio guardar.
 export async function create(data, items = []) {
+  data = await pickColumns('work_orders', data);
   stringifyJsonFields(data);
   const conn = await pool.getConnection();
   try {
@@ -140,6 +142,7 @@ export async function create(data, items = []) {
 // todos los ítems anteriores y guarda los nuevos en su lugar (así siempre queda la lista
 // completa y correcta). Todo se hace como una sola operación (transacción).
 export async function update(id, data, items) {
+  data = await pickColumns('work_orders', data);
   stringifyJsonFields(data);
   const conn = await pool.getConnection();
   try {

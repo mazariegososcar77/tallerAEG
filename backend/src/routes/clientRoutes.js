@@ -2,6 +2,7 @@
 // ver la lista, ver el detalle, crear (normal o rapido), editar, validar y borrar.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
 import * as clientController from '../controllers/clientController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -35,7 +36,7 @@ const baseShape = {
   phone:         z.string().trim().min(5, 'El telefono es obligatorio'),
   client_type_id:  optionalRef,
   loyalty_tier_id: optionalRef,
-  is_active:     z.boolean().optional(),
+  is_active:     booleanFlag.optional(),
 };
 
 const createSchema = z.object(baseShape);

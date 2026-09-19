@@ -2,6 +2,7 @@
 // (el catalogo que clasifica a los clientes, ej. "Empresa", "Particular"): ver, crear, editar y borrar.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
 import * as clientTypeController from '../controllers/clientTypeController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -13,7 +14,7 @@ const router = Router();
 const createSchema = z.object({
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
   description: z.string().max(255).optional(),
-  is_active: z.boolean().optional(),
+  is_active: booleanFlag.optional(),
 });
 
 // Para editar un tipo de cliente: los mismos datos pero opcionales, y debe venir al menos un cambio.

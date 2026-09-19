@@ -2,6 +2,7 @@
 // dan a un cliente antes de trabajar en su equipo, con sus líneas de mano de obra/piezas
 // (quote_items) y los datos de cada equipo cotizado (equipment_data).
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Reemplaza `client_contacts_json` (el JSON crudo que devuelve MySQL, o null si el
 // cliente no tiene contactos) por `client_contacts`, un arreglo normal ya parseado.
@@ -78,6 +79,7 @@ export async function findById(id) {
 // una sola operación (transacción): si algo falla a mitad de camino, se deshace todo para
 // no dejar una cotización a medio guardar.
 export async function create(data, items = []) {
+  data = await pickColumns('quotes', data);
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -112,6 +114,7 @@ export async function create(data, items = []) {
 // todas las líneas anteriores y guarda las nuevas en su lugar (así siempre queda la
 // lista completa y correcta). Todo se hace como una sola operación (transacción).
 export async function update(id, data, items) {
+  data = await pickColumns('quotes', data);
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

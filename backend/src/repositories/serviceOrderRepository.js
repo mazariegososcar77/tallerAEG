@@ -4,6 +4,7 @@
 // condiciones del equipo, componentes instalados, especificaciones adicionales, reporte
 // técnico y firmas (técnico + cliente).
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Campos que se guardan como JSON (arreglos/objetos de filas fijas del papel) en vez de
 // columnas rígidas — ver 028_service_order_field_report.sql.
@@ -88,6 +89,7 @@ async function insertItems(conn, orderId, items) {
 
 // Guarda una nueva orden de servicio junto con sus componentes, todo en una transaccion.
 export async function create(data, items = []) {
+  data = await pickColumns('service_orders', data);
   stringifyJsonFields(data);
   const conn = await pool.getConnection();
   try {
@@ -111,6 +113,7 @@ export async function create(data, items = []) {
 
 // Actualiza una orden de servicio. Si vienen componentes (items) se reemplazan por completo.
 export async function update(id, data, items) {
+  data = await pickColumns('service_orders', data);
   stringifyJsonFields(data);
   const conn = await pool.getConnection();
   try {
