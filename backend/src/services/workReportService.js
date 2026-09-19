@@ -18,6 +18,7 @@ import * as invoiceService from './invoiceService.js';
 import * as inventoryService from './inventoryService.js';
 import * as workOrderDocumentService from './workOrderDocumentService.js';
 import * as uploadService from './uploadService.js';
+import * as numberingService from './numberingService.js';
 import { compressPhoto, processVideo, MAX_VIDEO_SECONDS } from '../lib/mediaProcessing.js';
 import * as gcs from '../lib/gcsStorage.js';
 import { UPLOADS_DIR } from '../middleware/upload.middleware.js';
@@ -115,7 +116,7 @@ export async function createForOrder(workOrderId) {
   if (!order) throw new ApiError(404, 'Orden de trabajo no encontrada');
   const existing = await workReportRepository.findByWorkOrderId(workOrderId);
   if (existing) return existing;
-  const number = await workReportRepository.getNextNumber();
+  const number = await numberingService.getNextNumber('work_report');
   return workReportRepository.create({ work_order_id: workOrderId, number, status: 'en_progreso' });
 }
 
@@ -129,7 +130,7 @@ export async function createForServiceOrder(serviceOrderId) {
   if (!order) throw new ApiError(404, 'Orden de servicio no encontrada');
   const existing = await workReportRepository.findByServiceOrderId(serviceOrderId);
   if (existing) return existing;
-  const number = await workReportRepository.getNextNumber();
+  const number = await numberingService.getNextNumber('work_report');
   return workReportRepository.create({ service_order_id: serviceOrderId, number, status: 'en_progreso' });
 }
 

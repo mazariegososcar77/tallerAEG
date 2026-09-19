@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Package, Tags, Warehouse, Users, ShieldCheck, KeyRound,
   Contact, UserCog, Award, ClipboardList, Wrench, Calendar, FileText, Settings,
   Briefcase, Boxes, HeartHandshake, SlidersHorizontal, Cog, ListChecks, Camera, BellRing,
-  Receipt, Layers, Search, Truck,
+  Receipt, Layers, Search, Truck, Hash,
 } from 'lucide-react';
 
 /**
@@ -61,6 +61,7 @@ export const NAV = [
       // despues de Pre y Post, y no repetida dentro de cada flujo — ambos
       // desembocan en esta misma pantalla (/facturacion?invoice=<id>).
       { to: '/facturacion', label: 'Facturación', icon: Receipt, permission: 'billing.view' },
+      { to: '/configuracion/tipos-trabajo', label: 'Tipos de trabajo', icon: Tags, permission: 'work-types.view' },
     ],
   },
   {
@@ -99,6 +100,7 @@ export const NAV = [
     items: [
       { to: '/configuracion/general',        label: 'Configuracion general', icon: SlidersHorizontal, permission: 'settings.view' },
       { to: '/configuracion/notificaciones', label: 'Notificaciones',        icon: BellRing,          permission: 'settings.view' },
+      { to: '/configuracion/numeracion',     label: 'Numeracion de documentos', icon: Hash,           permission: 'document-series.view' },
     ],
   },
 ];

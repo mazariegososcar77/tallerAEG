@@ -6,6 +6,7 @@
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
 import * as notificationService from './notificationService.js';
+import * as numberingService from './numberingService.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Devuelve la lista completa de ordenes de trabajo.
@@ -47,7 +48,7 @@ function normalizePaperForm(data) {
 // vacio en vez de "sin dato". Si no llega flow_type, MySQL lo deja en 'pre' solo
 // (es el default de la columna, ver 025_work_orders_flow_pricing.sql).
 export async function create({ items, ...data }) {
-  const number = await workOrderRepository.getNextNumber();
+  const number = await numberingService.getNextNumber('work_order');
   if (data.total === '' || data.total === null || data.total === undefined) data.total = 0;
   if (data.kw === '') data.kw = null;
   if (data.rpm === '') data.rpm = null;
