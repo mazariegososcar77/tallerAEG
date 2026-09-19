@@ -9,6 +9,8 @@ export const articlesApi = {
   get: (id) => client.get(`/articles/${id}`).then((r) => r.data), // trae un articulo por su id
   create: (payload) => client.post('/articles', payload).then((r) => r.data), // crea un articulo nuevo
   update: (id, payload) => client.put(`/articles/${id}`, payload).then((r) => r.data), // edita un articulo existente
+  // Deja la existencia en `quantity` (queda como ajuste manual en el kardex); `reason` es opcional.
+  adjustStock: (id, quantity, reason) => client.post(`/articles/${id}/adjust`, { quantity, reason }).then((r) => r.data),
   remove: (id) => client.delete(`/articles/${id}`).then((r) => r.data), // elimina un articulo
   bulkCreate: (items) => client.post('/articles/bulk', { items }).then((r) => r.data), // crea muchos articulos de una vez (carga masiva por Excel)
   // Sube la foto de un articulo y devuelve `{ url }` con lo que hay que guardar en

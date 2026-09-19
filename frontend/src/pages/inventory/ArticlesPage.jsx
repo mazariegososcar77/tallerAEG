@@ -55,6 +55,29 @@ function InlinePrice({ article, editable, onCommit, style }) {
   );
 }
 
+// Existencia editable directo en la lista, igual que el precio: guarda al salir del campo y
+// solo si cambio. No escribe la cantidad: el backend registra la diferencia como un ajuste
+// manual en el kardex. Sin permiso se ve como texto.
+function InlineQuantity({ article, editable, onCommit, style }) {
+  const [draft, setDraft] = useState(String(article.quantity));
+  useEffect(() => { setDraft(String(article.quantity)); }, [article.quantity]);
+
+  if (!editable) return <span style={style}>{article.quantity} {article.unit}</span>;
+  return (
+    <span style={{ display:'inline-flex', alignItems:'center', gap:4, ...style }}>
+      <input
+        type="number" min="0" step="any" value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { if (draft !== '' && Number(draft) !== Number(article.quantity)) onCommit(article, draft); else setDraft(String(article.quantity)); }}
+        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+        style={{ background:'transparent', border:'1px solid transparent', borderRadius:6, padding:'2px 6px', outline:'none', width:70, color:'inherit', font:'inherit' }}
+        onFocus={e => { e.target.style.borderColor = C.border; }}
+      />
+      <span>{article.unit}</span>
+    </span>
+  );
+}
+
 export default function ArticlesPage() {
   const navigate = useNavigate();
   const { articles, loading, reload } = useArticles();
@@ -118,6 +141,17 @@ export default function ArticlesPage() {
       notify.error(err.response?.data?.message || err.message || 'No se pudo actualizar el precio');
       reload(); // revierte el campo al valor real guardado
     }
+  };
+
+  // Guarda la existencia editada desde la lista (queda como ajuste manual en el kardex).
+  const handleQuantityCommit = async (article, rawValue) => {
+    try {
+      await articlesApi.adjustStock(article.id, Number(rawValue));
+      notify.success(`Existencia de "${article.name}" actualizada`);
+    } catch (err) {
+      notify.error(err.response?.data?.message || err.message || 'No se pudo actualizar la existencia');
+    }
+    reload(); // muestra el valor real guardado (tambien si fallo)
   };
 
   return (
@@ -185,7 +219,7 @@ export default function ArticlesPage() {
                   <span style={{ fontWeight:600, color:C.text }}>{a.name}</span>
                   <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600, width:'fit-content' }}>{a.type_name}</span>
                   <span style={{ fontSize:13, color:C.muted }}>{a.warehouse_name}</span>
-                  <span style={{ fontSize:13, color:C.text }}>{a.quantity} {a.unit}</span>
+                  <InlineQuantity article={a} editable={hasPermission('articles.update')} onCommit={handleQuantityCommit} style={{ fontSize:13, color:C.text }} />
                   <InlinePrice article={a} editable={hasPermission('articles.update')} onCommit={handlePriceCommit} style={{ fontSize:13, fontWeight:600, color:'#10b981', textAlign:'right' }} />
                   <div style={{ display:'flex', gap:6, justifyContent:'flex-end' }}>
                     <button onClick={() => setViewing(a)} title="Ver detalle" style={{ background:C.dark, border:'1px solid '+C.border, borderRadius:6, padding:'5px 8px', cursor:'pointer', color:C.muted }}><Eye size={14}/></button>
@@ -221,7 +255,8 @@ export default function ArticlesPage() {
                   <div style={{ flex:1, minWidth:0 }}>
                     <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
                     <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>
-                    <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{a.warehouse_name || '—'} · {a.quantity} {a.unit}</p>
+                    <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{a.warehouse_name || '—'}</p>
+                    <InlineQuantity article={a} editable={hasPermission('articles.update')} onCommit={handleQuantityCommit} style={{ fontSize:12, color:C.muted }} />
                     <InlinePrice article={a} editable={hasPermission('articles.update')} onCommit={handlePriceCommit} style={{ fontSize:13, fontWeight:700, color:'#10b981' }} />
                     <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
                       {a.type_name && <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{a.type_name}</span>}

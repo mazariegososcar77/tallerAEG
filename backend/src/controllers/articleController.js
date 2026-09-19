@@ -40,6 +40,12 @@ export const create = asyncHandler(async (req, res) => {
 export const update = asyncHandler(async (req, res) => {
   res.json(await conImagen(await articleService.update(req.params.id, req.body)));
 });
+// Cuando el usuario corrige la existencia desde la lista de inventario, esto la deja en la
+// cantidad pedida registrando un ajuste en el kardex.
+export const adjustStock = asyncHandler(async (req, res) => {
+  const { quantity, reason } = req.body;
+  res.json(await conImagen(await articleService.setStock(req.params.id, quantity, reason, req.user.id)));
+});
 // Cuando el usuario borra un artículo, esto lo elimina.
 export const remove = asyncHandler(async (req, res) => {
   await articleService.remove(req.params.id);
