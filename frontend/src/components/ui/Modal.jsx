@@ -39,7 +39,7 @@ export default function Modal({ open, onClose, title, children, footer, size = '
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/50 p-4 animate-fade-in"
     >
       <div
-        className={`flex max-h-[90vh] w-full ${widths[size]} flex-col rounded-xl bg-surface shadow-xl animate-slide-up border border-line`}
+        className={`flex max-h-modal w-full ${widths[size]} flex-col rounded-xl bg-surface shadow-xl animate-slide-up border border-line`}
         style={accentColor ? { borderTop: `4px solid ${accentColor}` } : undefined}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">

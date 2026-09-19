@@ -161,7 +161,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, NIT, DPI..." style={{ ...inp, width:'100%', paddingLeft:32, boxSizing:'border-box' }} />

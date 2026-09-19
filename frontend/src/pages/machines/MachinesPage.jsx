@@ -73,7 +73,7 @@ export default function MachinesPage() {
           <Plus size={18} /> Nueva Maquina
         </button>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr auto', gap:10, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1fr auto', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder='Buscar...' style={{ ...inp, paddingLeft:32 }} />

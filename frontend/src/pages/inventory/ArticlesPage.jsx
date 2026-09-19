@@ -180,7 +180,7 @@ export default function ArticlesPage() {
       </div>
 
       {/* Filtros: buscar por texto, o filtrar por tipo y por bodega */}
-      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por codigo o nombre..." style={{ ...inp, width:'100%', paddingLeft:32, boxSizing:'border-box' }} />
@@ -256,7 +256,7 @@ export default function ArticlesPage() {
                     <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:14 }}>{a.name}</p>
                     <p style={{ margin:'2px 0', fontSize:12, fontFamily:'monospace', color:C.muted }}>{a.code}</p>
                     <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{a.warehouse_name || '—'}</p>
-                    <InlineQuantity article={a} editable={hasPermission('articles.update')} onCommit={handleQuantityCommit} style={{ fontSize:12, color:C.muted }} />
+                    <span style={{ fontSize:12, color:C.muted, display:'inline-flex', alignItems:'center', gap:4 }}>Existencia: <InlineQuantity article={a} editable={hasPermission('articles.update')} onCommit={handleQuantityCommit} style={{ fontSize:13, color:C.text }} /></span>
                     <InlinePrice article={a} editable={hasPermission('articles.update')} onCommit={handlePriceCommit} style={{ fontSize:13, fontWeight:700, color:'#10b981' }} />
                     <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
                       {a.type_name && <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{a.type_name}</span>}

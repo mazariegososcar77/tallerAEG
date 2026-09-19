@@ -99,9 +99,9 @@ export default function UsersPage() {
             ) : users.map(u => (
               <div key={u.id} style={{ padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
                 <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-                  <div style={{ flex:1 }}>
-                    <span style={{ fontWeight:700, color:C.text, fontSize:14 }}>{u.name}</span>
-                    <p style={{ fontSize:12, color:C.muted, margin:'3px 0' }}>{u.email}</p>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <span style={{ fontWeight:700, color:C.text, fontSize:14, overflowWrap:'anywhere' }}>{u.name}</span>
+                    <p style={{ fontSize:12, color:C.muted, margin:'3px 0', overflowWrap:'anywhere' }}>{u.email}</p>
                     <div style={{ display:'flex', gap:6, marginTop:6, flexWrap:'wrap' }}>
                       <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{u.role_name}</span>
                       <span style={{ background:u.is_active?'#10b98122':'#ef444422', color:u.is_active?'#10b981':'#ef4444', border:'1px solid '+(u.is_active?'#10b98144':'#ef444444'), borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>

@@ -115,7 +115,7 @@ export default function ServiceOrdersPage() {
                       Visita: {order.visit_date?.slice(0,10)}{order.visit_time ? ' ' + order.visit_time : ''}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => setPdfOrder(order)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#0ea5e9' }}><FileSearch size={16} /></button>
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
                     {hasPermission('service-orders.update') && (

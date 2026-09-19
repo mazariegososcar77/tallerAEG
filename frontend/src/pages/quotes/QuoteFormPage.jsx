@@ -64,7 +64,7 @@ const SaveIcon = () => (
 // solo: cantidad x precio) van en columnas fijas, con un boton para eliminar
 // la linea.
 const ITEM_COLS = '1fr 68px 104px 92px 34px';
-const ITEM_COLS_MOBILE = '1fr 1fr 1fr';
+const ITEM_COLS_MOBILE = 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)';
 
 function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, articles, onOpenModal, isMobile }) {
   return (
@@ -130,7 +130,7 @@ function ItemsTable({ items, onChange, onPickArticle, onAdd, onRemove, color, ar
           </div>
         );
       })}
-      <button onClick={onAdd} type="button" style={{ marginTop:2, background:C.dark, border:'1px solid '+color+'44', color:color, padding:'6px 14px', borderRadius:6, cursor:'pointer', fontSize:11, fontWeight:600 }}>
+      <button onClick={onAdd} type="button" style={{ marginTop:2, background:C.dark, border:'1px solid '+color+'44', color:color, padding:'10px 16px', borderRadius:6, cursor:'pointer', fontSize:12, fontWeight:600 }}>
         + Agregar linea
       </button>
     </div>
@@ -287,10 +287,10 @@ export default function QuoteFormPage() {
   const statusLabel = STATUS_OPTIONS.find(s => s.value===form.status)?.label||'Borrador';
 
   return (
-    <div style={{ background:C.bg, minHeight:'100vh', margin:'-24px', padding:0 }}>
+    <div className="-m-4 min-h-app sm:-m-6" style={{ background:C.bg, padding:0 }}>
       <div style={{ background:C.card, borderBottom:'1px solid '+C.border, padding:'10px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:10 }}>
         <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
-          <button onClick={() => navigate('/cotizaciones')} style={{ background:C.dark, border:'1px solid '+C.border, color:'#8fb3a0', padding:'6px 12px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
+          <button onClick={() => navigate('/cotizaciones')} style={{ background:C.dark, border:'1px solid '+C.border, color:C.muted, padding:'9px 14px', borderRadius:6, cursor:'pointer', fontSize:12 }}>
             Volver
           </button>
           <span style={{ fontSize:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Cotizacion' : 'Nueva Cotizacion'}</span>
@@ -320,7 +320,7 @@ export default function QuoteFormPage() {
             </div>
           </div>
           <div style={secBody}>
-            <div style={g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr')}>
+            <div style={g(isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)')}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Cliente *</label>
                 <ClientPicker
@@ -340,7 +340,7 @@ export default function QuoteFormPage() {
                 <input type="date" value={form.valid_until||''} onChange={e => set('valid_until',e.target.value)} style={inp} onClick={e => e.target.showPicker&&e.target.showPicker()} />
               </div>
             </div>
-            <div style={{ ...g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr'), marginTop:10 }}>
+            <div style={{ ...g(isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)'), marginTop:10 }}>
               <div style={{ gridColumn:'span 2' }}>
                 <label style={lbl}>Tipo de Trabajo</label>
                 <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
@@ -388,7 +388,7 @@ export default function QuoteFormPage() {
                   }))}
                 />
               </div>
-              <div style={g(isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr')}>
+              <div style={g(isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)')}>
                 <div style={{ gridColumn:'span 2' }}>
                   <label style={lbl}>Nombre del Equipo / Maquina</label>
                   <input value={eq.name} onChange={withUppercase(e => setEqField(ei,'name',e.target.value))} placeholder="Ej: Motor trifasico" style={inp} />

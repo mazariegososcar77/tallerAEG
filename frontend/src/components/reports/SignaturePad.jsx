@@ -114,7 +114,7 @@ export default function SignaturePad({ label, signatureUrl, signatureName, onSav
   const showCanvas = !signatureUrl || redoing;
 
   return (
-    <div>
+    <div style={{ minWidth:0 }}>
       <label style={lbl}>{label}</label>
       {!showCanvas ? (
         // Ya hay una firma guardada: se muestra la imagen y el nombre de quien firmo.
@@ -138,7 +138,7 @@ export default function SignaturePad({ label, signatureUrl, signatureName, onSav
             ref={canvasRef}
             width={500}
             height={160}
-            style={{ width:'100%', height:130, background:'#fff', border:'1px dashed '+C.border, borderRadius:8, touchAction:'none', cursor:disabled?'default':'crosshair' }}
+            style={{ display:'block', width:'100%', maxWidth:'100%', height:130, background:'#fff', border:'1px dashed '+C.border, borderRadius:8, touchAction:'none', cursor:disabled?'default':'crosshair' }}
             onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end}
             onTouchStart={start} onTouchMove={move} onTouchEnd={end}
           />

@@ -21,7 +21,7 @@ export default function AppLayout() {
   // el scroll de `window`.
   const mainRef = useRef(null);
   return (
-    <div className="flex h-screen overflow-hidden bg-app">
+    <div className="flex h-app overflow-hidden bg-app">
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar onMenu={() => setMobileOpen(true)} />
