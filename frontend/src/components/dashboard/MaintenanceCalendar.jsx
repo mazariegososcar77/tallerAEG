@@ -18,7 +18,8 @@ const WO_STATUS = {
   en_proceso: { label: 'En Proceso', color: '#f59e0b' },
   listo:      { label: 'Listo',      color: '#10b981' },
   entregado:  { label: 'Entregado',  color: '#6366f1' },
-  cancelado:  { label: 'Cancelado',  color: '#ef4444' },
+  garantia:   { label: 'Garantía',   color: '#8b5cf6' },
+  devolucion: { label: 'Devolución', color: '#ef4444' },
 };
 const FREQ = { mensual:'Mensual', trimestral:'Trimestral', semestral:'Semestral', anual:'Anual', personalizado:'Personalizado' };
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];

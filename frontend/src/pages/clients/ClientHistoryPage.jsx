@@ -19,7 +19,7 @@ import { useIsMobile } from '../../hooks/useIsMobile.js';
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#10b981' };
 
 const QUOTE_STATUS = { borrador:{label:'Borrador',color:'#94a3b8'}, enviada:{label:'Enviada',color:'#3b82f6'}, aprobada:{label:'Aprobada',color:'#10b981'}, rechazada:{label:'Rechazada',color:'#ef4444'}, vencida:{label:'Vencida',color:'#f59e0b'} };
-const WO_STATUS = { recibido:{label:'Recibido',color:'#1D9E75'}, en_proceso:{label:'En Proceso',color:'#CA8A04'}, listo:{label:'Listo',color:'#3b82f6'}, entregado:{label:'Entregado',color:'#6366f1'}, cancelado:{label:'Cancelado',color:'#ef4444'} };
+const WO_STATUS = { recibido:{label:'Recibido',color:'#1D9E75'}, en_proceso:{label:'En Proceso',color:'#CA8A04'}, listo:{label:'Listo',color:'#3b82f6'}, entregado:{label:'Entregado',color:'#6366f1'}, garantia:{label:'Garantía',color:'#8b5cf6'}, devolucion:{label:'Devolución',color:'#ef4444'} };
 const SO_STATUS = { programada:{label:'Programada',color:'#3b82f6'}, en_proceso:{label:'En Proceso',color:'#f59e0b'}, completada:{label:'Completada',color:'#10b981'}, cancelada:{label:'Cancelada',color:'#ef4444'} };
 const INVOICE_STATUS = { pendiente_certificacion:{label:'Pendiente de Certificar',color:'#f59e0b'}, certificada:{label:'Certificada',color:'#10b981'}, anulada:{label:'Anulada',color:'#ef4444'} };
 
