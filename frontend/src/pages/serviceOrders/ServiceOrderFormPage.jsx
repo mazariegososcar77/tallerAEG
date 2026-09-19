@@ -17,6 +17,7 @@ import { clientsApi } from '../../api/clientsApi.js';
 import { articlesApi } from '../../api/articlesApi.js';
 import { notify } from '../../lib/toast.js';
 import { useEquipmentTypes } from '../../hooks/useEquipmentTypes.js';
+import OrderNumberStamp from '../../components/workOrders/OrderNumberStamp.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Combobox from '../../components/ui/Combobox.jsx';
 import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
@@ -208,7 +209,7 @@ export default function ServiceOrderFormPage() {
             ← Volver
           </button>
           <span style={{ fontSize:isMobile?13:15, fontWeight:700, color:C.text }}>{isEdit ? 'Editar Orden de Servicio' : 'Nueva Orden de Servicio'}</span>
-          {isEdit && <span style={{ background:C.orange+'22', border:'1px solid '+C.orange+'66', color:C.orange, padding:'3px 10px', borderRadius:4, fontSize:11, fontWeight:700 }}>No. {orderNumber}</span>}
+          <OrderNumberStamp value={form.number ?? ''} onChange={(v) => set('number', v)} />
           <span style={{ background:statusColor+'22', border:'1px solid '+statusColor+'44', color:statusColor, padding:'3px 10px', borderRadius:4, fontSize:11, fontWeight:700, display:'flex', alignItems:'center', gap:5 }}>
             <span style={{ width:6, height:6, background:statusColor, borderRadius:'50%', display:'inline-block' }}></span>
             {statusLabel}

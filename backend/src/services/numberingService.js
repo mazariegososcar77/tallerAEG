@@ -50,3 +50,46 @@ export async function getNextNumber(documentType) {
   if (!DOCUMENT_TYPES[documentType]) throw new ApiError(404, 'Tipo de documento desconocido');
   return documentSeriesRepository.takeNextNumber(documentType);
 }
+
+// Largo maximo del numero: es lo que cabe en la columna `number` de las ordenes (VARCHAR(20)).
+const MAX_NUMBER_LENGTH = 20;
+
+/** Limpia y valida el numero escrito a mano. Devuelve el numero o lanza 400. */
+function cleanManualNumber(value, label) {
+  const number = String(value ?? '').trim();
+  if (!number) throw new ApiError(400, `El numero de ${label} no puede quedar vacio.`);
+  if (number.length > MAX_NUMBER_LENGTH) throw new ApiError(400, `El numero de ${label} admite como maximo ${MAX_NUMBER_LENGTH} caracteres.`);
+  return number;
+}
+
+/**
+ * Numero de un documento NUEVO. Si viene `requested` (por ejemplo el numero impreso en la
+ * orden fisica, mientras se trabaja en paralelo con el papel) se usa tal cual, sin tocar el
+ * contador. Si no viene, toma el siguiente de la serie, saltandose los que ya esten ocupados
+ * (un numero puesto a mano podria coincidir con uno futuro del contador).
+ *
+ * `findByNumber(number)` debe devolver el id del documento que ya usa ese numero, o null.
+ */
+export async function resolveNumber(documentType, requested, { findByNumber, label }) {
+  if (requested !== undefined && requested !== null && String(requested).trim() !== '') {
+    const number = cleanManualNumber(requested, label);
+    if (await findByNumber(number)) throw new ApiError(409, `Ya existe ${label} con el numero ${number}.`);
+    return number;
+  }
+  for (let intento = 0; intento < 100; intento++) {
+    const number = await getNextNumber(documentType);
+    if (!(await findByNumber(number))) return number;
+  }
+  throw new ApiError(500, 'No se pudo asignar un numero libre. Revisa la numeracion en Configuracion.');
+}
+
+/**
+ * Valida un cambio de numero en un documento EXISTENTE. Devuelve el numero limpio; lanza 400
+ * si esta vacio o es muy largo y 409 si lo usa otro documento (el mismo documento no cuenta).
+ */
+export async function assertNumberAvailable(number, currentId, { findByNumber, label }) {
+  const clean = cleanManualNumber(number, label);
+  const ownerId = await findByNumber(clean);
+  if (ownerId && Number(ownerId) !== Number(currentId)) throw new ApiError(409, `Ya existe ${label} con el numero ${clean}.`);
+  return clean;
+}
