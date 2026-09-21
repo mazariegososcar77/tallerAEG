@@ -20,7 +20,7 @@ router.get('/:id',           requirePermission('dashboard.view'), workOrderContr
 router.post('/',             requirePermission('dashboard.view'), workOrderController.create);
 // Editar una orden de trabajo existente.
 router.put('/:id',           requirePermission('dashboard.view'), workOrderController.update);
-// Cambiar solo el estado de una orden (recibido, en proceso, listo, entregado, cancelado).
+// Cambiar solo el estado de una orden (recibido, en proceso, listo, entregado, garantia, devolucion).
 router.patch('/:id/status',  requirePermission('dashboard.view'), workOrderController.updateStatus);
 // Borrar una orden de trabajo.
 router.delete('/:id',        requirePermission('dashboard.view'), workOrderController.remove);

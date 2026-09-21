@@ -15,6 +15,7 @@ import { quotesApi } from '../../api/quotesApi.js';
 import { notify } from '../../lib/toast.js';
 import Modal from '../ui/Modal.jsx';
 import Input from '../ui/Input.jsx';
+import Select from '../ui/Select.jsx';
 import Textarea from '../ui/Textarea.jsx';
 import Button from '../ui/Button.jsx';
 
@@ -23,11 +24,13 @@ export default function SendQuoteEmailModal({ quote, onClose, onSent }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
 
-  // Al abrirse con una cotización, propone el correo del cliente.
+  const contacts = quote?.client_contacts || [];
+
+  // Al abrirse con una cotización, propone el primer contacto del cliente (si tiene).
   useEffect(() => {
-    setEmail(quote?.client_email || '');
+    setEmail(contacts[0]?.email || '');
     setMessage('');
-  }, [quote]);
+  }, [quote]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSend = async () => {
     const destino = email.trim();
@@ -75,6 +78,15 @@ export default function SendQuoteEmailModal({ quote, onClose, onSent }) {
       </div>
 
       <div className="mt-4 grid gap-4">
+        {contacts.length > 0 && (
+          <Select
+            label="Contacto del cliente"
+            value={email}
+            onChange={setEmail}
+            options={contacts.map((c) => ({ value: c.email, label: c.name ? `${c.email} — ${c.name}` : c.email }))}
+            placeholder="Elegir un contacto..."
+          />
+        )}
         <Input
           label="Enviar a"
           type="email"
@@ -84,9 +96,9 @@ export default function SendQuoteEmailModal({ quote, onClose, onSent }) {
           placeholder="cliente@empresa.com"
           autoFocus
         />
-        {!quote?.client_email && (
+        {contacts.length === 0 && (
           <p className="-mt-2 text-[11px] text-muted">
-            Este cliente no tiene correo guardado en su ficha, así que hay que escribirlo.
+            Este cliente no tiene contactos guardados en su ficha, así que hay que escribirlo.
           </p>
         )}
         <Textarea

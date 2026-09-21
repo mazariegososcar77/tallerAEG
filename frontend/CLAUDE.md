@@ -67,6 +67,20 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `image_url` es el valor **guardado** (una ruta interna) y `image_display_url` es la dirección para
   mostrar. El formulario reenvía `image_url` al guardar; si ahí llegara la URL firmada, se escribiría en
   la base y la imagen se rompería al vencer.
+- **Responsive (celular y tablet):** `useIsMobile()` no mide la ventana sino el **ancho que le queda al
+  contenido** (ventana menos el menú lateral fijo, que desde 1024px ocupa 256px/80px): responde `true`
+  si ese ancho es < 900px. Así celulares, tablets en vertical **y tablets en horizontal** usan la vista
+  compacta (tarjetas, campos en 1–2 columnas) y solo laptops/monitores la de escritorio.
+  `useIsTablet()` (contenido entre 600 y 900px) sirve para que un formulario use más columnas en tablet
+  (ver `components/workOrders/TalonarioSections`). Reglas para no romperlo: las grillas en línea usan
+  `minmax(0, 1fr)` y no `1fr` (un track `1fr` no baja del ancho mínimo de su contenido: un select con
+  texto largo, un input de fecha o un canvas empujaban la grilla fuera de la tarjeta); un
+  `gridColumn:'span 2'` solo va si la grilla tiene ≥2 columnas en ese tamaño; las filas de botones
+  llevan `flexWrap`; y el texto largo (correos, nombres) lleva `min-width:0`/`overflow-wrap`. En
+  `index.css`, bajo `(pointer: coarse)`, los campos van a 16px (evita el zoom de iOS al enfocar), los
+  botones de solo icono miden ≥40px y las casillas ≥40px de alto; `h-app`/`min-h-app`/`max-h-modal`
+  usan `dvh` (con `vh` de respaldo) porque `100vh` en un celular incluye la barra del navegador. Los
+  formularios de página completa usan `-m-4 sm:-m-6` para compensar el padding de `<main>`.
 - **Estilos:** solo clases de Tailwind con los tokens de marca `navy` y `orange`
   (`tailwind.config.js`). Animaciones discretas (`animate-fade-in`, `animate-slide-up`).
 - **Colores de marca configurables:** las escalas `navy`/`orange` de `tailwind.config.js` resuelven a
@@ -100,7 +114,10 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   es de Cotizaciones/Facturación (administración). `work_orders.total` se sigue llenando internamente
   (heredado de la cotización de origen), solo no hay UI para verlo/editarlo aquí.
 - **Cotizaciones** (`pages/quotes/`, ruta `/cotizaciones`): `QuotesPage` y `QuoteFormPage` (página
-  completa, `/cotizaciones/nueva` y `/cotizaciones/:id/editar`).
+  completa, `/cotizaciones/nueva` y `/cotizaciones/:id/editar`). Las dos se reusan en el flujo **Post**
+  (`flowType="post"`, rutas `/post/cotizaciones…`): la lista muestra solo las cotizaciones cuya orden es Post
+  (`flow_type` calculado en `quoteRepository`) y no tiene "Nueva"/"Crear Orden" — la cotización Post nace
+  del botón de cotización de una orden Post con reporte finalizado (`?fromWorkOrder=`).
 - **Máquinas y mantenimiento** (`pages/machines/`, `pages/maintenance/`, rutas `/maquinas` y
   `/mantenimientos`): `MachinesPage`, `MaintenancePage`.
 - **Reportes de trabajo** (`pages/workReports/`, ruta `/reportes/:id/editar`): `WorkReportFormPage`
@@ -137,7 +154,7 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `name/prefix/is_active`—). `LoyaltyTiersPage` (fidelización: nivel, descuento %, beneficios) es una
   página propia porque no encaja en ese catálogo simple. Las pantallas placeholder
   `SystemParamsPage` y `CatalogsPage` se eliminaron junto con sus entradas de menú y sus rutas;
-  `ComingSoonPage` sigue existiendo porque la usa la ruta `post/cotizaciones`.
+  `ComingSoonPage` sigue existiendo pero ya ninguna ruta la usa.
 - **Notificaciones** (`pages/config/NotificationsPage`, ruta `/configuracion/notificaciones`, mismos
   permisos `settings.view`/`settings.update`): qué se avisa por correo y a quién. Los ajustes son de
   `system_settings` como los de Configuración general, así que usa el **mismo `useSettings`** — no

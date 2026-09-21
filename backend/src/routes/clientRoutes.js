@@ -2,6 +2,8 @@
 // ver la lista, ver el detalle, crear (normal o rapido), editar, validar y borrar.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
+import { isValidNit, isValidDpi, isValidPhone, MENSAJES } from '../utils/guatemala.js';
 import * as clientController from '../controllers/clientController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -12,22 +14,30 @@ const router = Router();
 // Una referencia (a un tipo de cliente o nivel de fidelizacion) es opcional: puede venir vacia (null).
 const optionalRef = z.union([z.coerce.number().int().positive(), z.null()]).optional();
 
+// Un contacto del cliente: correo (obligatorio, formato valido) + el nombre de la
+// persona dueña de ese correo (opcional -- puede que solo se sepa el correo).
+const contactSchema = z.object({
+  email: z.string().trim().min(1, 'Escribe el correo del contacto o quita esa fila.').max(190).email(),
+  name:  z.string().trim().max(150).optional().or(z.literal('')),
+});
+
 // Datos que se piden para crear o editar un cliente: el nombre y el telefono son obligatorios,
-// el correo (si viene) debe tener formato valido, y debe existir NIT o DPI (se revisa aparte en el servicio).
+// y debe existir NIT o DPI (se revisa aparte en el servicio). "contacts", si viene, REEMPLAZA
+// por completo la lista de contactos del cliente (no es un patch fila por fila).
 const baseShape = {
-  nit:           z.string().trim().max(20).optional(),
-  dpi:           z.string().trim().max(20).optional(),
-  first_name:    z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres'),
+  nit:           z.string().trim().max(30).refine((v) => v === '' || isValidNit(v), MENSAJES.nit).nullish(),
+  dpi:           z.string().trim().max(30).refine((v) => v === '' || isValidDpi(v), MENSAJES.dpi).nullish(),
+  first_name:    z.string().trim().min(2, 'El nombre debe tener al menos 2 letras.'),
   last_name:     z.string().trim().max(150).optional().or(z.literal('')),
   trade_name:    z.string().trim().max(255).optional().or(z.literal('')),
   contact_name:  z.string().trim().max(150).optional().or(z.literal('')),
   dependency:    z.string().trim().max(150).optional().or(z.literal('')),
-  email:         z.string().trim().max(190).email('Correo invalido').optional().or(z.literal('')),
+  contacts:      z.array(contactSchema).optional(),
   address:       z.string().max(255).optional(),
-  phone:         z.string().trim().min(5, 'El telefono es obligatorio'),
+  phone:         z.string().trim().min(1, 'El teléfono es obligatorio.').refine(isValidPhone, MENSAJES.phone),
   client_type_id:  optionalRef,
   loyalty_tier_id: optionalRef,
-  is_active:     z.boolean().optional(),
+  is_active:     booleanFlag.optional(),
 };
 
 const createSchema = z.object(baseShape);

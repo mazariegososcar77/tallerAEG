@@ -2,6 +2,7 @@
 // tipo (por ejemplo "Rodamientos", "Cables"), cada una con un prefijo de código
 // (por ejemplo "ROD") que se usa para generar códigos correlativos de artículos.
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Trae todas las categorías de pieza, ordenadas por nombre.
 export async function getAll() {
@@ -39,6 +40,7 @@ export async function create(data) {
 
 // Actualiza solo los datos indicados de una categoría de pieza existente.
 export async function update(id, data) {
+  data = await pickColumns('part_categories', data);
   const fields = Object.keys(data).map(k => k + ' = ?').join(', ');
   await pool.query('UPDATE part_categories SET ' + fields + ' WHERE id = ?', [...Object.values(data), id]);
   return findById(id);

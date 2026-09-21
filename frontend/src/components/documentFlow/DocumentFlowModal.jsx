@@ -61,7 +61,7 @@ const STATUS_LABELS = {
   work_order: {
     recibido: { label: 'Recibido', color: '#3b82f6' }, en_proceso: { label: 'En Proceso', color: '#f59e0b' },
     listo: { label: 'Listo', color: '#10b981' }, entregado: { label: 'Entregado', color: '#6366f1' },
-    cancelado: { label: 'Cancelado', color: '#ef4444' },
+    garantia: { label: 'Garantía', color: '#8b5cf6' }, devolucion: { label: 'Devolución', color: '#ef4444' },
   },
   work_report: {
     en_progreso: { label: 'En Progreso', color: '#f59e0b' }, finalizado: { label: 'Finalizado', color: '#10b981' },

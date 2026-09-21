@@ -53,7 +53,6 @@ export async function expiringQuotes(days) {
                THEN CONCAT(c.first_name, ' ', c.last_name)
              ELSE c.first_name
            END AS client_name,
-           c.email AS client_email,
            DATEDIFF(q.valid_until, CURDATE()) AS days_left
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id

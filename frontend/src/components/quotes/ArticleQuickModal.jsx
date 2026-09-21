@@ -4,6 +4,7 @@ import { partCategoriesApi } from '../../api/partCategoriesApi.js';
 import { notify } from '../../lib/toast.js';
 import Modal from '../../components/ui/Modal.jsx';
 import Input from '../../components/ui/Input.jsx';
+import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import Button from '../../components/ui/Button.jsx';
 
 const LABOR_PREFIX = 'MO';
@@ -120,7 +121,7 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
         {type === 'part' && (
           <div>
             <label style={{ display:'block', fontSize:11, fontWeight:700, color:'var(--c-muted)', marginBottom:6 }}>CATEGORIA *</label>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:6 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(96px, 1fr))', gap:6 }}>
               {categories.map(cat => (
                 <button key={cat.id} onClick={() => setSelectedCat(cat)}
                   style={{
@@ -147,7 +148,14 @@ export default function ArticleQuickModal({ open, onClose, onSaved, type = 'labo
           <Input label="Nombre *" value={form.name} onChange={e => set('name', e.target.value)}
             placeholder={type==='labor' ? 'Ej: Rebobinado motor' : 'Ej: Rodamiento 6205'} />
           {type === 'labor' && (
-            <Input label="Precio base (Q)" type="number" value={form.price} onChange={e => set('price', e.target.value)} />
+            <div>
+              <label className="mb-1 block text-sm font-medium text-muted">Precio base (Q)</label>
+              <CurrencyInput
+                value={form.price}
+                onChange={e => set('price', e.target.value)}
+                className="w-full rounded-md border border-line bg-surface2 px-3 py-2 text-sm text-content placeholder:text-slate-500 focus-brand"
+              />
+            </div>
           )}
           {type === 'part' && (
             <Input label="Marca" value={form.brand} onChange={e => set('brand', e.target.value)} placeholder="Opcional" />

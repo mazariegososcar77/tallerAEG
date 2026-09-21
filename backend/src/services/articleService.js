@@ -98,6 +98,28 @@ export async function update(id, { pieces, labor, quantity, ...patch }) {
   return articleRepository.findById(id);
 }
 // Elimina un articulo. Primero confirma que exista.
+/**
+ * Deja la existencia de un articulo en `quantity` desde la lista de inventario. No
+ * sobrescribe articles.quantity: calcula la diferencia contra el saldo actual y la
+ * registra como un ajuste manual en el kardex (entrada o salida), que es la unica via
+ * valida para cambiar un saldo a mano -- ver inventoryService.adjust.
+ */
+export async function setStock(id, quantity, reason, userId = null) {
+  const article = await articleRepository.findById(id);
+  if (!article) throw new ApiError(404, 'Articulo no encontrado');
+  const diff = Math.round((Number(quantity) - Number(article.quantity)) * 100) / 100;
+  if (diff !== 0) {
+    await inventoryService.adjust({
+      articleId: Number(id),
+      type: diff > 0 ? 'entrada' : 'salida',
+      quantity: Math.abs(diff),
+      reason: reason?.trim() || 'Ajuste manual desde inventario',
+      userId,
+    });
+  }
+  return getById(id);
+}
+
 export async function remove(id) {
   const existing = await articleRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Articulo no encontrado');

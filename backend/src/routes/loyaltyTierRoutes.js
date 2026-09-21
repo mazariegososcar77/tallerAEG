@@ -2,6 +2,7 @@
 // (el catalogo de niveles de cliente frecuente, con su descuento, beneficios, color e icono): ver, crear, editar y borrar.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
 import * as loyaltyTierController from '../controllers/loyaltyTierController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -17,7 +18,7 @@ const createSchema = z.object({
   benefits: z.string().max(1000).optional(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Color invalido (use formato #RRGGBB)').optional(),
   icon: z.string().max(40).optional(),
-  is_active: z.boolean().optional(),
+  is_active: booleanFlag.optional(),
 });
 
 // Para editar un nivel de fidelizacion: los mismos datos pero opcionales, y debe venir al menos un cambio.

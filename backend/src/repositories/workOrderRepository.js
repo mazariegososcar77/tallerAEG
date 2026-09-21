@@ -1,7 +1,8 @@
 // Este archivo guarda y consulta las ÓRDENES DE TRABAJO del taller: la ficha del equipo
 // que se recibió a reparar, con sus piezas/ítems (work_order_items) y su estado
-// (recibido, en proceso, listo, entregado o cancelado).
+// (recibido, en proceso, listo, entregado, garantia o devolucion).
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Campos que se guardan como JSON (checkboxes multiples y tablas de filas fijas del
 // talonario) en vez de columnas rigidas — ver 029_work_orders_paper_form.sql.
@@ -105,17 +106,11 @@ export async function findByQuoteId(quoteId) {
   return rows.map(parseJsonFields);
 }
 
-// Calcula el siguiente número correlativo de orden de trabajo (busca el número más alto
-// ya usado y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos.
-export async function getNextNumber() {
-  const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM work_orders');
-  return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
-}
-
 // Guarda una nueva orden de trabajo junto con todas sus piezas/ítems. Todo se hace como
 // una sola operación (transacción): si algo falla a mitad de camino, se deshace todo para
 // no dejar una orden a medio guardar.
 export async function create(data, items = []) {
+  data = await pickColumns('work_orders', data);
   stringifyJsonFields(data);
   const conn = await pool.getConnection();
   try {
@@ -147,6 +142,7 @@ export async function create(data, items = []) {
 // todos los ítems anteriores y guarda los nuevos en su lugar (así siempre queda la lista
 // completa y correcta). Todo se hace como una sola operación (transacción).
 export async function update(id, data, items) {
+  data = await pickColumns('work_orders', data);
   stringifyJsonFields(data);
   const conn = await pool.getConnection();
   try {
@@ -180,7 +176,7 @@ export async function update(id, data, items) {
  * puede seguir figurando como lista.
  *
  * La condición va en el WHERE y no en un `if` de JavaScript a propósito. Primero porque
- * así es imposible que se toque una orden ya 'entregado' o 'cancelado' (son estados
+ * así es imposible que se toque una orden ya 'entregado' o 'devolucion' (son estados
  * terminales) aunque alguien cambie el código de arriba; el único paso que esta consulta
  * sabe dar es 'listo' → 'en_proceso'. Y segundo porque leer el estado y escribirlo en dos
  * viajes deja una rendija en el medio: otra persona podría marcar la orden como entregada
@@ -213,4 +209,10 @@ export async function markDocumentsReviewed(id, userId = null, executor = pool) 
 export async function remove(id) {
   const [result] = await pool.query('DELETE FROM work_orders WHERE id = ?', [id]);
   return result.affectedRows > 0;
+}
+
+// Devuelve el id de la orden que ya usa ese numero, o null si esta libre.
+export async function findIdByNumber(number) {
+  const [[row]] = await pool.query('SELECT id FROM work_orders WHERE number = ?', [number]);
+  return row ? row.id : null;
 }

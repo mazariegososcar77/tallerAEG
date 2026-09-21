@@ -5,11 +5,17 @@ import { X } from 'lucide-react';
  * Es la "ventana emergente" (el recuadro que aparece encima de todo, con un
  * fondo oscuro detrás) que se usa para formularios cortos, confirmaciones o
  * detalles, sin salir de la pantalla en la que se está. Se puede cerrar
- * presionando la tecla ESC, haciendo clic fuera del recuadro, o con el
- * botón "X". `accentColor` es opcional y solo pinta una franja de color
- * arriba del recuadro para darle un toque distintivo.
+ * presionando la tecla ESC o con el botón "X". `accentColor` es opcional y
+ * solo pinta una franja de color arriba del recuadro para darle un toque
+ * distintivo.
  *
- * Modal centrado con overlay. Cierra con ESC o clic en el fondo.
+ * A propósito NO se cierra con un clic en el fondo: un clic accidental
+ * (fuera del recuadro por error, o en celular al hacer scroll) borraba todo
+ * lo que ya se había escrito en el formulario, exactamente igual que
+ * apretar la "X" pero sin querer. Quien de verdad quiere salir tiene la "X"
+ * o Esc, los dos visibles y sin ese riesgo.
+ *
+ * Modal centrado con overlay. Cierra con ESC o con la "X".
  * `accentColor` (hex) pinta un borde superior de acento (4px).
  */
 export default function Modal({ open, onClose, title, children, footer, size = 'md', accentColor }) {
@@ -31,10 +37,9 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/50 p-4 animate-fade-in"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
       <div
-        className={`flex max-h-[90vh] w-full ${widths[size]} flex-col rounded-xl bg-surface shadow-xl animate-slide-up border border-line`}
+        className={`flex max-h-modal w-full ${widths[size]} flex-col rounded-xl bg-surface shadow-xl animate-slide-up border border-line`}
         style={accentColor ? { borderTop: `4px solid ${accentColor}` } : undefined}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-line px-5 py-4">

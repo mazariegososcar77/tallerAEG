@@ -27,7 +27,8 @@ const STATUS_LABELS = {
   en_proceso: { label: 'En Proceso', color: '#f59e0b' },
   listo:      { label: 'Listo',      color: '#10b981' },
   entregado:  { label: 'Entregado',  color: '#6366f1' },
-  cancelado:  { label: 'Cancelado',  color: '#ef4444' },
+  garantia:   { label: 'Garantía',   color: '#8b5cf6' },
+  devolucion: { label: 'Devolución', color: '#ef4444' },
 };
 
 export default function WorkOrdersPage({ flowType = 'pre' }) {
@@ -188,7 +189,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>{order.equipment_name || 'Sin equipo'} {order.brand ? '· ' + order.brand : ''}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--c-muted)' }}>Recibido: {order.received_at?.slice(0,10)} {order.delivery_at ? '· Entrega: ' + order.delivery_at.slice(0,10) : ''}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => setViewId(order.id)} title="Ver detalle de la orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     {hasPermission('work-reports.create') && (
                       <button onClick={() => handleOpenReport(order)} disabled={creatingReportId === order.id} title="Reporte de trabajo" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#a855f7', opacity: creatingReportId === order.id ? 0.6 : 1 }}><Camera size={16} /></button>

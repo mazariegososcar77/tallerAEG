@@ -77,7 +77,7 @@ export default function PdfViewerModal({ open, onClose, url, fileName = 'documen
       className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/60 p-2 sm:p-4 animate-fade-in"
       onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}
     >
-      <div className="flex h-full max-h-[95vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl animate-slide-up">
+      <div className="flex h-full max-h-pdf w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-line bg-surface shadow-xl animate-slide-up">
         {/* Encabezado con el nombre del documento y las acciones */}
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h3 className="truncate text-sm font-semibold text-heading sm:text-base">{title}</h3>

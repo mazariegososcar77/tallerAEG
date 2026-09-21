@@ -16,14 +16,15 @@ const STATUS_LABELS = {
   en_proceso: { label: 'En Proceso', color: '#f59e0b' },
   listo:      { label: 'Listo',      color: '#10b981' },
   entregado:  { label: 'Entregado',  color: '#6366f1' },
-  cancelado:  { label: 'Cancelado',  color: '#ef4444' },
+  garantia:   { label: 'Garantía',   color: '#8b5cf6' },
+  devolucion: { label: 'Devolución', color: '#ef4444' },
 };
 
 function Field({ label, children }) {
   return (
-    <div>
+    <div className="min-w-0">
       <dt className="text-[10px] font-bold uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm text-content">{children || '—'}</dd>
+      <dd className="break-words mt-0.5 text-sm text-content">{children || '—'}</dd>
     </div>
   );
 }

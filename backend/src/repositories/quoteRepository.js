@@ -2,6 +2,16 @@
 // dan a un cliente antes de trabajar en su equipo, con sus líneas de mano de obra/piezas
 // (quote_items) y los datos de cada equipo cotizado (equipment_data).
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
+
+// Reemplaza `client_contacts_json` (el JSON crudo que devuelve MySQL, o null si el
+// cliente no tiene contactos) por `client_contacts`, un arreglo normal ya parseado.
+function parseClientContacts(row) {
+  if (!row) return row;
+  const { client_contacts_json, ...rest } = row;
+  rest.client_contacts = typeof client_contacts_json === 'string' ? JSON.parse(client_contacts_json) : (client_contacts_json || []);
+  return rest;
+}
 
 // Trae todas las cotizaciones, la más reciente primero, junto con el nombre del cliente
 // (armado a partir de nombre y apellido), para no tener que buscarlo aparte. Si se indica
@@ -14,18 +24,23 @@ export async function getAll(clientId) {
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
       END as client_name,
-      c.email as client_email
+      (
+        SELECT JSON_ARRAYAGG(JSON_OBJECT('id', cc.id, 'email', cc.email, 'name', cc.name))
+        FROM client_contacts cc WHERE cc.client_id = c.id
+      ) as client_contacts_json,
+      COALESCE((SELECT wo.flow_type FROM work_orders wo WHERE wo.quote_id = q.id LIMIT 1), 'pre') as flow_type
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
     ${clientId ? 'WHERE q.client_id = ?' : ''}
     ORDER BY q.created_at DESC
   `, clientId ? [clientId] : []);
-  for (const row of rows) {
+  return rows.map((rawRow) => {
+    const row = parseClientContacts(rawRow);
     if (row.equipment_data && typeof row.equipment_data === 'string') {
       row.equipment_data = JSON.parse(row.equipment_data);
     }
-  }
-  return rows;
+    return row;
+  });
 }
 
 // Busca una cotización por su id, con el nombre del cliente y además le agrega su lista
@@ -39,34 +54,32 @@ export async function findById(id) {
           THEN CONCAT(c.first_name, ' ', c.last_name)
         ELSE c.first_name
       END as client_name,
-      c.email as client_email
+      (
+        SELECT JSON_ARRAYAGG(JSON_OBJECT('id', cc.id, 'email', cc.email, 'name', cc.name))
+        FROM client_contacts cc WHERE cc.client_id = c.id
+      ) as client_contacts_json
     FROM quotes q
     LEFT JOIN clients c ON q.client_id = c.id
     WHERE q.id = ?
   `, [id]);
   if (!quote) return null;
+  const quoteWithContacts = parseClientContacts(quote);
   const [items] = await pool.query(
     'SELECT * FROM quote_items WHERE quote_id = ? ORDER BY equipment_index, item_type, id',
     [id]
   );
-  quote.items = items;
-  if (quote.equipment_data && typeof quote.equipment_data === 'string') {
-    quote.equipment_data = JSON.parse(quote.equipment_data);
+  quoteWithContacts.items = items;
+  if (quoteWithContacts.equipment_data && typeof quoteWithContacts.equipment_data === 'string') {
+    quoteWithContacts.equipment_data = JSON.parse(quoteWithContacts.equipment_data);
   }
-  return quote;
-}
-
-// Calcula el siguiente número correlativo de cotización (busca el número más alto ya
-// usado y le suma 1), relleno con ceros a la izquierda hasta 4 dígitos.
-export async function getNextNumber() {
-  const [[row]] = await pool.query('SELECT MAX(CAST(number AS UNSIGNED)) as max_num FROM quotes');
-  return String(row.max_num ? row.max_num + 1 : 1).padStart(4, '0');
+  return quoteWithContacts;
 }
 
 // Guarda una nueva cotización junto con todas sus líneas (quote_items). Todo se hace como
 // una sola operación (transacción): si algo falla a mitad de camino, se deshace todo para
 // no dejar una cotización a medio guardar.
 export async function create(data, items = []) {
+  data = await pickColumns('quotes', data);
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -101,6 +114,7 @@ export async function create(data, items = []) {
 // todas las líneas anteriores y guarda las nuevas en su lugar (así siempre queda la
 // lista completa y correcta). Todo se hace como una sola operación (transacción).
 export async function update(id, data, items) {
+  data = await pickColumns('quotes', data);
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();

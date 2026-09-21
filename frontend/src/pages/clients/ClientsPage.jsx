@@ -57,7 +57,8 @@ export default function ClientsPage() {
       if (typeFilter && c.client_type_id !== Number(typeFilter)) return false;
       if (validationFilter === 'pending' && c.is_validated !== 0) return false;
       if (validationFilter === 'validated' && c.is_validated === 0) return false;
-      if (q && !`${c.full_name} ${c.nit} ${c.dpi} ${c.phone} ${c.email}`.toLowerCase().includes(q)) return false;
+      const contactEmails = (c.contacts || []).map(ct => ct.email).join(' ');
+      if (q && !`${c.full_name} ${c.nit} ${c.dpi} ${c.phone} ${contactEmails}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }, [clients, search, typeFilter, validationFilter]);
@@ -160,7 +161,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Filtros */}
-      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : '1fr 200px 200px', gap:10, marginBottom:16 }}>
         <div style={{ position:'relative' }}>
           <Search size={15} style={{ position:'absolute', left:10, top:'50%', transform:'translateY(-50%)', color:C.muted }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nombre, NIT, DPI..." style={{ ...inp, width:'100%', paddingLeft:32, boxSizing:'border-box' }} />
@@ -191,7 +192,11 @@ export default function ClientsPage() {
               render: (c) => (
                 <div>
                   <p style={{ margin:0, fontWeight:600, color:C.text, fontSize:14 }}>{c.full_name}</p>
-                  {c.email && <p style={{ margin:0, fontSize:12, color:C.muted }}>{c.email}</p>}
+                  {c.contacts?.length > 0 && (
+                    <p style={{ margin:0, fontSize:12, color:C.muted }}>
+                      {c.contacts[0].email}{c.contacts.length > 1 ? ` (+${c.contacts.length - 1})` : ''}
+                    </p>
+                  )}
                 </div>
               ),
             },
@@ -251,7 +256,11 @@ export default function ClientsPage() {
                acciones, alineada a la derecha y con botones grandes. */
             <div key={c.id} style={{ padding:'14px 16px', borderBottom:'1px solid '+C.border }}>
               <p style={{ margin:0, fontWeight:700, color:C.text, fontSize:15, wordBreak:'break-word' }}>{c.full_name}</p>
-              {c.email && <p style={{ margin:'2px 0', fontSize:12, color:C.muted, wordBreak:'break-word' }}>{c.email}</p>}
+              {c.contacts?.length > 0 && (
+                <p style={{ margin:'2px 0', fontSize:12, color:C.muted, wordBreak:'break-word' }}>
+                  {c.contacts[0].email}{c.contacts.length > 1 ? ` (+${c.contacts.length - 1})` : ''}
+                </p>
+              )}
               <p style={{ margin:'2px 0', fontSize:12, color:C.muted }}>{c.phone || '—'} · {c.nit || c.dpi || '—'}</p>
               <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
                 <span style={{ background:C.orange+'22', color:C.orange, border:'1px solid '+C.orange+'44', borderRadius:20, padding:'2px 8px', fontSize:11, fontWeight:600 }}>{c.client_type_name || '—'}</span>

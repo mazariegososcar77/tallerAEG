@@ -2,6 +2,7 @@
 // que se le asignan a los usuarios): ver, crear, editar, borrar y cambiar sus permisos.
 import { Router } from 'express';
 import { z } from 'zod';
+import { booleanFlag } from '../utils/zodHelpers.js';
 import * as roleController from '../controllers/roleController.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { requirePermission } from '../middleware/rbac.middleware.js';
@@ -24,7 +25,7 @@ const updateSchema = z
   .object({
     name: z.string().min(2).optional(),
     description: z.string().max(255).optional(),
-    is_active: z.boolean().optional(),
+    is_active: booleanFlag.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, { message: 'No hay cambios para aplicar' });
 

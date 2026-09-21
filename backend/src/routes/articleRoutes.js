@@ -12,6 +12,10 @@ const router = Router();
 
 // Datos que se piden para crear un articulo nuevo: codigo y nombre son obligatorios,
 // tipo y bodega deben ser validos, y el resto (cantidad, precio, marca, piezas, mano de obra, etc.) es opcional.
+// Los campos de texto opcionales aceptan null (`nullish`): un articulo creado sin marca,
+// modelo, ubicacion, descripcion o imagen los tiene NULL en la base, y al editarlo el
+// formulario los reenvia tal cual -- con `.optional()` a secas zod rechazaba el null y
+// guardar daba "datos invalidos".
 const createSchema = z.object({
   code: z.string().min(1, 'El codigo es obligatorio'),
   name: z.string().min(2, 'El nombre debe tener al menos 2 caracteres'),
@@ -25,7 +29,7 @@ const createSchema = z.object({
   // diferencia de `quantity`, este SI se puede editar despues de crear el
   // articulo -- no es una existencia, es una regla de negocio sobre cuando avisar.
   min_stock: z.coerce.number().min(0).optional(),
-  unit: z.string().max(30).optional(),
+  unit: z.string().max(30).nullish(),
   // Precio de VENTA (lo que se le cobra al cliente).
   price: z.coerce.number().min(0).optional(),
   // Precio de COMPRA (lo que le cuesta a AEG). Es lo que valua el kardex: usar aqui el
@@ -39,12 +43,15 @@ const createSchema = z.object({
     (v) => (v === '' ? null : v),
     z.coerce.number().min(0).nullable().optional()
   ),
-  brand: z.string().max(120).optional(),
-  model: z.string().max(120).optional(),
-  location: z.string().max(120).optional(),
-  description: z.string().max(1000).optional(),
-  image_url: z.string().max(500).optional(),
-  is_active: z.boolean().optional(),
+  brand: z.string().max(120).nullish(),
+  model: z.string().max(120).nullish(),
+  location: z.string().max(120).nullish(),
+  description: z.string().max(1000).nullish(),
+  image_url: z.string().max(500).nullish(),
+  // MySQL devuelve TINYINT(1) como 1/0 (no true/false) y el formulario de edicion lo reenvia
+  // tal cual: sin este preprocess, zod rechazaba `is_active: 1` y editar CUALQUIER articulo
+  // daba "Datos invalidos".
+  is_active: z.preprocess((v) => (v === 1 || v === 0 ? Boolean(v) : v), z.boolean()).optional(),
   // Piezas que componen el articulo (lista de nombres). Se guardan en su propia tabla.
   pieces: z.array(z.string().trim().min(1).max(190)).optional(),
   // Mano de obra del articulo (lista de nombres). Se guarda en su propia tabla.
@@ -66,6 +73,12 @@ const updateSchema = createSchema
   .refine((d) => Object.keys(d).length > 0, {
     message: 'No hay cambios para aplicar',
   });
+
+// Para corregir la existencia: la cantidad final que debe quedar, y opcionalmente el motivo.
+const adjustSchema = z.object({
+  quantity: z.coerce.number().min(0, 'La cantidad no puede ser negativa'),
+  reason: z.string().max(255).optional(),
+});
 
 // Para la carga masiva por Excel: exige que venga al menos una fila. El detalle de cada fila se valida en el servicio (mensajes por fila); aqui solo el contenedor.
 const bulkSchema = z.object({
@@ -178,6 +191,8 @@ router.get('/reports/top-consumed', requirePermission('articles.view'), articleC
 router.get('/:id', requirePermission('articles.view'), articleController.getById);
 // Editar un articulo existente.
 router.put('/:id', requirePermission('articles.update'), validate(updateSchema), articleController.update);
+// Corregir la existencia de un articulo (queda como ajuste manual en el kardex).
+router.post('/:id/adjust', requirePermission('articles.update'), validate(adjustSchema), articleController.adjustStock);
 // Borrar un articulo.
 router.delete('/:id', requirePermission('articles.delete'), articleController.remove);
 
