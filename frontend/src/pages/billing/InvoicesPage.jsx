@@ -38,6 +38,10 @@ const STATUS_LABELS = {
   anulada:                 { label: 'Anulada',                 color: '#ef4444' },
 };
 
+// Codigo con el que el backend avisa que Digifact no respondio y no se sabe si la factura se
+// emitio (ver felCertifier.SIN_RESPUESTA). Reintentar sin revisar emitiria una segunda factura.
+const SIN_RESPUESTA = 'FEL_SIN_RESPUESTA';
+
 export default function InvoicesPage() {
   const isMobile = useIsMobile();
   const { hasPermission } = useAuth();
@@ -64,6 +68,7 @@ export default function InvoicesPage() {
   const [emailInvoice, setEmailInvoice] = useState(null); // factura cuyo PDF oficial se va a reenviar
   const [emailTo, setEmailTo] = useState('');
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [uncertain, setUncertain] = useState(null); // { invoice, email } cuando Digifact no respondio al certificar
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Vuelve a traer la lista de facturas desde el servidor (se usa al cargar
@@ -130,14 +135,13 @@ export default function InvoicesPage() {
     }
   };
 
-  // Se llama al confirmar "Certificar factura": le pide al servidor que la
-  // marque como certificada con el correo elegido (invoicesApi.certify) y
-  // refresca la lista.
-  const handleCertifyConfirmed = async () => {
-    if (!confirmCertify) return;
+  // Le pide al servidor que certifique la factura con el correo elegido y refresca la lista.
+  // Si Digifact no respondio, no se sabe si la factura salio: en vez de un error suelto se abre
+  // el aviso de "revisa en Digifact", que es el unico lugar desde donde se puede reintentar.
+  const runCertify = async (inv, email, confirmRetry = false) => {
     setCertifying(true);
     try {
-      const r = await invoicesApi.certify(confirmCertify.id, certifyEmail.trim());
+      const r = await invoicesApi.certify(inv.id, email, confirmRetry);
       if (r.fel_uuid) {
         notify.success(r.fel_environment === 'test' ? 'Factura certificada en el ambiente de PRUEBAS (sin validez ante la SAT)' : 'Factura certificada ante la SAT');
         if (r.email_result?.sent) notify.success('PDF enviado a ' + r.email_result.email);
@@ -148,12 +152,25 @@ export default function InvoicesPage() {
       }
       setConfirmCertify(null);
       setCertifyInvoice(null);
+      setUncertain(null);
       reload();
     } catch (e) {
-      notify.error(e.response?.data?.message || e.response?.data?.error || 'No se pudo certificar la factura');
+      if (e.response?.data?.details?.code === SIN_RESPUESTA) {
+        setConfirmCertify(null);
+        setCertifyInvoice(null);
+        setUncertain({ invoice: inv, email });
+        reload();
+      } else {
+        notify.error(e.response?.data?.message || e.response?.data?.error || 'No se pudo certificar la factura');
+      }
     } finally {
       setCertifying(false);
     }
+  };
+
+  // Se llama al confirmar "Certificar factura".
+  const handleCertifyConfirmed = () => {
+    if (confirmCertify) runCertify(confirmCertify, certifyEmail.trim());
   };
 
   const handleCancelConfirmed = async () => {
@@ -263,6 +280,7 @@ export default function InvoicesPage() {
                       <span style={{ fontWeight: 700, fontSize: 16, color: '#E8551C' }}>Factura No. {inv.number}</span>
                       <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                       {inv.fel_environment === 'test' && <span title="Certificada en el ambiente de pruebas de Digifact: no existe para la SAT" style={{ background: '#ef444422', color: '#ef4444', border: '1px solid #ef444444', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>PRUEBAS</span>}
+                      {inv.fel_pending_since && inv.status === 'pendiente_certificacion' && <span title="El último intento de certificar se quedó sin respuesta de Digifact: revisa el portal de Digifact antes de reintentar" style={{ background: '#f59e0b22', color: '#b45309', border: '1px solid #f59e0b55', borderRadius: 20, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>REVISAR EN DIGIFACT</span>}
                     </div>
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{inv.client_name || '—'}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>Orden No. {inv.work_order_number} · {inv.date?.slice(0, 10)}</p>
@@ -386,6 +404,33 @@ export default function InvoicesPage() {
               placeholder="correo@ejemplo.com"
               style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid var(--c-line)', background: 'var(--c-surface-2)', color: 'var(--c-text)', fontSize: 13, boxSizing: 'border-box' }}
             />
+          </div>
+        )}
+      </Modal>
+
+      {/* Digifact no respondio al certificar: la factura pudo haberse emitido igual. Solo se
+          reintenta despues de revisar el portal de Digifact. */}
+      <Modal
+        open={uncertain != null}
+        onClose={certifying ? undefined : () => setUncertain(null)}
+        title="Digifact no respondió"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setUncertain(null)} disabled={certifying}>Cerrar</Button>
+            <Button variant="primary" onClick={() => runCertify(uncertain.invoice, uncertain.email, true)} loading={certifying}>No aparece: reintentar</Button>
+          </>
+        }
+      >
+        {uncertain && (
+          <div className="space-y-3 text-sm text-slate-600">
+            <p>
+              No se sabe si la factura No. {uncertain.invoice.number} quedó certificada ante la SAT. Antes de volver a intentarlo,
+              entra al portal de Digifact y búscala por la referencia interna <strong>{uncertain.invoice.number}</strong> (o una factura
+              de hoy a nombre de <strong>{uncertain.invoice.client_name || 'este cliente'}</strong> por <strong>Q {Number(uncertain.invoice.total).toFixed(2)}</strong>).
+            </p>
+            <p><strong>Si aparece:</strong> no la certifiques de nuevo aquí, porque saldría una segunda factura fiscal. Anúlala en el portal de Digifact y después vuelve a intentarlo.</p>
+            <p><strong>Si no aparece:</strong> puedes reintentar.</p>
           </div>
         )}
       </Modal>

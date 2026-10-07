@@ -9,12 +9,19 @@
 import { certifyDte } from '../src/lib/digifactClient.js';
 import { buildFacturaPayload } from '../src/lib/nucBuilder.js';
 
+// Cubre los casos que la SAT valida aritmeticamente (reglas 2.3.5, 2.3.6 y 2.7): cantidad mayor
+// a 1 (Precio = Cantidad x PrecioUnitario), una linea de bien y otra de servicio, y un descuento
+// que se reparte entre las lineas. Total: 2 x 150 + 1 x 85.50 - 20 = Q365.50 (menos de Q2,500,
+// el limite para Consumidor Final).
 const fakeInvoice = {
   tipo_dte: 'FACT',
   moneda: 'GTQ',
-  discount: 0,
+  // Va como referencia interna (adenda): con ella se encuentra la prueba en el portal de Digifact.
+  number: `PRUEBA-${Date.now()}`,
+  discount: 20,
   items: [
-    { description: 'Prueba de integracion Digifact', item_type: 'servicio', quantity: 1, unit_price: 100 },
+    { description: 'Prueba de integracion Digifact - mano de obra', item_type: 'servicio', quantity: 2, unit_price: 150 },
+    { description: 'Prueba de integracion Digifact - repuesto', item_type: 'bien', quantity: 1, unit_price: 85.5 },
   ],
 };
 

@@ -16,6 +16,7 @@ import { receiverTaxId } from '../lib/nucBuilder.js';
 import * as notificationService from './notificationService.js';
 import * as settingsService from './settingsService.js';
 import { generarFacturaPDF } from '../utils/pdfGenerator.js';
+import { buildInvoiceLines } from '../lib/invoiceLines.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Devuelve la lista completa de facturas.
@@ -39,8 +40,8 @@ export async function getByWorkOrderId(workOrderId) {
 /**
  * Genera la factura de una orden de trabajo automaticamente cuando se finaliza su
  * reporte de trabajo (ver workReportService.finalize). Si la orden viene de una
- * cotizacion, copia las lineas (piezas/mano de obra) de esa cotizacion; si no,
- * genera una sola linea generica con el total de la orden.
+ * cotizacion, copia las lineas de SU equipo y su parte del descuento; si no, genera
+ * una sola linea generica con el total de la orden (ver lib/invoiceLines.js).
  * Es idempotente: si la orden ya tiene factura, devuelve esa en vez de crear otra
  * (para que no se dupliquen facturas si alguien vuelve a finalizar el reporte).
  */
@@ -51,26 +52,8 @@ export async function createFromWorkReport(report) {
   const order = await workOrderRepository.findById(report.work_order_id);
   if (!order) throw new ApiError(404, 'Orden de trabajo no encontrada');
 
-  let items = [];
-  if (order.quote_id) {
-    const quote = await quoteRepository.findById(order.quote_id);
-    if (quote) {
-      items = quote.items.map((i) => ({
-        description: i.description,
-        quantity: i.quantity,
-        unit_price: i.unit_price,
-      }));
-    }
-  }
-  if (items.length === 0) {
-    items = [{
-      description: `Servicio segun orden de trabajo No. ${order.number}`,
-      quantity: 1,
-      unit_price: order.total || 0,
-    }];
-  }
-  const subtotal = items.reduce((s, i) => s + (parseFloat(i.quantity) || 1) * (parseFloat(i.unit_price) || 0), 0);
-  const total = order.total > 0 ? Number(order.total) : subtotal;
+  const quote = order.quote_id ? await quoteRepository.findById(order.quote_id) : null;
+  const { items, subtotal, discount, total } = buildInvoiceLines(order, quote);
 
   const number = await numberingService.getNextNumber('invoice');
   const invoice = await invoiceRepository.create({
@@ -81,15 +64,14 @@ export async function createFromWorkReport(report) {
     client_id: order.client_id,
     date: new Date().toISOString().slice(0, 10),
     subtotal,
-    discount: 0,
+    discount,
     total,
     status: 'pendiente_certificacion',
   }, items);
 
   // "Codigo" del talonario: hoy Abdias lo escribia a mano cuando facturaba, para
-  // dejar la orden y la factura asociadas. Se llena solo con el numero interno de
-  // la factura recien creada; el dia que felCertifier deje de ser un stub, certify()
-  // debe repetir esta misma actualizacion con el numero fiscal real (fel_number).
+  // dejar la orden y la factura asociadas. Se llena con el numero interno de la
+  // factura recien creada; certify() lo reemplaza por el numero fiscal (serie-numero).
   await workOrderRepository.update(order.id, { dte_number: invoice.fel_number || invoice.number });
 
   return invoice;
@@ -135,18 +117,45 @@ const certificando = new Set();
  * un stub: la factura pasa a "certificada" solo para uso administrativo, SIN datos fiscales y sin
  * validez ante la SAT (ver felCertifier.js). No se puede certificar una factura anulada, y hace
  * falta el correo del cliente. Si ya estaba certificada, no hace nada (evita re-certificar).
+ *
+ * Si un intento anterior se quedo SIN RESPUESTA de Digifact (tiempo de espera, red, el servidor
+ * se reinicio a mitad), la SAT pudo haberla emitido igual: `fel_pending_since` queda puesto y el
+ * siguiente intento se frena hasta que alguien confirme (`confirmRetry`) que reviso en el portal
+ * de Digifact que no salio. Sin esto, reintentar emitiria una segunda factura fiscal.
  */
-export async function certify(id, email) {
+export async function certify(id, email, { confirmRetry = false } = {}) {
   const invoice = await invoiceRepository.findById(id);
   if (!invoice) throw new ApiError(404, 'Factura no encontrada');
   if (invoice.status === 'certificada') return invoice;
   if (invoice.status === 'anulada') throw new ApiError(409, 'La factura esta anulada');
   if (!email) throw new ApiError(400, 'El correo del cliente es obligatorio');
   if (certificando.has(Number(id))) throw new ApiError(409, 'Esta factura ya se esta certificando. Espera unos segundos.');
+  if (invoice.fel_pending_since && !confirmRetry) {
+    throw new ApiError(
+      409,
+      'El intento anterior de certificar esta factura se quedó sin respuesta de Digifact y puede que sí se haya emitido. Revisa en el portal de Digifact antes de volver a intentarlo.',
+      { code: felCertifier.SIN_RESPUESTA, since: invoice.fel_pending_since }
+    );
+  }
 
   certificando.add(Number(id));
   try {
-    const fel = await felCertifier.certify(invoice);
+    // La marca se pone ANTES de llamar a Digifact: si la llamada se queda sin respuesta o el
+    // proceso se cae a mitad, queda puesta y frena el siguiente intento (ver arriba).
+    const conDigifact = digifactClient._internal.isConfigured();
+    if (conDigifact) await invoiceRepository.update(id, { fel_pending_since: new Date() });
+
+    let fel;
+    try {
+      fel = await felCertifier.certify(invoice);
+    } catch (err) {
+      // Digifact contesto (rechazo, NIT invalido, credenciales...): no se emitio nada y se puede
+      // reintentar tranquilo. La marca solo se queda cuando no se sabe que paso.
+      if (conDigifact && err?.details?.code !== felCertifier.SIN_RESPUESTA) {
+        await invoiceRepository.update(id, { fel_pending_since: null }).catch(() => {});
+      }
+      throw err;
+    }
     const datos = {
       status: 'certificada',
       client_email: email,
@@ -157,6 +166,7 @@ export async function certify(id, email) {
       fel_issued_at: fel.fel_issued_at,
       fel_environment: fel.fel_environment,
       fel_certified_at: fel.fel_uuid ? new Date() : null,
+      fel_pending_since: null,
     };
 
     // Punto delicado: aqui la SAT YA emitio la factura. Si guardarla falla, el usuario veria un

@@ -137,7 +137,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
     tech_disarm:'', tech_assemble:'',
     supervisor_aeg_receive:'', supervisor_aeg_deliver:'', supervisor_client_deliver:'', supervisor_client_receive:'',
     shipping:'', whatsapp_number:'',
-    total:'', quote_id:null,
+    total:'', quote_id:null, quote_equipment_index:null,
     flow_type: flowType, torno_price:'', parts_price:'', labor_article_id:null, labor_price:'',
   });
   const [items, setItems] = useState(DEFAULT_ITEMS.map(n => ({ name:n, quantity:1, has_item:false })));
@@ -146,7 +146,8 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   // la ruta con la que se llego -- por si alguna vez difieren.
   const ordersBasePath = (form.flow_type === 'post') ? '/post/ordenes' : '/ordenes';
 
-  // Prellena el formulario con los datos de un equipo de la cotizacion de origen.
+  // Prellena el formulario con los datos de un equipo de la cotizacion de origen. Guarda ademas
+  // CUAL equipo es (quote_equipment_index): la factura de la orden lleva solo sus lineas.
   const applyQuoteEquip = (quote, ei) => {
     const eq = quote.equipment_data?.[ei] || {};
     const eqItems = (quote.items || []).filter(i => i.equipment_index === ei);
@@ -160,6 +161,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
       quotation_number: quote.number || '',
       total: eqTotal || quote.total || '',
       quote_id: quote.id,
+      quote_equipment_index: ei,
     }));
   };
 
@@ -201,7 +203,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
     if (!v) {
       setSourceQuote(null);
       setEquipIndex(0);
-      setForm(f => ({ ...f, quote_id:null, quotation_number:'' }));
+      setForm(f => ({ ...f, quote_id:null, quote_equipment_index:null, quotation_number:'' }));
       return;
     }
     quotesApi.get(v).then(quote => {

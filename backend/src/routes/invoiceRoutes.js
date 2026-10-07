@@ -12,6 +12,9 @@ const router = Router();
 // Para certificar una factura: exige un correo con formato valido (a donde se le avisaria al cliente).
 const certifySchema = z.object({
   email: z.string().trim().email('Correo invalido'),
+  // true solo cuando alguien confirmo en el portal de Digifact que un intento anterior que se
+  // quedo sin respuesta NO emitio la factura (ver invoiceService.certify).
+  confirm_retry: z.boolean().optional(),
 });
 
 // Para reenviar el PDF oficial: el correo es opcional (si no viene se usa el de la factura).

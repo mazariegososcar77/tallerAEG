@@ -5,7 +5,8 @@ export const invoicesApi = {
   list:    ()           => client.get('/invoices').then(r => r.data),
   get:     (id)         => client.get(`/invoices/${id}`).then(r => r.data),
   // Certifica la factura ante la SAT via Digifact (o solo administrativamente si faltan credenciales) y manda el PDF oficial al correo indicado.
-  certify: (id, email)  => client.post(`/invoices/${id}/certify`, { email }).then(r => r.data),
+  // confirmRetry: solo despues de revisar en el portal de Digifact que un intento que se quedo sin respuesta NO emitio la factura.
+  certify: (id, email, confirmRetry = false) => client.post(`/invoices/${id}/certify`, confirmRetry ? { email, confirm_retry: true } : { email }).then(r => r.data),
   // Digifact: ¿esta configurado y en que ambiente (pruebas / real)?
   felStatus: () => client.get('/invoices/fel/status').then(r => r.data),
   // Consulta un NIT en la SAT: { configured, found, name }.

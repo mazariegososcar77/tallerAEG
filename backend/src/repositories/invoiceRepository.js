@@ -2,6 +2,7 @@
 // (invoice_items). Cada factura nace de una orden de trabajo terminada (y, si aplica,
 // de la cotización de la que vino esa orden).
 import pool from '../lib/db.js';
+import { pickColumns } from '../lib/tableColumns.js';
 
 // Reemplaza `client_contacts_json` (el JSON crudo que devuelve MySQL, o null si el
 // cliente no tiene contactos) por `client_contacts`, un arreglo normal ya parseado.
@@ -88,9 +89,19 @@ export async function create(data, items = []) {
     const invoiceId = result.insertId;
     for (const item of items) {
       const subtotal = (parseFloat(item.quantity) || 1) * (parseFloat(item.unit_price) || 0);
+      // item_type (bien/servicio) existe desde 048_invoice_lines.sql; pickColumns lo descarta si
+      // la migracion todavia no se aplico, en vez de impedir que se genere la factura.
+      const row = await pickColumns('invoice_items', {
+        invoice_id: invoiceId,
+        item_type: item.item_type || 'servicio',
+        description: item.description,
+        quantity: item.quantity || 1,
+        unit_price: item.unit_price || 0,
+        subtotal,
+      }, conn);
       await conn.query(
-        'INSERT INTO invoice_items (invoice_id, description, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)',
-        [invoiceId, item.description, item.quantity || 1, item.unit_price || 0, subtotal]
+        `INSERT INTO invoice_items (${Object.keys(row).join(', ')}) VALUES (${Object.keys(row).map(() => '?').join(', ')})`,
+        Object.values(row)
       );
     }
     await conn.commit();
@@ -104,8 +115,11 @@ export async function create(data, items = []) {
 }
 
 // Actualiza solo los datos indicados de una factura existente (por ejemplo, su estado al
-// certificarla).
+// certificarla). Pasa por pickColumns a proposito: al certificar, este UPDATE corre DESPUES de
+// que la SAT ya emitio la factura, y una columna de una migracion sin aplicar (047/048) no puede
+// hacer que se pierda el UUID -- la columna faltante se descarta y el resto se guarda.
 export async function update(id, data) {
+  data = await pickColumns('invoices', data);
   if (Object.keys(data).length > 0) {
     const fields = Object.keys(data).map((k) => k + ' = ?').join(', ');
     await pool.query(`UPDATE invoices SET ${fields} WHERE id = ?`, [...Object.values(data), id]);

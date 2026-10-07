@@ -195,9 +195,17 @@ Módulo 8 (facturación, `019_invoices.sql`):
   (`fel_certifier, fel_uuid, fel_series, fel_number, fel_certified_at`) que **quedan NULL** mientras
   falten las credenciales de Digifact; con ellas se llenan al certificar (`047_invoice_fel.sql` agrega
   `fel_issued_at`, `fel_environment`, los datos de anulación y `invoice_fel_documents`) — ver la sección FEL abajo.
-- **invoice_items**: snapshot de líneas al momento de facturar. Si la orden tiene `quote_id`, se copian
-  de `quote_items`; si no, es una sola línea "Servicio según orden de trabajo No. X" con
-  `work_orders.total` (`work_order_items` no tiene precio, es solo checklist de piezas).
+- **invoice_items**: snapshot de líneas al momento de facturar, con `item_type` `bien`/`servicio`
+  (`048_invoice_lines.sql`; repuesto = bien, mano de obra = servicio, SAT regla 2.3.8). Las arma
+  [src/lib/invoiceLines.js](src/lib/invoiceLines.js) (función pura, sin base de datos): si la orden
+  tiene `quote_id` copia **solo las líneas de su equipo** (`work_orders.quote_equipment_index`, que
+  guarda `WorkOrderFormPage` al elegir el equipo) y **su parte del descuento** de la cotización,
+  repartido en proporción a lo que suma cada equipo. Órdenes viejas sin ese índice: se reconoce el
+  equipo por `machine_id`/serie/nombre+marca+modelo; si no se puede (o no hay cotización), es una sola
+  línea "Servicio según orden de trabajo No. X" con `work_orders.total` (`work_order_items` no tiene
+  precio, es solo checklist de piezas). La cotización Post es de una sola orden: van todas sus líneas.
+  **Nunca** vuelvas a copiar todas las líneas de una cotización de varios equipos: cada factura
+  certificaría ante la SAT el total completo.
 
 Configuración general (`032_system_settings.sql`):
 - **system_settings**: tabla **clave/valor** (`setting_key` PK, `setting_value` TEXT, `updated_at`).
@@ -408,6 +416,15 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   - **Candado anti-doble emisión:** `certificando` (Set por id) rechaza un segundo `certify` simultáneo
     con 409 — un doble clic mandaría dos veces el documento y la SAT emitiría **dos** facturas. Si
     Digifact certifica pero guardar falla, se reintenta una vez y el UUID queda en el log.
+    `invoiceRepository.update` pasa por `pickColumns`: una migración sin aplicar no puede hacer que se
+    pierda un UUID ya emitido.
+  - **Sin respuesta de Digifact** (`fel_pending_since`, 048): se marca **antes** de llamar a Digifact y
+    se limpia cuando contesta (éxito o rechazo). Si la llamada se queda sin respuesta (tiempo de espera,
+    red, respuesta ilegible) o el proceso se cae a mitad, la marca queda y la SAT **pudo** haber emitido
+    la factura: `felCertifier` lo distingue de un rechazo (Digifact contestó con su JSON) y lanza el
+    código `FEL_SIN_RESPUESTA`. El siguiente `certify` se frena con 409 hasta que alguien confirme
+    (`confirm_retry: true`) que revisó el portal de Digifact; la pantalla abre un aviso para eso. El
+    token se pide antes y por separado: si eso falla no se mandó nada y no cuenta como incierto.
   - **Correo:** tras certificar se manda el PDF **oficial** al cliente por el mismo webhook de n8n de
     las cotizaciones (evento `invoice_email`, mismos campos `adjunto_*`; el flujo de n8n no cambia).
     Es "mejor esfuerzo": sin webhook la factura queda certificada igual y la respuesta trae
@@ -419,9 +436,20 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   - **NIT:** `GET /invoices/nit/:nit` consulta la SAT (`SHARED_GETINFONITcom`); el modal de certificar
     avisa si el NIT no existe (la causa más común de rechazo). El NIT/CUI viaja sin guiones.
   - **Supuestos de negocio** (confirmar con el contador): `unit_price` incluye IVA y se extrae 12/112
-    (`AfiliacionIVA=GEN`); toda línea de `invoice_items` es "Servicio" (no guarda `item_type`).
+    (`AfiliacionIVA=GEN`, solo sirve para régimen general: pequeño contribuyente es FPEQ, sin IVA).
+    El documento lleva **una sola frase**, la de ISR (tipo 1, obligatoria en FACT): `DIGIFACT_ESCENARIO`
+    = 1 si el taller está en el régimen sobre las utilidades ("Sujeto a pagos trimestrales ISR"), 2 si
+    es opcional simplificado ("Sujeto a retención definitiva ISR"). El escenario 3 (pago directo, exige
+    número y fecha de resolución) y la frase de agente de retención del IVA (tipo 2) **no están
+    soportados**: si aplican al taller, hay que extender `buildSeller` en `nucBuilder.js`.
+  - **Formato NUC** (validado contra `NUCSchema.json` de Digifact): `Price` es el precio **unitario**
+    (campo D08); `Discounts.Discount` es una **lista** aunque sea un solo descuento (como objeto suelto
+    no cumple el esquema). El documento lleva una adenda con la **referencia interna** = número de la
+    factura del sistema (`VALIDAR_REFERENCIA_INTERNA = NO_VALIDAR`, como el ejemplo oficial: la
+    documentación no explica qué valida `VALIDAR`), para poder buscarla en el portal de Digifact.
   - Pruebas: `scripts/test_digifact_token.mjs` y `scripts/test_digifact_certify.mjs` (sandbox, no tocan
-    la base). Antes de producción: probar todo con `DIGIFACT_ENV=test`.
+    la base; la factura de prueba lleva cantidad 2, un bien, un servicio, descuento y referencia
+    interna). Antes de producción: probar todo con `DIGIFACT_ENV=test`.
 - **Editar un reporte finalizado:** por defecto, un reporte `finalizado` queda de solo lectura (fotos y
   notas) para todos. El permiso `work-reports.force-edit` (id 44, `021_work_reports_force_edit.sql`,
   solo rol Administrador) salta ese bloqueo — `workReportService.update/addPhoto/removePhoto` reciben

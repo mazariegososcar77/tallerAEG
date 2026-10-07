@@ -27,7 +27,7 @@ export const createFromWorkOrder = asyncHandler(async (req, res) => {
 // certifica ante la SAT vía Digifact (o solo administrativamente si faltan credenciales, ver
 // felCertifier.js) y le manda el PDF oficial al correo.
 export const certify = asyncHandler(async (req, res) => {
-  res.json(await invoiceService.certify(req.params.id, req.body.email));
+  res.json(await invoiceService.certify(req.params.id, req.body.email, { confirmRetry: req.body.confirm_retry === true }));
 });
 
 // Mapa de Relaciones: la cadena de documentos (Cotizacion -> Orden -> Reporte ->
