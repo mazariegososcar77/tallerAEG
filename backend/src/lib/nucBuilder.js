@@ -65,7 +65,9 @@ export function receiverTaxId(client) {
 function buildSeller() {
   const d = env.digifact;
   return {
-    TaxID: d.emisorNit || d.nit,
+    // Igual que el del receptor: sin guion y con la K en mayuscula, aunque en el .env se haya
+    // escrito "1234567-k".
+    TaxID: taxId(d.emisorNit || d.nit),
     TaxIDAdditionalInfo: [{ Name: 'AfiliacionIVA', Data: null, Value: d.afiliacionIva }],
     Name: d.emisorNombre,
     // Frase/Escenario: confirmados por Digifact para este NIT (soporte@digifact.com.gt).
