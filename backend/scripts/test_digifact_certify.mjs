@@ -1,13 +1,24 @@
 /**
- * Prueba end-to-end contra el sandbox de Digifact: arma un documento NUC de
- * ejemplo (una factura con una linea) y lo certifica de verdad. Uso puntual
- * para validar la integracion antes de certificar facturas reales desde la
- * app -- no crea ni modifica nada en la base de datos del taller.
+ * Prueba end-to-end contra el SANDBOX de Digifact: arma un documento NUC de
+ * ejemplo y lo certifica de verdad. Uso puntual para validar la integracion
+ * antes de certificar facturas reales desde la app -- no crea ni modifica
+ * nada en la base de datos del taller.
+ *
+ * Se niega a correr con DIGIFACT_ENV=prod: ahi emitiria una factura fiscal
+ * REAL ante la SAT por una venta que no existe (y gastaria un DTE). Para
+ * comprobar la conexion en produccion esta test_digifact_token.mjs.
  *
  * Uso: node scripts/test_digifact_certify.mjs
  */
+import { env } from '../src/config/env.js';
 import { certifyDte } from '../src/lib/digifactClient.js';
 import { buildFacturaPayload } from '../src/lib/nucBuilder.js';
+
+if (env.digifact.environment === 'prod') {
+  console.error('DIGIFACT_ENV=prod: esta prueba emitiria una factura REAL ante la SAT. No se ejecuta.');
+  console.error('Para comprobar la conexion en produccion usa: node scripts/test_digifact_token.mjs');
+  process.exit(1);
+}
 
 // Cubre los casos que la SAT valida aritmeticamente (reglas 2.3.5, 2.3.6 y 2.7): cantidad mayor
 // a 1 (Precio = Cantidad x PrecioUnitario), una linea de bien y otra de servicio, y un descuento
