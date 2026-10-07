@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://dev.centrodeservicioaeg.com", "http://localhost:5173"],
+    "method": ["GET", "HEAD", "PUT"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]
