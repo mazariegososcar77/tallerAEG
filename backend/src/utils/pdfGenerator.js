@@ -655,9 +655,9 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
 }
 
 // Arma el PDF de una FACTURA: los datos del cliente, el detalle de lo
-// facturado y los totales, mas la informacion de certificacion fiscal FEL
-// si ya fue certificada (o un aviso de que todavia esta pendiente — ver
-// src/services/felCertifier.js, que hoy no genera un UUID/serie real).
+// facturado y los totales, mas el estado de certificacion (certificada con su
+// UUID/serie/numero, no certificada o anulada). Es la representacion INTERNA del
+// taller; la oficial es la que emite Digifact (invoiceService.getFelFile).
 export function generarFacturaPDF(invoice, settings) {
   const cfg = empresa(settings);
   const doc = new PDFDocument({ size: 'A4', margin: 0, autoFirstPage: true });
@@ -731,33 +731,26 @@ export function generarFacturaPDF(invoice, settings) {
      .text('Q ' + total.toFixed(2), R - 96, y + 8, { width: 88, align: 'right' });
   y += 36;
 
-  // ── CERTIFICACION FEL ────────────────────────────────────
+  // ── ESTADO DE CERTIFICACION ──────────────────────────────
+  // Solo el estado, sin explicaciones: certificada (con UUID, serie y numero), no certificada o
+  // anulada. "Certificada" quiere decir que tiene UUID de Digifact; si se certifico en su ambiente
+  // de pruebas lleva "(PRUEBAS)", porque ese UUID no existe para la SAT.
   if (y > 700) { doc.addPage({ margin: 0 }); y = 40; }
-  if (invoice.fel_uuid) {
-    doc.fillColor(NEGRO).fontSize(8).font('Helvetica-Bold').text('Certificacion FEL', L, y);
-    y += 12;
-    doc.font('Helvetica').fontSize(7)
+  const certificada = Boolean(invoice.fel_uuid);
+  const estado = invoice.status === 'anulada'
+    ? { texto: 'FACTURA ANULADA' + (invoice.cancel_reason ? ' — ' + invoice.cancel_reason : ''), fondo: '#fee2e2', color: '#991b1b' }
+    : certificada
+      ? { texto: 'FACTURA CERTIFICADA' + (invoice.fel_environment === 'test' ? ' (PRUEBAS)' : ''), fondo: '#d1fae5', color: '#065f46' }
+      : { texto: 'FACTURA NO CERTIFICADA', fondo: '#fef3c7', color: '#92400e' };
+  const altoEstado = Math.max(24, altoTexto(doc, estado.texto, CW - 16, 9, 'Helvetica-Bold') + 16);
+  doc.rect(L, y, CW, altoEstado).fill(estado.fondo);
+  doc.fillColor(estado.color).fontSize(9).font('Helvetica-Bold').text(estado.texto, L + 8, y + 8, { width: CW - 16 });
+  y += altoEstado + 6;
+  if (certificada) {
+    doc.fillColor(NEGRO).font('Helvetica').fontSize(7)
        .text('UUID: ' + invoice.fel_uuid, L, y)
        .text('Serie: ' + (invoice.fel_series || '-') + '   No.: ' + (invoice.fel_number || '-'), L, y + 10);
     y += 24;
-    // Una factura certificada en el sandbox de Digifact tiene UUID pero NO existe para la SAT.
-    if (invoice.fel_environment === 'test') {
-      doc.rect(L, y, CW, 24).fill('#fee2e2');
-      doc.fillColor('#991b1b').fontSize(8).font('Helvetica-Bold')
-         .text('FACTURA DE PRUEBAS (ambiente de pruebas de Digifact) — sin validez fiscal ante la SAT.', L + 8, y + 8, { width: CW - 16 });
-      y += 30;
-    }
-    if (invoice.status === 'anulada') {
-      doc.rect(L, y, CW, 24).fill('#fee2e2');
-      doc.fillColor('#991b1b').fontSize(9).font('Helvetica-Bold')
-         .text('FACTURA ANULADA' + (invoice.cancel_reason ? ' — ' + invoice.cancel_reason : ''), L + 8, y + 8, { width: CW - 16 });
-      y += 30;
-    }
-  } else {
-    doc.rect(L, y, CW, 24).fill('#fef3c7');
-    doc.fillColor('#92400e').fontSize(8).font('Helvetica-Bold')
-       .text('Certificacion FEL pendiente de integrar — documento interno, no valido como factura fiscal.', L + 8, y + 8, { width: CW - 16 });
-    y += 30;
   }
 
   // ── PIE DE PÁGINA ─────────────────────────────────────────
