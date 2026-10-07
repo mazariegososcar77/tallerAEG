@@ -135,6 +135,26 @@ gcloud auth application-default login
 Si `GCS_BUCKET` queda vacío, todo el sistema sigue guardando en el disco del servidor exactamente como
 antes. Es lo que permite trabajar sin credenciales de Google.
 
+### CORS del bucket (obligatorio)
+
+El navegador sube con un `PUT` directo a `storage.googleapis.com`, que es **otro dominio**, así que el
+bucket tiene que autorizar el dominio del portal. Sin esto la URL firmada sale bien (el backend responde
+200) pero la subida falla en el navegador con *"blocked by CORS policy: No 'Access-Control-Allow-Origin'
+header"*. También lo necesita el visor de PDF, que baja los documentos adjuntos con `fetch` (GET).
+
+Los archivos están en [docs/gcs/](gcs/). Se aplica una vez por bucket, con una cuenta que tenga
+`storage.buckets.update` (la service account de la VM **no** la tiene; usar Cloud Shell o tu usuario):
+
+```bash
+gcloud storage buckets update gs://talleraeg-media-prod --cors-file=docs/gcs/cors-prod.json
+gcloud storage buckets update gs://talleraeg-media-dev  --cors-file=docs/gcs/cors-dev.json
+
+# Verificar
+gcloud storage buckets describe gs://talleraeg-media-prod --format="default(cors_config)"
+```
+
+Si cambia el dominio del portal (o se agrega otro), hay que agregarlo en `origin` y volver a aplicarlo.
+
 ---
 
 ## Rollout
@@ -195,8 +215,9 @@ Se puede acotar con `--tabla=work_report_photos` y `--limite=100` para probar de
 
 ### 3. Producción
 
-Lo mismo, en este orden: respaldo (`mysqldump`) → `GCS_BUCKET=talleraeg-media-prod` en el `.env` →
-desplegar `main` → verificar subiendo algo nuevo → migrar los archivos viejos.
+Lo mismo, en este orden: respaldo (`mysqldump`) → CORS del bucket de prod (ver "CORS del bucket"
+arriba) → `GCS_BUCKET=talleraeg-media-prod` en el `.env` → desplegar `main` → verificar subiendo algo
+nuevo → migrar los archivos viejos.
 
 ### 4. Limpieza — semanas después, y sólo con autorización expresa
 

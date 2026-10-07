@@ -28,17 +28,19 @@ Módulos implementados, funcionales end-to-end:
    galería; se acepta cualquier formato porque el navegador las convierte a JPG antes de subirlas. Se crea desde el botón "Reporte" de una orden de trabajo
    (`work-reports.createForOrder`, idempotente: una orden solo tiene un reporte). Al finalizarlo
    genera automáticamente la factura correspondiente.
-8. **Facturación** (`/facturacion`): lista de facturas con filtro por cliente/fecha/"solo pendientes"
-   y certificación (captura el correo del cliente, prellenado desde su ficha). La certificación FEL
-   ya está **conectada a Digifact (Guatemala)**: `felCertifier.certify` arma el documento NUC con
-   [backend/src/lib/nucBuilder.js](backend/src/lib/nucBuilder.js) y lo envía con
-   [backend/src/lib/digifactClient.js](backend/src/lib/digifactClient.js), devolviendo el
-   UUID/serie/número que asigna la SAT. **Mientras falten las credenciales**
-   (`DIGIFACT_NIT/USERNAME/PASSWORD` en `.env`, ver [backend/.env.example](backend/.env.example))
-   sigue comportándose como el stub original: no llama a nadie, deja los campos `fel_*` en `null` y
-   la factura avanza a `certificada` solo para uso administrativo — **no es válida ante la SAT**. No
-   se debe "arreglar" eso rellenando datos falsos. El **envío del correo** de certificación tampoco
-   está implementado (no hay SMTP en el backend); el correo se guarda pero no se manda. Detalles en
+8. **Facturación** (`/facturacion`): lista de facturas con filtro por cliente/fecha/"solo pendientes".
+   Certificar emite la **factura electrónica ante la SAT vía Digifact (Guatemala)**: arma el documento
+   NUC ([backend/src/lib/nucBuilder.js](backend/src/lib/nucBuilder.js)), lo envía con
+   [backend/src/lib/digifactClient.js](backend/src/lib/digifactClient.js), guarda UUID/serie/número, el XML
+   certificado y el PDF oficial, y le manda el PDF al cliente por correo (vía n8n). También permite ver el
+   PDF oficial, bajar el XML, reenviar por correo y **anular** (permiso `billing.cancel`). Antes de
+   certificar consulta el NIT en la SAT y avisa si no existe. **Ambientes:** con `DIGIFACT_ENV=test` las
+   facturas salen marcadas "PRUEBAS" (tienen UUID pero **no existen para la SAT**); **mientras falten las
+   credenciales** (`DIGIFACT_NIT/USERNAME/PASSWORD` en `.env`, ver
+   [backend/.env.example](backend/.env.example)) se comporta como el stub original: no llama a nadie, deja
+   los campos `fel_*` en `null` y la factura avanza a `certificada` solo para uso administrativo — **no es
+   válida ante la SAT** (la pantalla lo avisa arriba). No se debe "arreglar" eso rellenando datos falsos.
+   Detalles en
    [backend/CLAUDE.md](backend/CLAUDE.md).
 
 Flujo completo: **Cotización → Orden de Trabajo → Reporte de Trabajo → Factura**, vinculado por FKs

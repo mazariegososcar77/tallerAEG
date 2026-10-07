@@ -19,7 +19,18 @@ import * as digifactClient from '../lib/digifactClient.js';
 import { buildFacturaPayload } from '../lib/nucBuilder.js';
 import { ApiError } from '../utils/ApiError.js';
 
-const STUB_RESULT = { fel_certifier: null, fel_uuid: null, fel_series: null, fel_number: null };
+const STUB_RESULT = { fel_certifier: null, fel_uuid: null, fel_series: null, fel_number: null, fel_issued_at: null, fel_environment: null, documents: null };
+
+// Codigo que acompana al error cuando NO se sabe si Digifact certifico (ver invoiceService.certify).
+export const SIN_RESPUESTA = 'FEL_SIN_RESPUESTA';
+
+function sinRespuesta() {
+  return new ApiError(
+    504,
+    'Digifact no respondió y no se sabe si la factura quedó certificada. Revisa en el portal de Digifact antes de volver a intentarlo.',
+    { code: SIN_RESPUESTA }
+  );
+}
 
 export async function certify(invoice) {
   if (!digifactClient._internal.isConfigured()) {
@@ -30,17 +41,36 @@ export async function certify(invoice) {
   if (!client) throw new ApiError(409, 'El cliente de la factura ya no existe');
 
   const payload = buildFacturaPayload(invoice, client);
-  const response = await digifactClient.certifyDte(payload);
+  // El token se pide antes y por separado: si eso falla, todavia no se mando nada a certificar y
+  // el error se puede reintentar sin riesgo. Lo que falle de aqui en adelante pudo haber certificado.
+  await digifactClient.getToken();
+
+  let response;
+  try {
+    response = await digifactClient.certifyDte(payload);
+  } catch (err) {
+    // Digifact contesto con su JSON de error: proceso el documento y lo rechazo, no se emitio nada.
+    if (err instanceof ApiError && err.details && typeof err.details === 'object') throw err;
+    // Sin respuesta (tiempo de espera, red caida, respuesta ilegible): pudo haberlo certificado.
+    throw sinRespuesta();
+  }
+  if (!response) throw sinRespuesta();
 
   // Digifact devuelve `code` como numero (0/1) o texto segun el endpoint -- comparar como string.
   if (String(response.code) !== '1') {
     throw new ApiError(502, response.message || 'Digifact rechazo el documento', response);
   }
 
+  // Los archivos oficiales (XML firmado por Digifact y PDF con el QR de la SAT) llegan en base64
+  // en esta misma respuesta: se devuelven para que invoiceService los guarde.
   return {
     fel_certifier: 'Digifact',
     fel_uuid: response.authNumber,
     fel_series: response.batch,
     fel_number: response.serial,
+    // Fecha de emision EXACTA que se mando en el documento: la anulacion tiene que citarla igual.
+    fel_issued_at: payload.Header.IssuedDateTime,
+    fel_environment: digifactClient.environment(),
+    documents: digifactClient.extractDocuments(response),
   };
 }

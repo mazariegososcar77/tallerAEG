@@ -12,6 +12,19 @@ const router = Router();
 // Para certificar una factura: exige un correo con formato valido (a donde se le avisaria al cliente).
 const certifySchema = z.object({
   email: z.string().trim().email('Correo invalido'),
+  // true solo cuando alguien confirmo en el portal de Digifact que un intento anterior que se
+  // quedo sin respuesta NO emitio la factura (ver invoiceService.certify).
+  confirm_retry: z.boolean().optional(),
+});
+
+// Para reenviar el PDF oficial: el correo es opcional (si no viene se usa el de la factura).
+const sendEmailSchema = z.object({
+  email: z.string().trim().email('Correo invalido').optional(),
+});
+
+// Para anular: el motivo es obligatorio (la SAT lo registra con la anulacion).
+const cancelSchema = z.object({
+  reason: z.string().trim().min(5, 'Escribe el motivo de la anulacion').max(255),
 });
 
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
@@ -43,6 +56,8 @@ router.get('/', requirePermission('billing.view'), invoiceController.list);
  *       404: { description: No encontrada }
  */
 // Ver el detalle de una factura especifica.
+router.get('/fel/status', requirePermission('billing.view'), invoiceController.felStatus);
+router.get('/nit/:nit', requirePermission('billing.view'), invoiceController.lookupNit);
 router.get('/:id', requirePermission('billing.view'), invoiceController.getById);
 
 /**
@@ -92,6 +107,13 @@ router.post('/:id/certify', requirePermission('billing.certify'), validate(certi
  */
 // Descargar el PDF de la factura.
 router.get('/:id/pdf', requirePermission('billing.view'), invoiceController.pdf);
+// Archivos OFICIALES de la factura certificada (los que emite Digifact).
+router.get('/:id/fel-pdf', requirePermission('billing.view'), invoiceController.felPdf);
+router.get('/:id/fel-xml', requirePermission('billing.view'), invoiceController.felXml);
+// Reenviar por correo el PDF oficial.
+router.post('/:id/send-email', requirePermission('billing.certify'), validate(sendEmailSchema), invoiceController.sendEmail);
+// Anular una factura certificada (motivo obligatorio).
+router.post('/:id/cancel', requirePermission('billing.cancel'), validate(cancelSchema), invoiceController.cancel);
 
 // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
 router.get('/:id/document-flow', requirePermission('billing.view'), invoiceController.documentFlow);

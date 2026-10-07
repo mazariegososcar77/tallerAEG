@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["https://portal.centrodeservicioaeg.com"],
+    "method": ["GET", "HEAD", "PUT"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

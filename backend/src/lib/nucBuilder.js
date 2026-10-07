@@ -4,8 +4,9 @@
  * https://documentacion.digifact.com/gt/nuc/json (y su ejemplo `fact-cf-json`).
  *
  * Recibe una factura con la forma real de `invoiceRepository.findById`
- * (tabla `invoices`: `discount`, no `descuento`; `invoice_items` sin
- * `item_type`, por eso toda linea se manda como "Servicio").
+ * (tabla `invoices`: `discount`, no `descuento`; `invoice_items.item_type`
+ * 'bien'/'servicio' desde 048_invoice_lines.sql -- las lineas anteriores, sin
+ * ese dato, se mandan como "Servicio").
  *
  * Supuesto de negocio: `unit_price` en `invoice_items` ya incluye IVA (igual
  * que en cotizaciones/ordenes de trabajo, que nunca separan el impuesto). El
@@ -16,6 +17,9 @@
 import { env } from '../config/env.js';
 
 const IVA_RATE = 0.12;
+
+// Digifact/SAT esperan el NIT o CUI sin guion ni espacios ("1234567-8" -> "12345678").
+const taxId = (v) => String(v || '').replace(/[\s-]/g, '').toUpperCase();
 
 function n6(value) {
   return (Math.round((Number(value) || 0) * 1e6) / 1e6).toFixed(6);
@@ -35,20 +39,27 @@ function buildBuyer(client) {
   // CUI del receptor"). Para NIT normal, no se incluye el atributo.
   if (client?.nit) {
     return {
-      TaxID: client.nit,
+      TaxID: taxId(client.nit),
       Name: client.full_name || client.first_name,
       ...(client.address ? { AddressInfo: { Address: client.address, Country: 'GT' } } : {}),
     };
   }
   if (client?.dpi) {
     return {
-      TaxID: client.dpi,
+      TaxID: taxId(client.dpi),
       TaxIDType: 'CUI',
       Name: client.full_name || client.first_name,
       ...(client.address ? { AddressInfo: { Address: client.address, Country: 'GT' } } : {}),
     };
   }
   return { TaxID: 'CF', Name: 'CONSUMIDOR FINAL' };
+}
+
+/** Identificador del receptor tal como va en el documento (NIT, CUI o "CF"): la anulacion lo repite. */
+export function receiverTaxId(client) {
+  if (client?.nit) return taxId(client.nit);
+  if (client?.dpi) return taxId(client.dpi);
+  return 'CF';
 }
 
 function buildSeller() {
@@ -122,8 +133,12 @@ export function buildFacturaPayload(invoice, client) {
       Description: item.description,
       Qty: n6(item.quantity),
       UnitOfMeasure: isBien ? 'UNI' : 'SER',
+      // Price es el precio UNITARIO (NUC-JSON v2.0.3, campo D08); Digifact calcula
+      // Precio = Qty x Price y TotalItem = Precio - Descuento.
       Price: n6(item.unit_price),
-      ...(itemDiscount > 0 ? { Discounts: { Discount: { Amount: n6(itemDiscount) } } } : { Discounts: null }),
+      // Discount es una LISTA (NUCSchema.json: "type": ["array","null"]), aunque sea un solo
+      // descuento. Mandarlo como objeto suelto no cumple el esquema.
+      ...(itemDiscount > 0 ? { Discounts: { Discount: [{ Amount: n6(itemDiscount) }] } } : { Discounts: null }),
       Taxes: { Tax: [{ Code: '1', Description: 'IVA', TaxableAmount: n6(taxableAmount), Amount: n6(taxAmount) }] },
       Totals: { TotalItem: n6(netLine) },
     };
@@ -147,6 +162,23 @@ export function buildFacturaPayload(invoice, client) {
     // El transformador de Digifact exige que el elemento exista (aunque vaya vacio) --
     // confirmado empiricamente contra el sandbox: "No se encuentra el elemento
     // AdditionalDocumentInfo" cuando se omite por completo.
-    AdditionalDocumentInfo: { AdditionalInfo: [] },
+    AdditionalDocumentInfo: { AdditionalInfo: invoice.number ? [adendaReferencia(invoice.number)] : [] },
+  };
+}
+
+/**
+ * Adenda con la REFERENCIA INTERNA del DTE: el numero de factura del sistema. Queda en el
+ * documento certificado y en el portal de Digifact, asi que si Digifact no responde al
+ * certificar se puede buscar ahi por nuestro numero (ver invoiceService.certify). Forma tomada
+ * del ejemplo oficial "NUC 2 - FCAM" y de NUC-JSON v2.0.3 (seccion 4.2.7.4).
+ *
+ * VALIDAR_REFERENCIA_INTERNA va en NO_VALIDAR, igual que el ejemplo: la documentacion no
+ * explica que valida VALIDAR, y no se debe depender de eso sin confirmarlo con Digifact.
+ */
+function adendaReferencia(numero) {
+  return {
+    Code: String(numero).slice(0, 100),
+    Type: 'ADENDA',
+    AditionalInfo: [{ Name: 'VALIDAR_REFERENCIA_INTERNA', Data: null, Value: 'NO_VALIDAR' }],
   };
 }

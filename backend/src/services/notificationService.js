@@ -549,6 +549,76 @@ export async function sendQuoteEmail({ quote, email, pdfBase64, mensaje }) {
   return { sent: true, email };
 }
 
+/**
+ * Manda por correo al cliente el PDF OFICIAL de una factura certificada ante la SAT.
+ *
+ * Igual que la cotizacion, lo dispara una persona (certifico o apreto "Enviar por correo"), asi que
+ * los problemas se reportan como error. El PDF viaja en base64 dentro del mismo mensaje y por el
+ * mismo webhook de siempre: el flujo de n8n no necesita ningun cambio.
+ */
+export async function sendInvoiceEmail({ invoice, email, pdfBase64 }) {
+  const settings = await settingsService.getSettings();
+  if (!settings.n8n_webhook_url) {
+    throw new ApiError(400, 'No hay un webhook de n8n configurado. Se configura en Configuracion > Notificaciones.');
+  }
+
+  const numeroFiscal = [invoice.fel_series, invoice.fel_number].filter(Boolean).join('-') || invoice.number;
+  const filas = [
+    { k: 'Factura', v: numeroFiscal },
+    { k: 'Fecha', v: fmtFecha(invoice.date) },
+    { k: 'Total', v: fmtQ(invoice.total) },
+    ...(invoice.fel_uuid ? [{ k: 'Autorizacion SAT', v: invoice.fel_uuid }] : []),
+  ];
+  const saludo = invoice.client_name ? `Estimados ${invoice.client_name}:` : 'Estimado cliente:';
+  const presentacion = `Adjunto encontrara su factura electronica No. ${numeroFiscal}, emitida por ${settings.company_name}. Conserve este documento: es su comprobante fiscal.`;
+  const contacto = [settings.company_phone, settings.company_email].filter(Boolean).map(esc).join(' &middot; ');
+
+  const resultado = await emit('invoice_email', {
+    to: email,
+    subject: `${settings.company_name} - Factura ${numeroFiscal}`,
+    html: cuerpoHtml({
+      titulo: `Factura ${numeroFiscal}`,
+      bajada: `${saludo} ${presentacion}`,
+      contenido: tablaHtml([
+        { label: 'Dato', value: (f) => f.k },
+        { label: 'Valor', value: (f) => f.v },
+      ], filas) + (contacto ? `<p style="margin:10px 0 0;font-size:13px;color:#4b5563;">${contacto}</p>` : ''),
+      empresa: settings.company_name,
+      pie: `Correo enviado automaticamente por el sistema de ${settings.company_name}. Por favor no responda a esta direccion.`,
+    }),
+    text: cuerpoTexto(`FACTURA ${numeroFiscal}`, [
+      saludo,
+      presentacion,
+      '',
+      ...filas.map((f) => `${f.k}: ${f.v}`),
+      ...(contacto ? [[settings.company_phone, settings.company_email].filter(Boolean).join(' - ')] : []),
+    ]),
+    adjunto_nombre: `factura-${numeroFiscal}.pdf`,
+    adjunto_tipo: 'application/pdf',
+    adjunto_base64: pdfBase64,
+    factura_numero: numeroFiscal,
+    cliente: invoice.client_name || '',
+  });
+
+  if (!resultado.sent) {
+    throw new ApiError(502, 'No se pudo contactar a n8n para enviar el correo. Revisa la URL del webhook en Configuracion > Notificaciones.');
+  }
+
+  // Igual que la cotizacion: un fallo al registrar NO se le reporta al usuario, el correo ya salio.
+  try {
+    await notificationRepository.logSent([{
+      type: 'invoice_email',
+      reference_type: 'invoice',
+      reference_id: invoice.id,
+      channel: 'email',
+      meta: { email, number: numeroFiscal },
+    }]);
+  } catch (e) {
+    console.error('[notificaciones] la factura se envio pero no se pudo registrar:', e.message);
+  }
+  return { sent: true, email };
+}
+
 /** Aviso de prueba, para verificar desde la pantalla que n8n contesta. */
 export async function sendTest(email) {
   const settings = await settingsService.getSettings();
