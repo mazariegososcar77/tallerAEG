@@ -18,7 +18,7 @@ function parseClientContacts(row) {
 // trae las de ese cliente (lo usa el historial de equipo por cliente).
 export async function getAll(clientId) {
   const [rows] = await pool.query(`
-    SELECT i.*, wo.number as work_order_number, q.number as quote_number,
+    SELECT i.*, wo.number as work_order_number, q.number as quote_number, c.nit as client_nit, c.dpi as client_dpi,
       CASE
         WHEN c.last_name IS NOT NULL AND c.last_name != ''
           THEN CONCAT(c.first_name, ' ', c.last_name)
@@ -42,7 +42,7 @@ export async function getAll(clientId) {
 // la lista de líneas de detalle (invoice_items) de esa factura. Si no existe, devuelve null.
 export async function findById(id) {
   const [[invoice]] = await pool.query(`
-    SELECT i.*, wo.number as work_order_number, q.number as quote_number,
+    SELECT i.*, wo.number as work_order_number, q.number as quote_number, c.nit as client_nit, c.dpi as client_dpi,
       CASE
         WHEN c.last_name IS NOT NULL AND c.last_name != ''
           THEN CONCAT(c.first_name, ' ', c.last_name)

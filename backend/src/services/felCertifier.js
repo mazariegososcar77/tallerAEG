@@ -19,7 +19,7 @@ import * as digifactClient from '../lib/digifactClient.js';
 import { buildFacturaPayload } from '../lib/nucBuilder.js';
 import { ApiError } from '../utils/ApiError.js';
 
-const STUB_RESULT = { fel_certifier: null, fel_uuid: null, fel_series: null, fel_number: null };
+const STUB_RESULT = { fel_certifier: null, fel_uuid: null, fel_series: null, fel_number: null, fel_issued_at: null, fel_environment: null, documents: null };
 
 export async function certify(invoice) {
   if (!digifactClient._internal.isConfigured()) {
@@ -37,10 +37,16 @@ export async function certify(invoice) {
     throw new ApiError(502, response.message || 'Digifact rechazo el documento', response);
   }
 
+  // Los archivos oficiales (XML firmado por Digifact y PDF con el QR de la SAT) llegan en base64
+  // en esta misma respuesta: se devuelven para que invoiceService los guarde.
   return {
     fel_certifier: 'Digifact',
     fel_uuid: response.authNumber,
     fel_series: response.batch,
     fel_number: response.serial,
+    // Fecha de emision EXACTA que se mando en el documento: la anulacion tiene que citarla igual.
+    fel_issued_at: payload.Header.IssuedDateTime,
+    fel_environment: digifactClient.environment(),
+    documents: digifactClient.extractDocuments(response),
   };
 }
