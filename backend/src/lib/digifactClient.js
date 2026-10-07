@@ -32,9 +32,13 @@ function baseUrl() {
   return env.digifact.environment === 'prod' ? env.digifact.prodBaseUrl : env.digifact.testBaseUrl;
 }
 
-/** NIT sin guion, relleno a 12 digitos con ceros a la izquierda (formato que exige Digifact). */
+/**
+ * NIT sin guion, relleno a 12 caracteres con ceros a la izquierda (formato que exige Digifact en
+ * el usuario `GT.<nit>.<usuario>` y en TAXID). Conserva la K del digito verificador: quitarla
+ * cambia el NIT y Digifact responde "Credenciales incorrectas".
+ */
 function nit12(nit) {
-  return String(nit || '').replace(/[^0-9]/g, '').padStart(12, '0');
+  return String(nit || '').toUpperCase().replace(/[^0-9K]/g, '').padStart(12, '0');
 }
 
 async function fetchToken() {
