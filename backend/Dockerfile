@@ -1,5 +1,8 @@
 # Backend Taller AEG — API Node.js + Express
-FROM node:20-alpine
+# La imagen base se jala de mirror.gcr.io (espejo gratuito de Docker Hub) y no de
+# docker.io directo: los runners de GitHub comparten IP y Docker Hub los limita/
+# tumba con 429/504 seguido. mirror.gcr.io sirve la misma imagen, sin login.
+FROM mirror.gcr.io/library/node:20-alpine
 
 # ffmpeg/ffprobe: comprimen el video final de un reporte de trabajo al subirlo
 # (ver src/lib/mediaProcessing.js) -- la VM de produccion tiene poca RAM libre
