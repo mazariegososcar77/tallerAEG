@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
-import { FileText, Plus, Search, Eye, Pencil, Trash2, ClipboardList, Network, Mail } from 'lucide-react';
+import { FileText, Plus, Search, Eye, Pencil, Trash2, ClipboardList, Network, Mail, Copy } from 'lucide-react';
 import DownloadSplitButton from '../../components/quotes/DownloadSplitButton.jsx';
 import QuoteStatusTimeline from '../../components/quotes/QuoteStatusTimeline.jsx';
 import { downloadPdf } from '../../lib/pdf.js';
@@ -30,6 +30,7 @@ export default function QuotesPage({ flowType = 'pre' }) {
   const [toDelete, setToDelete] = useState(null); // cotizacion pendiente de confirmar su eliminacion
   const [flowSource, setFlowSource] = useState(null); // { type: 'quote', id } para el Mapa de Relaciones
   const [emailQuote, setEmailQuote] = useState(null); // cotizacion que se va a mandar por correo
+  const [duplicatingId, setDuplicatingId] = useState(null); // id de la cotizacion vencida que se esta duplicando
   const navigate = useNavigate();
 
   // Descarga el PDF de la cotizacion (lo pide al servidor y lo baja como archivo).
@@ -37,6 +38,22 @@ export default function QuotesPage({ flowType = 'pre' }) {
     try {
       await downloadPdf(`/api/quotes/${q.id}/pdf${withDiscount ? '?discount=1' : ''}`, `cotizacion-${q.number}${withDiscount ? '-con-descuento' : ''}.pdf`);
     } catch(e) { notify.error('Error al generar PDF'); }
+  };
+
+  // Duplica una cotizacion Vencida (boton "Duplicar"): crea una nueva, en Borrador, con el
+  // siguiente numero y lista para reenviar -- la vencida original se queda como esta, solo
+  // consultable (ver quoteService.duplicate en el backend).
+  const handleDuplicate = async (q) => {
+    setDuplicatingId(q.id);
+    try {
+      const created = await quotesApi.duplicate(q.id);
+      notify.success(`Cotización No. ${created.number} creada a partir de la No. ${q.number}`);
+      quotesApi.list().then(setQuotes);
+    } catch (e) {
+      notify.error(e.response?.data?.error || e.message || 'No se pudo duplicar la cotización');
+    } finally {
+      setDuplicatingId(null);
+    }
   };
 
   useEffect(() => {
@@ -122,7 +139,7 @@ export default function QuotesPage({ flowType = 'pre' }) {
                     </div>
                     {/* Estado en forma de línea de tiempo (chips con check): se ve de un vistazo en
                         qué va la cotización sin tener que entrar a editarla. */}
-                    <QuoteStatusTimeline status={q.status} />
+                    <QuoteStatusTimeline quoteId={q.id} status={q.status} onChanged={() => quotesApi.list().then(setQuotes)} />
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{q.client_name || '—'}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: '#94a3b8' }}>{q.equipment_name || 'Sin equipo'} {q.brand ? '· ' + q.brand : ''}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
@@ -137,6 +154,14 @@ export default function QuotesPage({ flowType = 'pre' }) {
                     {!isPost && q.status === 'aprobada' && (
                       <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
                         <ClipboardList size={15} /> Crear Orden
+                      </button>
+                    )}
+                    {/* Una cotizacion Vencida no se "reabre" sola: se copia a una nueva, en Borrador,
+                        lista para ajustar y reenviar (el escape de verdad para una vencida es el boton
+                        "Reiniciar a Borrador" de la linea de tiempo, solo Administrador). */}
+                    {q.status === 'vencida' && (
+                      <button onClick={() => handleDuplicate(q)} disabled={duplicatingId === q.id} title="Crear una cotización nueva igual a esta, lista para reenviar" style={{ background: '#CA8A0422', border: '1px solid #CA8A0455', borderRadius: 7, padding: '7px 10px', cursor: duplicatingId === q.id ? 'default' : 'pointer', color: '#CA8A04', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, opacity: duplicatingId === q.id ? 0.6 : 1 }}>
+                        <Copy size={15} /> {duplicatingId === q.id ? 'Duplicando…' : 'Duplicar'}
                       </button>
                     )}
                     <button onClick={() => setFlowSource({ type: 'quote', id: q.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>

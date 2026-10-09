@@ -369,11 +369,39 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   `settings`, cae a `EMPRESA_FALLBACK` — los mismos textos de antes. Los **colores** de los PDF siguen
   fijos en `pdfGenerator.js` (no siguen los colores de marca de la configuración).
 - **RBAC más laxo:** a diferencia de Inventario/Clientes, estas rutas no tienen permisos granulares —
-  todas están detrás de `requirePermission('dashboard.view')` (ver `*Routes.js` de estos recursos).
-  Si agregas permisos finos (`work-orders.create`, etc.), tendrás que sembrarlos vía un nuevo script
-  en `migraciones/` y actualizar las rutas.
+  todas están detrás de `requirePermission('dashboard.view')` (ver `*Routes.js` de estos recursos), con
+  **una sola excepción**: `quotes.reset-status` (ver abajo). Si agregas más permisos finos
+  (`work-orders.create`, etc.), tendrás que sembrarlos vía un nuevo script en `migraciones/` y
+  actualizar las rutas.
 - `quoteService.calcTotals`/`quoteService.normalize` calculan `subtotal`/`total` a partir de
   `items[].quantity * items[].unit_price - discount` al crear/actualizar.
+- **Flujo de estados de una cotización, por clic (no por selector)** — `049_quotes_workflow.sql`. El
+  estado se cambia desde los "cuadritos" de la tarjeta en `QuotesPage` (componente
+  `QuoteStatusTimeline.jsx`), no desde un selector libre dentro de la cotización (ese selector se quitó
+  de `QuoteFormPage.jsx`). Un solo sentido, lo valida `quoteService.assertValidTransition` (función pura,
+  separada de la base de datos a propósito para poder probarla sola):
+  - `borrador → enviada → aprobada` o `enviada → rechazada`. Cualquier otro salto (incluido saltarse
+    "enviada") responde 400.
+  - `vencida` **nunca** se acepta a mano (400) — la asigna sola `quoteService.expireOverdue()`
+    (`quoteRepository.markExpired`), llamada en **cada vuelta** del reloj de `notificationScheduler`
+    (~10 min, no solo en la revisión diaria: es un ajuste de datos, no un aviso que haya que
+    deduplicar) sobre toda cotización `borrador`/`enviada` cuyo `valid_until` ya pasó. Una
+    `aprobada`/`rechazada` conserva su desenlace aunque la fecha ya haya pasado.
+  - Volver a `borrador` desde cualquier otro estado (el "deshacer todo") es la única excepción de
+    sentido único, y exige el permiso `quotes.reset-status` (id 76, solo Administrador por defecto,
+    mismo criterio que `work-reports.force-edit`) — el controller arma `canReset` desde
+    `req.user.permissions` y se lo pasa al service, igual que `canForceEdit` en `workReportController`.
+  - **Duplicar** (`POST /quotes/:id/duplicate`, solo si la cotización está `vencida`): crea una
+    cotización nueva, idéntica (cliente, equipos, líneas con precios, descuento, observaciones), en
+    `borrador`, con el siguiente número y la vigencia por defecto — para no reabrir precios ya vencidos.
+    `quotes.duplicated_from_id` enlaza las dos; `documentFlowService.getForQuote` lo expone como
+    `duplicated_from`/`duplicates` y el Mapa de Relaciones (`DocumentFlowModal.jsx`) las pinta como
+    tarjetas "hermanas" junto a la cadena Cotización → Orden → Reporte → Factura.
+  - **Alerta del Dashboard** (`GET /quotes/alerts/expiring-soon`, `QuoteExpiringAlerts.jsx`): reusa
+    `notificationRepository.expiringQuotes` (la misma consulta del correo automático de "cotizaciones
+    por vencer") y el mismo ajuste `notif_quote_expiring_days` — un solo lugar configura cuántos días
+    de anticipación, tanto para el correo como para esta alerta. Solo muestra `enviada` (no `borrador`);
+    en cuanto el sistema la marca `vencida`, sale sola de esta lista.
 - **Órdenes de trabajo sin precios (a propósito):** por decisión de negocio, el módulo de Órdenes de
   Trabajo (formulario, lista, `WorkOrderViewModal` y `generarOrdenTrabajoPDF`) **no muestra precios** —
   las órdenes las trabajan técnicos, y el precio es cosa de administración (Cotizaciones/Facturación).

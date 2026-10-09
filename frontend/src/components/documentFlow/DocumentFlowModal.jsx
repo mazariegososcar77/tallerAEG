@@ -9,7 +9,7 @@
 // endpoints de documento-flujo llamar; el backend siempre devuelve la misma forma
 // { viewing, quote, orders[] } sin importar por cual de los 4 se haya entrado, asi
 // que este componente no necesita saber nada especial segun el origen.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, ClipboardList, Camera, Receipt, ArrowRight, ArrowDown, MapPin, Paperclip } from 'lucide-react';
 import Modal from '../ui/Modal.jsx';
@@ -157,6 +157,18 @@ function Connector({ vertical }) {
   );
 }
 
+// Envuelve un FlowNode con una etiqueta chiquita arriba -- la usa la cotizacion "hermana"
+// (de donde salio esta, o la que salio de esta al "Duplicar" una Vencida), para que no se
+// confunda con un paso mas de la cadena principal Cotizacion -> Orden -> Reporte -> Factura.
+function Captioned({ caption, children }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--c-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>{caption}</span>
+      {children}
+    </div>
+  );
+}
+
 // Una rama del arbol: Orden -> Reporte -> Factura (o placeholders "pendiente"
 // para lo que todavia no existe en esa rama).
 function OrderChain({ order, viewing, isMobile, onNavigate, onOpenDocuments }) {
@@ -222,6 +234,17 @@ export default function DocumentFlowModal({ open, onClose, source }) {
       {!loading && !error && flow && (
         <div style={{ overflowX: 'auto', paddingBottom: 4 }}>
           <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'flex-start', gap: 10, minWidth: isMobile ? 'auto' : 640 }}>
+            {/* Si esta cotizacion nacio de "Duplicar" una Vencida (o si de esta nacio una
+                duplicada despues), esa cotizacion hermana se ve aqui, aparte de la cadena
+                principal Cotizacion -> Orden -> Reporte -> Factura -- ver quoteService.duplicate. */}
+            {flow.duplicated_from && (
+              <>
+                <Captioned caption="Duplicada de">
+                  <FlowNode type="quote" node={flow.duplicated_from} onNavigate={handleNavigate} />
+                </Captioned>
+                <Connector vertical={isMobile} />
+              </>
+            )}
             {flow.quote ? (
               <FlowNode
                 type="quote" node={flow.quote}
@@ -231,6 +254,14 @@ export default function DocumentFlowModal({ open, onClose, source }) {
             ) : (
               <FlowNode type="quote" pending onNavigate={handleNavigate} />
             )}
+            {flow.duplicates?.map((d) => (
+              <Fragment key={d.id}>
+                <Connector vertical={isMobile} />
+                <Captioned caption="Duplicada en">
+                  <FlowNode type="quote" node={d} onNavigate={handleNavigate} />
+                </Captioned>
+              </Fragment>
+            ))}
             <Connector vertical={isMobile} />
             {flow.orders.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
