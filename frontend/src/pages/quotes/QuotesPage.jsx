@@ -9,20 +9,13 @@ import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
 import { FileText, Plus, Search, Eye, Pencil, Trash2, ClipboardList, Network, Mail } from 'lucide-react';
 import DownloadSplitButton from '../../components/quotes/DownloadSplitButton.jsx';
+import QuoteStatusTimeline from '../../components/quotes/QuoteStatusTimeline.jsx';
 import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
 import SendQuoteEmailModal from '../../components/quotes/SendQuoteEmailModal.jsx';
-
-const STATUS_LABELS = {
-  borrador:  { label: 'Borrador',  color: '#94a3b8' },
-  enviada:   { label: 'Enviada',   color: '#3b82f6' },
-  aprobada:  { label: 'Aprobada',  color: '#10b981' },
-  rechazada: { label: 'Rechazada', color: '#ef4444' },
-  vencida:   { label: 'Vencida',   color: '#f59e0b' },
-};
 
 // Esta misma pantalla se reusa para el flujo "Post" (prop flowType="post"): lista solo las
 // cotizaciones que nacieron de una Orden de Trabajo Post (despues del reporte de desarme),
@@ -120,15 +113,16 @@ export default function QuotesPage({ flowType = 'pre' }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(q => {
-            const st = STATUS_LABELS[q.status] || STATUS_LABELS.borrador;
             return (
               <div key={q.id} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-line)', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 2 }}>
                       <span style={{ fontWeight: 700, fontSize: 16, color: '#CA8A04' }}>No. {q.number}</span>
-                      <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                     </div>
+                    {/* Estado en forma de línea de tiempo (chips con check): se ve de un vistazo en
+                        qué va la cotización sin tener que entrar a editarla. */}
+                    <QuoteStatusTimeline status={q.status} />
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{q.client_name || '—'}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: '#94a3b8' }}>{q.equipment_name || 'Sin equipo'} {q.brand ? '· ' + q.brand : ''}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
