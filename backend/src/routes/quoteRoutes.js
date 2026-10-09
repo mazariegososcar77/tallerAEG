@@ -33,7 +33,7 @@ router.put('/:id',           requirePermission('dashboard.view'), quoteControlle
 // Cambiar solo el estado de una cotizacion (clic en la tarjeta, o "Reiniciar a Borrador").
 // El permiso que deja regresar a Borrador se revisa adentro del controller, no aqui.
 router.patch('/:id/status',  requirePermission('dashboard.view'), quoteController.updateStatus);
-// Duplicar una cotizacion Vencida en una nueva, en Borrador.
+// Duplicar una cotizacion (cualquier estado) en una nueva, en Borrador.
 router.post('/:id/duplicate', requirePermission('dashboard.view'), quoteController.duplicate);
 // Borrar una cotizacion.
 router.delete('/:id',        requirePermission('dashboard.view'), quoteController.remove);

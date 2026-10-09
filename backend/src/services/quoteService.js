@@ -165,23 +165,17 @@ export async function expiringSoon() {
 }
 
 /**
- * Duplica una cotizacion Vencida: crea una cotizacion nueva, identica (cliente, equipos,
- * piezas/mano de obra con sus precios, descuento, observaciones), en Borrador, con el
- * siguiente numero correlativo, fecha de hoy y la vigencia por defecto de Configuracion
- * general -- lista para ajustar y reenviar, en vez de reabrir precios/condiciones ya
- * vencidas. `duplicated_from_id` deja el enlace para que el Mapa de Relaciones muestre
- * las dos cotizaciones conectadas (ver documentFlowService.getForQuote).
- *
- * Solo se puede duplicar una cotizacion Vencida -- no tiene sentido (ni esta permitido)
- * duplicar una que sigue viva (Borrador/Enviada) o que ya tiene un desenlace feliz
- * (Aprobada): para esas, se edita la original o se crea una cotizacion nueva de cero.
+ * Duplica cualquier cotizacion (sin importar su estado): crea una cotizacion nueva,
+ * identica (cliente, equipos, piezas/mano de obra con sus precios, descuento,
+ * observaciones), en Borrador, con el siguiente numero correlativo, fecha de hoy y la
+ * vigencia por defecto de Configuracion general -- lista para ajustar y reenviar, en vez
+ * de reabrir precios/condiciones de la original. `duplicated_from_id` deja el enlace para
+ * que el Mapa de Relaciones muestre las dos cotizaciones conectadas (ver
+ * documentFlowService.getForQuote).
  */
 export async function duplicate(id) {
   const original = await quoteRepository.findById(id);
   if (!original) throw new ApiError(404, 'Cotización no encontrada');
-  if (original.status !== 'vencida') {
-    throw new ApiError(409, 'Solo se puede duplicar una cotización Vencida.');
-  }
 
   const settings = await settingsService.getSettings();
   const today = new Date();

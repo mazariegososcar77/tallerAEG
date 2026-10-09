@@ -391,12 +391,12 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
     sentido único, y exige el permiso `quotes.reset-status` (id 76, solo Administrador por defecto,
     mismo criterio que `work-reports.force-edit`) — el controller arma `canReset` desde
     `req.user.permissions` y se lo pasa al service, igual que `canForceEdit` en `workReportController`.
-  - **Duplicar** (`POST /quotes/:id/duplicate`, solo si la cotización está `vencida`): crea una
-    cotización nueva, idéntica (cliente, equipos, líneas con precios, descuento, observaciones), en
-    `borrador`, con el siguiente número y la vigencia por defecto — para no reabrir precios ya vencidos.
-    `quotes.duplicated_from_id` enlaza las dos; `documentFlowService.getForQuote` lo expone como
-    `duplicated_from`/`duplicates` y el Mapa de Relaciones (`DocumentFlowModal.jsx`) las pinta como
-    tarjetas "hermanas" junto a la cadena Cotización → Orden → Reporte → Factura.
+  - **Duplicar** (`POST /quotes/:id/duplicate`, botón visible en cualquier cotización, sin importar su
+    estado): crea una cotización nueva, idéntica (cliente, equipos, líneas con precios, descuento,
+    observaciones), en `borrador`, con el siguiente número y la vigencia por defecto. `quotes.duplicated_from_id`
+    enlaza las dos; `documentFlowService.getForQuote` lo expone como `duplicated_from`/`duplicates` y el
+    Mapa de Relaciones (`DocumentFlowModal.jsx`) las pinta como tarjetas "hermanas" junto a la cadena
+    Cotización → Orden → Reporte → Factura.
   - **Alerta del Dashboard** (`GET /quotes/alerts/expiring-soon`, `QuoteExpiringAlerts.jsx`): reusa
     `notificationRepository.expiringQuotes` (la misma consulta del correo automático de "cotizaciones
     por vencer") y el mismo ajuste `notif_quote_expiring_days` — un solo lugar configura cuántos días
