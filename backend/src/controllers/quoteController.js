@@ -40,7 +40,7 @@ export const expiringSoon = asyncHandler(async (_req, res) => {
   res.json(await quoteService.expiringSoon());
 });
 
-// Duplica una cotización Vencida en una nueva, en Borrador, lista para reenviar.
+// Duplica cualquier cotización en una nueva, en Borrador, lista para ajustar/reenviar.
 export const duplicate = asyncHandler(async (req, res) => {
   res.status(201).json(await quoteService.duplicate(req.params.id));
 });

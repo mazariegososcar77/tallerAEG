@@ -40,9 +40,9 @@ export default function QuotesPage({ flowType = 'pre' }) {
     } catch(e) { notify.error('Error al generar PDF'); }
   };
 
-  // Duplica una cotizacion Vencida (boton "Duplicar"): crea una nueva, en Borrador, con el
-  // siguiente numero y lista para reenviar -- la vencida original se queda como esta, solo
-  // consultable (ver quoteService.duplicate en el backend).
+  // Duplica cualquier cotizacion (boton "Duplicar"): crea una nueva, en Borrador, con el
+  // siguiente numero y lista para ajustar/reenviar -- la original se queda como esta, sin
+  // tocarse (ver quoteService.duplicate en el backend).
   const handleDuplicate = async (q) => {
     setDuplicatingId(q.id);
     try {
@@ -156,14 +156,9 @@ export default function QuotesPage({ flowType = 'pre' }) {
                         <ClipboardList size={15} /> Crear Orden
                       </button>
                     )}
-                    {/* Una cotizacion Vencida no se "reabre" sola: se copia a una nueva, en Borrador,
-                        lista para ajustar y reenviar (el escape de verdad para una vencida es el boton
-                        "Reiniciar a Borrador" de la linea de tiempo, solo Administrador). */}
-                    {q.status === 'vencida' && (
-                      <button onClick={() => handleDuplicate(q)} disabled={duplicatingId === q.id} title="Crear una cotización nueva igual a esta, lista para reenviar" style={{ background: '#CA8A0422', border: '1px solid #CA8A0455', borderRadius: 7, padding: '7px 10px', cursor: duplicatingId === q.id ? 'default' : 'pointer', color: '#CA8A04', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, opacity: duplicatingId === q.id ? 0.6 : 1 }}>
-                        <Copy size={15} /> {duplicatingId === q.id ? 'Duplicando…' : 'Duplicar'}
-                      </button>
-                    )}
+                    <button onClick={() => handleDuplicate(q)} disabled={duplicatingId === q.id} title="Crear una cotización nueva igual a esta, lista para ajustar y reenviar" style={{ background: '#CA8A0422', border: '1px solid #CA8A0455', borderRadius: 7, padding: '7px 10px', cursor: duplicatingId === q.id ? 'default' : 'pointer', color: '#CA8A04', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, opacity: duplicatingId === q.id ? 0.6 : 1 }}>
+                      <Copy size={15} /> {duplicatingId === q.id ? 'Duplicando…' : 'Duplicar'}
+                    </button>
                     <button onClick={() => setFlowSource({ type: 'quote', id: q.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
                     <button onClick={() => setEmailQuote(q)} title="Enviar por correo al cliente" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><Mail size={16} /></button>
                     <button onClick={() => setPdfQuote(q)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
