@@ -21,14 +21,20 @@ router.use(authenticate);
 
 // Ver la lista de cotizaciones. (Nota: hoy solo exige el permiso general de "ver dashboard", no un permiso especifico de cotizaciones)
 router.get('/',              requirePermission('dashboard.view'), quoteController.list);
+// Cotizaciones que vencen pronto (alerta del Dashboard) -- va ANTES de "/:id" para que
+// Express no la confunda con una cotizacion de id "alerts".
+router.get('/alerts/expiring-soon', requirePermission('dashboard.view'), quoteController.expiringSoon);
 // Ver el detalle de una cotizacion especifica.
 router.get('/:id',           requirePermission('dashboard.view'), quoteController.getById);
 // Crear una cotizacion nueva.
 router.post('/',             requirePermission('dashboard.view'), quoteController.create);
 // Editar una cotizacion existente.
 router.put('/:id',           requirePermission('dashboard.view'), quoteController.update);
-// Cambiar solo el estado de una cotizacion.
+// Cambiar solo el estado de una cotizacion (clic en la tarjeta, o "Reiniciar a Borrador").
+// El permiso que deja regresar a Borrador se revisa adentro del controller, no aqui.
 router.patch('/:id/status',  requirePermission('dashboard.view'), quoteController.updateStatus);
+// Duplicar una cotizacion Vencida en una nueva, en Borrador.
+router.post('/:id/duplicate', requirePermission('dashboard.view'), quoteController.duplicate);
 // Borrar una cotizacion.
 router.delete('/:id',        requirePermission('dashboard.view'), quoteController.remove);
 // Descargar el PDF de la cotizacion.

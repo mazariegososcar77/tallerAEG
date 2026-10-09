@@ -20,6 +20,7 @@
  */
 import * as notificationService from '../services/notificationService.js';
 import * as settingsService from '../services/settingsService.js';
+import * as quoteService from '../services/quoteService.js';
 
 // Cada cuanto se asoma al reloj. No es cada cuanto se mandan los avisos: es
 // cada cuanto revisa si ya es la hora. 10 minutos es suficientemente fino para
@@ -60,6 +61,16 @@ export async function revisarYAvisar(origen = 'programado') {
 
 // Un tic del reloj: ¿ya es la hora configurada y no se ha corrido en esta hora?
 async function tic() {
+  // Vencer cotizaciones corre en CADA tic (no solo a la hora configurada): es un ajuste de
+  // datos, no un aviso que haya que deduplicar -- si se esperara a la revision diaria, una
+  // cotizacion podria seguir viendose "enviada" medio dia despues de haberse pasado de fecha.
+  try {
+    const n = await quoteService.expireOverdue();
+    if (n > 0) console.log(`[cotizaciones] ${n} cotizacion(es) marcada(s) como vencida(s)`);
+  } catch (e) {
+    console.error('[cotizaciones] no se pudo revisar el vencimiento:', e.message);
+  }
+
   let hora;
   try {
     const settings = await settingsService.getSettings();

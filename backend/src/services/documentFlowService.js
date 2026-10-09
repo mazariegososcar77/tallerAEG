@@ -63,9 +63,16 @@ export async function getForQuote(quoteId) {
   const quote = await quoteRepository.findById(quoteId);
   if (!quote) throw new ApiError(404, 'Cotizacion no encontrada');
   const orders = await workOrderRepository.findByQuoteId(quoteId);
+  // Si esta cotizacion nacio de "Duplicar" una Vencida (ver quoteService.duplicate), o si
+  // de ESTA nacio alguna duplicada despues, el mapa muestra esa cotizacion hermana -- para
+  // no perder el rastro de "de donde salio esta" ni "en que termino aquella vencida".
+  const duplicatedFrom = quote.duplicated_from_id ? await quoteRepository.findById(quote.duplicated_from_id) : null;
+  const duplicates = await quoteRepository.findDuplicatesOf(quoteId);
   return {
     viewing: { type: 'quote', id: quote.id },
     quote: toQuoteNode(quote),
+    duplicated_from: duplicatedFrom ? toQuoteNode(duplicatedFrom) : null,
+    duplicates: duplicates.map(toQuoteNode),
     orders: orders.map(toOrderNode),
   };
 }

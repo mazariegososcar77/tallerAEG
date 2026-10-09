@@ -150,3 +150,38 @@ export async function remove(id) {
   const [result] = await pool.query('DELETE FROM quotes WHERE id = ?', [id]);
   return result.affectedRows > 0;
 }
+
+/**
+ * Marca como "vencida" toda cotizacion que ya paso su fecha de "Valida hasta" sin que
+ * nadie la haya aprobado ni rechazado (una Aprobada/Rechazada conserva su desenlace aunque
+ * la fecha ya haya pasado -- vencer es solo lo que le toca a la que se quedo sin decision).
+ * La llama notificationScheduler en cada vuelta del reloj (~10 min), no solo una vez al
+ * dia: es un ajuste de datos, no un aviso que haya que deduplicar.
+ * Devuelve cuantas se marcaron, para el log.
+ */
+export async function markExpired() {
+  const [result] = await pool.query(`
+    UPDATE quotes SET status = 'vencida'
+    WHERE status IN ('borrador', 'enviada') AND valid_until IS NOT NULL AND valid_until < CURDATE()
+  `);
+  return result.affectedRows;
+}
+
+// Las cotizaciones que nacieron de "Duplicar" esta (ver quoteService.duplicate) -- para
+// pintar el enlace en el Mapa de Relaciones. Normalmente ninguna o una sola, pero no hay
+// nada que impida duplicar la misma Vencida mas de una vez.
+export async function findDuplicatesOf(id) {
+  const [rows] = await pool.query(`
+    SELECT q.id, q.number, q.status, q.total,
+      CASE
+        WHEN c.last_name IS NOT NULL AND c.last_name != ''
+          THEN CONCAT(c.first_name, ' ', c.last_name)
+        ELSE c.first_name
+      END as client_name
+    FROM quotes q
+    LEFT JOIN clients c ON q.client_id = c.id
+    WHERE q.duplicated_from_id = ?
+    ORDER BY q.created_at
+  `, [id]);
+  return rows;
+}

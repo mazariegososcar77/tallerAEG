@@ -4,8 +4,36 @@
 // las piezas/mano de obra que se agregan, con su cantidad, precio y descuento.
 import * as quoteRepository from '../repositories/quoteRepository.js';
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
+import * as notificationRepository from '../repositories/notificationRepository.js';
 import * as numberingService from './numberingService.js';
+import * as settingsService from './settingsService.js';
 import { ApiError } from '../utils/ApiError.js';
+
+// A que estados se puede pasar a mano desde cada uno (un solo sentido -- ver updateStatus).
+// "vencida" no aparece en ningun lado: nadie la pone a mano, la asigna sola expireOverdue().
+const ALLOWED_TRANSITIONS = {
+  borrador: ['enviada'],
+  enviada: ['aprobada', 'rechazada'],
+};
+
+/**
+ * La regla de "quien puede pasar a quien", separada de la base de datos para poder
+ * probarla sola. No devuelve nada: si la transicion no esta permitida, lanza el ApiError
+ * con el mensaje que ve el usuario (400 o 403 segun el caso).
+ */
+export function assertValidTransition(current, target, canReset) {
+  if (target === current) return; // nada que hacer
+  if (target === 'vencida') {
+    throw new ApiError(400, 'El estado "Vencida" lo asigna el sistema solo, segun la fecha de vigencia. No se puede poner a mano.');
+  }
+  if (target === 'borrador') {
+    if (!canReset) throw new ApiError(403, 'Solo un administrador puede reiniciar una cotización a Borrador.');
+    return;
+  }
+  if (!(ALLOWED_TRANSITIONS[current] || []).includes(target)) {
+    throw new ApiError(400, `No se puede pasar una cotización de "${current}" a "${target}".`);
+  }
+}
 
 // Limpia los datos de la cotizacion antes de guardarlos: los montos vacios se
 // guardan como 0, y los campos de texto opcionales (fecha de vencimiento, tipo de
@@ -97,11 +125,89 @@ export async function update(id, { items, client_name, client_contacts, created_
   return quoteRepository.update(id, data, items);
 }
 
-// Cambia solo el estado de una cotizacion (ej. de "pendiente" a "aprobada").
-export async function updateStatus(id, status) {
+/**
+ * Cambia el estado de una cotizacion, pero solo en el sentido permitido: Borrador ->
+ * Enviada -> Aprobada/Rechazada (ver ALLOWED_TRANSITIONS). Es lo que usan los clics de la
+ * tarjeta de la lista -- ya no hay un selector libre adentro de la cotizacion.
+ *
+ * "vencida" nunca se acepta aqui: la pone sola expireOverdue() segun la fecha, nadie la
+ * elige a mano. Volver a "borrador" desde cualquier otro estado (el "deshacer todo") es la
+ * unica excepcion a sentido unico, y por eso exige `canReset` -- el controller lo arma a
+ * partir del permiso `quotes.reset-status` del usuario (Administrador por defecto, mismo
+ * criterio que `work-reports.force-edit`).
+ */
+export async function updateStatus(id, status, { canReset = false } = {}) {
   const existing = await quoteRepository.findById(id);
   if (!existing) throw new ApiError(404, 'Cotización no encontrada');
+  assertValidTransition(existing.status, status, canReset);
+  if (status === existing.status) return existing; // nada que hacer
   return quoteRepository.update(id, { status });
+}
+
+/**
+ * Pasa a "vencida" toda cotizacion que ya se paso de fecha sin que nadie la aprobara ni
+ * rechazara. La llama notificationScheduler en cada vuelta del reloj (ver ese archivo).
+ */
+export async function expireOverdue() {
+  return quoteRepository.markExpired();
+}
+
+/**
+ * Las cotizaciones que vencen pronto (dentro de los dias configurados en Configuracion >
+ * Notificaciones > "Cotizaciones por vencer") y todavia siguen en "enviada" -- es la misma
+ * consulta que ya usa el correo automatico de ese aviso, reusada aqui para la alerta del
+ * Dashboard (mismo criterio de "cuales importan", un solo lugar para configurar cuantos
+ * dias de anticipacion).
+ */
+export async function expiringSoon() {
+  const settings = await settingsService.getSettings();
+  return notificationRepository.expiringQuotes(Number(settings.notif_quote_expiring_days) || 3);
+}
+
+/**
+ * Duplica una cotizacion Vencida: crea una cotizacion nueva, identica (cliente, equipos,
+ * piezas/mano de obra con sus precios, descuento, observaciones), en Borrador, con el
+ * siguiente numero correlativo, fecha de hoy y la vigencia por defecto de Configuracion
+ * general -- lista para ajustar y reenviar, en vez de reabrir precios/condiciones ya
+ * vencidas. `duplicated_from_id` deja el enlace para que el Mapa de Relaciones muestre
+ * las dos cotizaciones conectadas (ver documentFlowService.getForQuote).
+ *
+ * Solo se puede duplicar una cotizacion Vencida -- no tiene sentido (ni esta permitido)
+ * duplicar una que sigue viva (Borrador/Enviada) o que ya tiene un desenlace feliz
+ * (Aprobada): para esas, se edita la original o se crea una cotizacion nueva de cero.
+ */
+export async function duplicate(id) {
+  const original = await quoteRepository.findById(id);
+  if (!original) throw new ApiError(404, 'Cotización no encontrada');
+  if (original.status !== 'vencida') {
+    throw new ApiError(409, 'Solo se puede duplicar una cotización Vencida.');
+  }
+
+  const settings = await settingsService.getSettings();
+  const today = new Date();
+  const validUntil = new Date(today);
+  validUntil.setDate(validUntil.getDate() + Number(settings.quote_valid_days || 15));
+
+  const items = (original.items || []).map(({ equipment_index, item_type, description, quantity, unit_price }) => ({
+    equipment_index, item_type, description, quantity, unit_price,
+  }));
+  const { subtotal, total } = calcTotals(items, original.discount);
+
+  const number = await numberingService.getNextNumber('quote');
+  return quoteRepository.create({
+    client_id: original.client_id,
+    date: today.toISOString().slice(0, 10),
+    valid_until: validUntil.toISOString().slice(0, 10),
+    work_type: original.work_type,
+    observations: original.observations,
+    equipment_data: original.equipment_data,
+    discount: original.discount,
+    subtotal,
+    total,
+    status: 'borrador',
+    duplicated_from_id: original.id,
+    number,
+  }, items);
 }
 
 // Elimina una cotizacion.

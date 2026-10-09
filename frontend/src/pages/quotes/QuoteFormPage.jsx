@@ -350,10 +350,17 @@ export default function QuoteFormPage({ flowType = 'pre' }) {
                 <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
                   options={workTypes.filter(t => t.is_active).map(t => ({ value:t.name, label:t.name }))} placeholder="Seleccionar..." />
               </div>
-              <div style={{ gridColumn:'span 2' }}>
-                <label style={lbl}>Estado</label>
-                <Combobox value={form.status} onChange={v => set('status', v)} options={STATUS_OPTIONS} />
-              </div>
+              {/* El estado ya no se elige aqui: se cambia con un clic en la tarjeta de la
+                  lista de Cotizaciones (Borrador -> Enviada -> Aprobada/Rechazada), con
+                  confirmacion en cada paso. Solo un administrador puede reiniciarla a
+                  Borrador -- ver QuoteStatusTimeline.jsx. */}
+              {isEdit && (
+                <div style={{ gridColumn:'span 2', display:'flex', alignItems:'flex-end' }}>
+                  <p style={{ margin:0, fontSize:11, color:C.muted }}>
+                    El estado (<strong style={{ color:statusColor }}>{statusLabel}</strong>) se cambia desde la lista de Cotizaciones, no aquí.
+                  </p>
+                </div>
+              )}
             </div>
             <div style={{ marginTop:10 }}>
               <label style={lbl}>Observaciones</label>

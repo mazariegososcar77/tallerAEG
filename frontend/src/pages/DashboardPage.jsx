@@ -9,6 +9,7 @@ import { useIsMobile } from '../hooks/useIsMobile.js';
 import { useAuth } from '../hooks/useAuth.js';
 import MaintenanceCalendar from '../components/dashboard/MaintenanceCalendar.jsx';
 import UpcomingSummary from '../components/dashboard/UpcomingSummary.jsx';
+import QuoteExpiringAlerts from '../components/dashboard/QuoteExpiringAlerts.jsx';
 
 const C = { muted:'var(--c-muted)' };
 
@@ -29,6 +30,9 @@ export default function DashboardPage() {
   return (
     <div style={{ padding:'4px 0' }}>
       <p style={{ fontSize:11, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:1, marginBottom:12 }}>Panel de administracion — Centro de Servicio AEG</p>
+
+      {/* Cotizaciones por vencer: no dibuja nada si no hay ninguna pendiente. */}
+      <QuoteExpiringAlerts />
 
       <div style={{ display:'grid', gap:20, alignItems:'stretch', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(300px, 380px) minmax(0, 1fr)' }}>
         {/* Resumen de próximas fechas (mantenimientos y entregas de órdenes) */}

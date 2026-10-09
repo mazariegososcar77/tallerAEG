@@ -27,9 +27,22 @@ export const update = asyncHandler(async (req, res) => {
   res.json(await quoteService.update(req.params.id, req.body));
 });
 
-// Cuando el usuario cambia el estado de una cotización (por ejemplo, de "pendiente" a "aprobada"), esto lo actualiza.
+// Cuando el usuario cambia el estado de una cotización (clic en un cuadrito de la tarjeta,
+// o el botón "Reiniciar a Borrador"), esto lo actualiza. `canReset` solo lo tiene quien
+// tenga el permiso `quotes.reset-status` -- es lo que deja (o no) volver a "borrador".
 export const updateStatus = asyncHandler(async (req, res) => {
-  res.json(await quoteService.updateStatus(req.params.id, req.body.status));
+  const canReset = req.user.permissions.includes('quotes.reset-status');
+  res.json(await quoteService.updateStatus(req.params.id, req.body.status, { canReset }));
+});
+
+// Cotizaciones que vencen pronto y siguen sin aprobar/rechazar -- la alerta del Dashboard.
+export const expiringSoon = asyncHandler(async (_req, res) => {
+  res.json(await quoteService.expiringSoon());
+});
+
+// Duplica una cotización Vencida en una nueva, en Borrador, lista para reenviar.
+export const duplicate = asyncHandler(async (req, res) => {
+  res.status(201).json(await quoteService.duplicate(req.params.id));
 });
 
 // Cuando el usuario borra una cotización, esto la elimina.
