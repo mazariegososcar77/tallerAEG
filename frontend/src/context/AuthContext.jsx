@@ -67,8 +67,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // `code` tambien acepta un arreglo: alcanza con tener CUALQUIERA de esos permisos (OR),
+  // no todos -- igual que requirePermission() en el backend (ver rbac.middleware.js).
   const hasPermission = useCallback(
-    (code) => Boolean(user?.permissions?.includes(code)),
+    (code) => {
+      if (!user?.permissions) return false;
+      const codes = Array.isArray(code) ? code : [code];
+      return codes.some((c) => user.permissions.includes(c));
+    },
     [user],
   );
 

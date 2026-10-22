@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { quotesApi } from '../../api/quotesApi.js';
+import { useAuth } from '../../hooks/useAuth.js';
 import { FileText, Plus, Search, Eye, Pencil, Trash2, ClipboardList, Network, Mail, Copy } from 'lucide-react';
 import DownloadSplitButton from '../../components/quotes/DownloadSplitButton.jsx';
 import QuoteStatusTimeline from '../../components/quotes/QuoteStatusTimeline.jsx';
@@ -23,6 +24,11 @@ import SendQuoteEmailModal from '../../components/quotes/SendQuoteEmailModal.jsx
 export default function QuotesPage({ flowType = 'pre' }) {
   const isPost = flowType === 'post';
   const basePath = isPost ? '/post/cotizaciones' : '/cotizaciones';
+  const { hasPermission } = useAuth();
+  // Crear/editar/eliminar/duplicar/enviar y "Crear Orden" siguen gateados por
+  // "dashboard.view" en el backend (quotes.view solo cubre ver) -- un rol de solo
+  // lectura como Tecnico no debe ver estos botones (el servidor los rechazaria igual).
+  const canEdit = hasPermission('dashboard.view');
   const [quotes, setQuotes] = useState([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -94,7 +100,7 @@ export default function QuotesPage({ flowType = 'pre' }) {
         </div>
         {/* En Post la cotizacion no se abre en blanco: nace de una orden con el reporte
             finalizado (icono de cotizacion en Post > Ordenes de Trabajo). */}
-        {!isPost && (<button
+        {!isPost && canEdit && (<button
           onClick={() => navigate('/cotizaciones/nueva')}
           style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#CA8A04', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
         >
@@ -151,20 +157,28 @@ export default function QuotesPage({ flowType = 'pre' }) {
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
                     {/* Solo aparece si la cotizacion ya esta "aprobada": abre el formulario de
                         Orden de Trabajo prellenado con los datos de este equipo/cotizacion. */}
-                    {!isPost && q.status === 'aprobada' && (
+                    {!isPost && q.status === 'aprobada' && canEdit && (
                       <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
                         <ClipboardList size={15} /> Crear Orden
                       </button>
                     )}
-                    <button onClick={() => handleDuplicate(q)} disabled={duplicatingId === q.id} title="Crear una cotización nueva igual a esta, lista para ajustar y reenviar" style={{ background: '#CA8A0422', border: '1px solid #CA8A0455', borderRadius: 7, padding: '7px 10px', cursor: duplicatingId === q.id ? 'default' : 'pointer', color: '#CA8A04', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, opacity: duplicatingId === q.id ? 0.6 : 1 }}>
-                      <Copy size={15} /> {duplicatingId === q.id ? 'Duplicando…' : 'Duplicar'}
-                    </button>
+                    {canEdit && (
+                      <button onClick={() => handleDuplicate(q)} disabled={duplicatingId === q.id} title="Crear una cotización nueva igual a esta, lista para ajustar y reenviar" style={{ background: '#CA8A0422', border: '1px solid #CA8A0455', borderRadius: 7, padding: '7px 10px', cursor: duplicatingId === q.id ? 'default' : 'pointer', color: '#CA8A04', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, opacity: duplicatingId === q.id ? 0.6 : 1 }}>
+                        <Copy size={15} /> {duplicatingId === q.id ? 'Duplicando…' : 'Duplicar'}
+                      </button>
+                    )}
                     <button onClick={() => setFlowSource({ type: 'quote', id: q.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
-                    <button onClick={() => setEmailQuote(q)} title="Enviar por correo al cliente" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><Mail size={16} /></button>
+                    {canEdit && (
+                      <button onClick={() => setEmailQuote(q)} title="Enviar por correo al cliente" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><Mail size={16} /></button>
+                    )}
                     <button onClick={() => setPdfQuote(q)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <DownloadSplitButton onDownload={(withDiscount) => handleDownloadPDF(q, withDiscount)} />
-                    <button onClick={() => navigate(basePath + '/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
-                    <button onClick={() => setToDelete(q)} title="Eliminar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    {canEdit && (
+                      <button onClick={() => navigate(basePath + '/' + q.id + '/editar')} title="Editar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
+                    )}
+                    {canEdit && (
+                      <button onClick={() => setToDelete(q)} title="Eliminar cotización" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    )}
                   </div>
                 </div>
               </div>

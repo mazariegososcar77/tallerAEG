@@ -47,18 +47,19 @@ const ROLE_STYLE = {
   success: { bg: SUCCESS_COLOR, border: SUCCESS_COLOR, icon: Check, iconColor: '#fff', textColor: SUCCESS_COLOR, clickable: false },
 };
 
-function Square({ role, label, onClick, title }) {
+function Square({ role, label, onClick, title, clickable = true }) {
   const s = ROLE_STYLE[role];
+  const canClick = s.clickable && clickable;
   const Icon = s.icon;
   return (
     <button
       type="button"
-      disabled={!s.clickable}
-      onClick={s.clickable ? onClick : undefined}
+      disabled={!canClick}
+      onClick={canClick ? onClick : undefined}
       title={title}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 5, border: 'none', background: 'none', padding: 0,
-        cursor: s.clickable ? 'pointer' : 'default', font: 'inherit',
+        cursor: canClick ? 'pointer' : 'default', font: 'inherit',
       }}
     >
       <span
@@ -80,6 +81,11 @@ export default function QuoteStatusTimeline({ quoteId, status, onChanged }) {
   const [pendingTarget, setPendingTarget] = useState(null); // estado al que se quiere pasar, mientras se confirma
 
   const canReset = hasPermission('quotes.reset-status');
+  // El PATCH que cambia el estado sigue gateado por "dashboard.view" en el backend (no se
+  // separo de ahi, a diferencia de las rutas de solo ver) -- un rol de solo lectura como
+  // Tecnico (permiso "quotes.view") veria los cuadritos clicables pero el servidor
+  // rechazaria el cambio con 403. Mejor que ni se vean clicables.
+  const canChangeStatus = hasPermission('dashboard.view');
   const isAlt = status === 'rechazada' || status === 'vencida';
   const currentIndex = isAlt ? 2 : Math.max(0, HAPPY_PATH.indexOf(status));
   // El unico cuadrito clicable "hacia adelante" es el inmediato siguiente -- no se puede
@@ -129,15 +135,16 @@ export default function QuoteStatusTimeline({ quoteId, status, onChanged }) {
               key={s.key}
               role={s.role}
               label={s.label}
-              title={s.role === 'next' ? `Marcar como ${s.label}` : undefined}
+              title={s.role === 'next' && canChangeStatus ? `Marcar como ${s.label}` : undefined}
               onClick={() => requestChange(s.key)}
+              clickable={canChangeStatus}
             />
           ),
         )}
 
         {/* Rechazar: solo mientras esta "Enviada" (el otro desenlace posible, junto a Aprobar
             arriba). No es "el siguiente cuadrito", por eso va aparte, no dentro de la fila de pasos. */}
-        {status === 'enviada' && (
+        {status === 'enviada' && canChangeStatus && (
           <button
             type="button"
             onClick={() => requestChange('rechazada')}

@@ -19,13 +19,14 @@ const sendEmailSchema = z.object({
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
-// Ver la lista de cotizaciones. (Nota: hoy solo exige el permiso general de "ver dashboard", no un permiso especifico de cotizaciones)
-router.get('/',              requirePermission('dashboard.view'), quoteController.list);
+// Ver la lista de cotizaciones. Permiso propio (no el generico "dashboard.view") para
+// poder darle acceso de solo lectura a un rol acotado como Tecnico.
+router.get('/',              requirePermission('quotes.view'), quoteController.list);
 // Cotizaciones que vencen pronto (alerta del Dashboard) -- va ANTES de "/:id" para que
 // Express no la confunda con una cotizacion de id "alerts".
-router.get('/alerts/expiring-soon', requirePermission('dashboard.view'), quoteController.expiringSoon);
+router.get('/alerts/expiring-soon', requirePermission('quotes.view'), quoteController.expiringSoon);
 // Ver el detalle de una cotizacion especifica.
-router.get('/:id',           requirePermission('dashboard.view'), quoteController.getById);
+router.get('/:id',           requirePermission('quotes.view'), quoteController.getById);
 // Crear una cotizacion nueva.
 router.post('/',             requirePermission('dashboard.view'), quoteController.create);
 // Editar una cotizacion existente.
@@ -38,10 +39,10 @@ router.post('/:id/duplicate', requirePermission('dashboard.view'), quoteControll
 // Borrar una cotizacion.
 router.delete('/:id',        requirePermission('dashboard.view'), quoteController.remove);
 // Descargar el PDF de la cotizacion.
-router.get('/:id/pdf',       requirePermission('dashboard.view'), quoteController.pdf);
+router.get('/:id/pdf',       requirePermission('quotes.view'), quoteController.pdf);
 // Mandarle la cotizacion al cliente por correo, con el PDF adjunto (via n8n).
 router.post('/:id/send-email', requirePermission('dashboard.view'), validate(sendEmailSchema), quoteController.sendEmail);
 // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden(es) -> Reporte -> Factura).
-router.get('/:id/document-flow', requirePermission('dashboard.view'), quoteController.documentFlow);
+router.get('/:id/document-flow', requirePermission('quotes.view'), quoteController.documentFlow);
 
 export default router;

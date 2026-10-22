@@ -40,8 +40,8 @@ export const NAV = [
       {
         type: 'group', label: 'Pre', icon: Layers,
         items: [
-          { to: '/cotizaciones',  label: 'Cotizaciones',        icon: FileText,      permission: 'dashboard.view' },
-          { to: '/ordenes',       label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'dashboard.view' },
+          { to: '/cotizaciones',  label: 'Cotizaciones',        icon: FileText,      permission: 'quotes.view' },
+          { to: '/ordenes',       label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'work-orders.view' },
           { to: '/reportes',      label: 'Reportes de Trabajo', icon: Camera,        permission: 'work-reports.view' },
         ],
       },
@@ -51,9 +51,9 @@ export const NAV = [
         // reporte de trabajo, cuando ya se conoce el diagnostico real.
         type: 'group', label: 'Post', icon: Search,
         items: [
-          { to: '/post/ordenes',      label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'dashboard.view' },
+          { to: '/post/ordenes',      label: 'Ordenes de Trabajo',  icon: ClipboardList, permission: 'work-orders.view' },
           { to: '/post/reportes',     label: 'Reportes de Trabajo', icon: Camera,        permission: 'work-reports.view' },
-          { to: '/post/cotizaciones', label: 'Cotizaciones',        icon: FileText,      permission: 'dashboard.view' },
+          { to: '/post/cotizaciones', label: 'Cotizaciones',        icon: FileText,      permission: 'quotes.view' },
         ],
       },
       // Facturacion es UNA sola para ambos flujos (las facturas no distinguen

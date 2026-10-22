@@ -106,7 +106,10 @@ export async function quickCreate({ contacts, ...data }) {
 // servicio de ese cliente (el frontend agrupa las que tienen machine_id bajo su maquina, y
 // deja las que no bajo "Sin equipo asociado" -- ver ClientHistoryPage.jsx), y el total
 // historico facturado. Es un ensamblado de repositorios que ya existen, no hay tabla nueva.
-export async function getHistory(id) {
+// `includeBilling` lo decide el controller segun si quien pregunta tiene "billing.view"
+// -- un rol acotado como Tecnico (solo "clients.history.view") no debe ver facturas ni
+// el total facturado del cliente, asi que ni siquiera se consultan.
+export async function getHistory(id, { includeBilling = true } = {}) {
   const client = await clientRepository.findById(id);
   if (!client) throw new ApiError(404, 'Cliente no encontrado');
   const [machines, quotes, workOrders, serviceOrders, invoices] = await Promise.all([
@@ -114,11 +117,11 @@ export async function getHistory(id) {
     quoteRepository.getAll(id),
     workOrderRepository.getAll(id),
     serviceOrderRepository.getAll(id),
-    invoiceRepository.getAll(id),
+    includeBilling ? invoiceRepository.getAll(id) : Promise.resolve(null),
   ]);
   const totalBilled = invoices
-    .filter(inv => inv.status !== 'anulada')
-    .reduce((sum, inv) => sum + Number(inv.total || 0), 0);
+    ? invoices.filter(inv => inv.status !== 'anulada').reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+    : null;
   return { client, machines, quotes, workOrders, serviceOrders, invoices, totalBilled };
 }
 
