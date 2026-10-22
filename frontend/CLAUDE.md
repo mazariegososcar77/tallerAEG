@@ -35,6 +35,23 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   interceptor adjunta el token y, ante un `401`, cierra sesión y redirige a `/login`.
 - **Permisos en UI:** usa `hasPermission('users.create')` (de `useAuth`) para mostrar/ocultar
   botones y entradas de menú. Las rutas se protegen con `<ProtectedRoute permission="users.view">`.
+  Tanto `hasPermission` como `requirePermission` del backend (`rbac.middleware.js`) también aceptan
+  un **arreglo** de códigos con semántica OR (`hasPermission(['clients.view','clients.history.view'])`),
+  para rutas/botones que dos permisos distintos dejan usar por razones distintas.
+- **Asignar permisos a un rol** (`pages/roles/RoleFormModal.jsx`): el catálogo de ~78 permisos
+  granulares de la base es demasiado detalle para armar un rol a mano (el `module` de cada
+  permiso mezcla varias pantallas reales bajo un mismo grupo, ej. "Configuracion"). El modal
+  tiene dos modos: **Modo simple** (por defecto) muestra una casilla por **pantalla real**
+  (catálogo en `src/lib/roleScreens.js`, agrupado como el menú lateral) que marca/desmarca de
+  una vez el paquete "normal" de esa pantalla (ver/crear/editar/eliminar) — nunca incluye un
+  permiso sensible reservado a Administrador (certificar/anular factura, reabrir un reporte
+  finalizado, reiniciar una cotización, borrar un documento adjunto), eso solo se toca en
+  **Modo avanzado** (la vista granular de siempre, agrupada por `module`, sin cambios). Al abrir
+  un rol para editar, `fitsSimpleMode()` decide el modo inicial: si sus permisos no se pueden
+  representar fielmente como paquetes completos por pantalla (tiene algo sensible, o el paquete
+  de una pantalla está solo a medias — como el rol Técnico, armado a mano con permisos sueltos),
+  se abre en Avanzado para no arriesgar perder esa combinación fina con un clic. Cambiar de modo
+  nunca toca `selected` por sí solo, así que ir y venir entre los dos es siempre seguro.
 - **Notificaciones:** usa `notify.success/error/info` de `src/lib/toast.js` (ya tematizados), no
   `react-hot-toast` directo. **Nunca uses `alert()`, `confirm()` ni `prompt()` del navegador**: los
   avisos van por `notify` y las confirmaciones por `components/ui/ConfirmDialog` (patrón: un estado
