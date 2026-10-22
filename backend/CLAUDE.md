@@ -368,11 +368,34 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   que los días de vigencia impresos en el pie de la cotización. Si a un generador no se le pasa
   `settings`, cae a `EMPRESA_FALLBACK` — los mismos textos de antes. Los **colores** de los PDF siguen
   fijos en `pdfGenerator.js` (no siguen los colores de marca de la configuración).
-- **RBAC más laxo:** a diferencia de Inventario/Clientes, estas rutas no tienen permisos granulares —
-  todas están detrás de `requirePermission('dashboard.view')` (ver `*Routes.js` de estos recursos), con
-  **una sola excepción**: `quotes.reset-status` (ver abajo). Si agregas más permisos finos
-  (`work-orders.create`, etc.), tendrás que sembrarlos vía un nuevo script en `migraciones/` y
-  actualizar las rutas.
+- **RBAC más laxo, con dos excepciones granulares** — a diferencia de Inventario/Clientes, crear/editar/
+  borrar Órdenes de Trabajo y Cotizaciones sigue detrás del permiso genérico `requirePermission('dashboard.view')`
+  (ver `workOrderRoutes.js`/`quoteRoutes.js`), igual que Máquinas y Mantenimiento. Pero **ver** (lista,
+  detalle, PDF, mapa de relaciones) y, en Órdenes de Trabajo, **cambiar solo el estado**, sí tienen
+  permiso propio desde `050_tecnico_role.sql`: `work-orders.view`, `work-orders.update-status` y
+  `quotes.view` — así se puede dar acceso de solo-ver-y-trabajar a Órdenes de Trabajo/Cotizaciones **sin**
+  dar también Máquinas/Mantenimiento (que siguen solo con `dashboard.view`), igual que ya se hizo para
+  Órdenes de Servicio/rol Subcontrato (`service-orders.*`). Administrador/Operador tienen estos permisos
+  nuevos además de `dashboard.view` (se los dio la misma migración, para no perder nada). Además:
+  `quotes.reset-status` (ver abajo).
+- **Rol Técnico** (`050_tecnico_role.sql`, rol id 4): acceso de taller — `work-orders.view` +
+  `work-orders.update-status` (ve OT y les cambia el estado, pero no puede crear/editar/borrar la
+  ficha completa ni acceder a `/ordenes/:id/editar`), `quotes.view` (cotizaciones de solo lectura, sin
+  crear/editar/duplicar/borrar/enviar por correo), `work-reports.view/create/update` +
+  `work-report-items.manage` (reportes de trabajo completos: fotos, notas, firma, finalizar) y
+  `clients.history.view` (ver abajo). El frontend oculta los botones que el backend igual rechazaría:
+  `WorkOrdersPage`/`QuotesPage` revisan `hasPermission('dashboard.view')` para mostrar u ocultar
+  Editar/Eliminar/Crear/Duplicar, y `WorkOrdersPage` muestra un `Combobox` de estado en vez del badge fijo
+  cuando el usuario tiene `work-orders.update-status` pero no `dashboard.view` (ver `handleQuickStatusChange`).
+  `QuoteStatusTimeline` hace lo mismo con sus cuadritos (`canChangeStatus`).
+- **`clients.history.view`** (`050_tecnico_role.sql`): deja ver `GET /clients/:id/history` (el "expediente"
+  de un cliente puntual) **sin** dar `clients.view` (la lista completa de clientes, con NIT/DPI/teléfono).
+  La ruta acepta cualquiera de los dos permisos (`requirePermission(['clients.view','clients.history.view'])`
+  — `requirePermission` ahora acepta un arreglo con semántica OR, igual que `hasPermission` del frontend).
+  Quien no tenga además `billing.view` recibe `invoices: null`/`totalBilled: null` (`clientService.getHistory`
+  con `{ includeBilling }`, decidido en el controller) y `ClientHistoryPage` oculta esas dos secciones. Como
+  el Técnico no tiene `clients.view`, no puede entrar desde la lista de Clientes — el punto de entrada es el
+  botón "Ver historial del cliente" (icono `History`) en la tarjeta de cada orden en `WorkOrdersPage`.
 - `quoteService.calcTotals`/`quoteService.normalize` calculan `subtotal`/`total` a partir de
   `items[].quantity * items[].unit_price - discount` al crear/actualizar.
 - **Flujo de estados de una cotización, por clic (no por selector)** — `049_quotes_workflow.sql`. El

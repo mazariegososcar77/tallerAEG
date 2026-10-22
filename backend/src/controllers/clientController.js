@@ -13,8 +13,11 @@ export const getById = asyncHandler(async (req, res) => {
 });
 // Trae el "historial de equipo" del cliente (maquinas + cotizaciones/ordenes/visitas de
 // cada una + total facturado) para la pantalla de historial ("expediente" del cliente).
+// La parte de facturacion (facturas + total facturado) solo se incluye si ademas tiene
+// "billing.view" -- un Tecnico con solo "clients.history.view" no deberia verla.
 export const getHistory = asyncHandler(async (req, res) => {
-  res.json(await clientService.getHistory(req.params.id));
+  const includeBilling = req.user.permissions.includes('billing.view');
+  res.json(await clientService.getHistory(req.params.id, { includeBilling }));
 });
 // Cuando el usuario guarda un cliente nuevo desde el formulario completo, esto lo recibe y lo manda a guardar.
 export const create = asyncHandler(async (req, res) => {

@@ -17,10 +17,11 @@ import { notify } from '../../lib/toast.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import ConfirmDialog from '../../components/ui/ConfirmDialog.jsx';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
+import Combobox from '../../components/ui/Combobox.jsx';
 import WorkOrderViewModal from './WorkOrderViewModal.jsx';
 import WorkOrderDocumentsModal from '../../components/workOrders/WorkOrderDocumentsModal.jsx';
 import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
-import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch, Paperclip, Network } from 'lucide-react';
+import { ClipboardList, Plus, Search, Eye, Download, Pencil, Trash2, Camera, FileText, Receipt, FileSearch, Paperclip, Network, History } from 'lucide-react';
 
 const STATUS_LABELS = {
   recibido:   { label: 'Recibido',   color: '#3b82f6' },
@@ -30,6 +31,7 @@ const STATUS_LABELS = {
   garantia:   { label: 'Garantía',   color: '#8b5cf6' },
   devolucion: { label: 'Devolución', color: '#ef4444' },
 };
+const STATUS_OPTIONS = Object.entries(STATUS_LABELS).map(([value, s]) => ({ value, label: s.label }));
 
 export default function WorkOrdersPage({ flowType = 'pre' }) {
   const isPost = flowType === 'post';
@@ -120,6 +122,18 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
     } catch(e) { notify.error('Error al generar PDF'); }
   };
 
+  // Cambio rapido de estado, sin abrir el formulario completo -- lo usa un rol
+  // acotado como Tecnico (permiso "work-orders.update-status" pero sin
+  // "dashboard.view", asi que no puede entrar a la edicion completa de la orden).
+  const handleQuickStatusChange = async (order, status) => {
+    try {
+      const updated = await workOrdersApi.updateStatus(order.id, status);
+      setOrders(prev => prev.map(o => o.id === order.id ? { ...o, ...updated } : o));
+    } catch (e) {
+      notify.error(e.response?.data?.error || e.message || 'No se pudo cambiar el estado');
+    }
+  };
+
   // Elimina la orden seleccionada, despues de confirmar en el dialogo.
   const handleDelete = async () => {
     if (!toDelete) return;
@@ -145,13 +159,15 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
             <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{flowOrders.length} ordenes registradas</p>
           </div>
         </div>
-        <button
-          onClick={() => navigate(basePath + '/nueva')}
-          title="Crear una nueva orden de trabajo"
-          style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f97316', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
-        >
-          <Plus size={18} /> Nueva Orden
-        </button>
+        {hasPermission('dashboard.view') && (
+          <button
+            onClick={() => navigate(basePath + '/nueva')}
+            title="Crear una nueva orden de trabajo"
+            style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f97316', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 18px', fontWeight: 600, cursor: 'pointer', fontSize: 14 }}
+          >
+            <Plus size={18} /> Nueva Orden
+          </button>
+        )}
       </div>
 
       {/* Buscador */}
@@ -177,13 +193,24 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {filtered.map(order => {
             const st = STATUS_LABELS[order.status] || STATUS_LABELS.recibido;
+            // Un rol acotado como Tecnico (permiso de cambiar estado, pero sin
+            // acceso al formulario completo) cambia el estado aqui mismo, en vez
+            // de un badge fijo -- Administrador/Operador lo siguen haciendo desde
+            // el formulario completo, sin cambios para ellos.
+            const canQuickChangeStatus = hasPermission('work-orders.update-status') && !hasPermission('dashboard.view');
             return (
               <div key={order.id} style={{ background: 'var(--c-surface)', border: '1px solid var(--c-line)', borderRadius: 12, padding: '14px 16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                   <div style={{ flex: 1, minWidth: 200 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 16, color: '#f97316' }}>No. {order.number}</span>
-                      <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
+                      {canQuickChangeStatus ? (
+                        <div style={{ minWidth: 140 }}>
+                          <Combobox value={order.status} onChange={(v) => handleQuickStatusChange(order, v)} options={STATUS_OPTIONS} />
+                        </div>
+                      ) : (
+                        <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
+                      )}
                     </div>
                     <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{order.client_name || '—'}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>{order.equipment_name || 'Sin equipo'} {order.brand ? '· ' + order.brand : ''}</p>
@@ -191,6 +218,9 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     <button onClick={() => setViewId(order.id)} title="Ver detalle de la orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
+                    {order.client_id && hasPermission(['clients.view', 'clients.history.view']) && (
+                      <button onClick={() => navigate('/clientes/' + order.client_id + '/historial')} title="Ver historial del cliente" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><History size={16} /></button>
+                    )}
                     {hasPermission('work-reports.create') && (
                       <button onClick={() => handleOpenReport(order)} disabled={creatingReportId === order.id} title="Reporte de trabajo" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#a855f7', opacity: creatingReportId === order.id ? 0.6 : 1 }}><Camera size={16} /></button>
                     )}
@@ -209,8 +239,12 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                     <button onClick={() => setFlowSource({ type: 'work_order', id: order.id })} title="Mapa de Relaciones" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#8b5cf6' }}><Network size={16} /></button>
                     <button onClick={() => setPdfOrder(order)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#0ea5e9' }}><FileSearch size={16} /></button>
                     <button onClick={() => handleDownloadPDF(order)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
-                    <button onClick={() => navigate(basePath + '/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
-                    <button onClick={() => setToDelete(order)} title="Eliminar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    {hasPermission('dashboard.view') && (
+                      <button onClick={() => navigate(basePath + '/' + order.id + '/editar')} title="Editar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: 'var(--c-muted)' }}><Pencil size={16} /></button>
+                    )}
+                    {hasPermission('dashboard.view') && (
+                      <button onClick={() => setToDelete(order)} title="Eliminar orden" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                    )}
                   </div>
                 </div>
               </div>

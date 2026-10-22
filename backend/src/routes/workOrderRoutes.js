@@ -12,22 +12,26 @@ const router = Router();
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
 
-// Ver la lista de ordenes de trabajo. (Nota: hoy solo exige el permiso general de "ver dashboard", no un permiso especifico de ordenes)
-router.get('/',              requirePermission('dashboard.view'), workOrderController.list);
+// Ver la lista de ordenes de trabajo. Permiso propio (no el generico "dashboard.view")
+// para poder darle acceso a un rol acotado como Tecnico sin darle tambien Maquinas y
+// Mantenimiento (que si siguen gateadas por "dashboard.view").
+router.get('/',              requirePermission('work-orders.view'), workOrderController.list);
 // Ver el detalle de una orden especifica.
-router.get('/:id',           requirePermission('dashboard.view'), workOrderController.getById);
+router.get('/:id',           requirePermission('work-orders.view'), workOrderController.getById);
 // Crear una orden de trabajo nueva.
 router.post('/',             requirePermission('dashboard.view'), workOrderController.create);
 // Editar una orden de trabajo existente.
 router.put('/:id',           requirePermission('dashboard.view'), workOrderController.update);
 // Cambiar solo el estado de una orden (recibido, en proceso, listo, entregado, garantia, devolucion).
-router.patch('/:id/status',  requirePermission('dashboard.view'), workOrderController.updateStatus);
+// Permiso propio: es justo lo que un Tecnico necesita hacer con una OT, sin poder
+// crear/editar/borrar la ficha completa.
+router.patch('/:id/status',  requirePermission('work-orders.update-status'), workOrderController.updateStatus);
 // Borrar una orden de trabajo.
 router.delete('/:id',        requirePermission('dashboard.view'), workOrderController.remove);
 // Descargar el PDF de la orden de trabajo.
-router.get('/:id/pdf',       requirePermission('dashboard.view'), workOrderController.pdf);
+router.get('/:id/pdf',       requirePermission('work-orders.view'), workOrderController.pdf);
 // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
-router.get('/:id/document-flow', requirePermission('dashboard.view'), workOrderController.documentFlow);
+router.get('/:id/document-flow', requirePermission('work-orders.view'), workOrderController.documentFlow);
 
 // --- Documentos adjuntos de la orden (papeleria de terceros) ---
 // Estas rutas SI tienen permisos granulares propios, a diferencia del resto del

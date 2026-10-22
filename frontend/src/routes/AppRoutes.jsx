@@ -65,17 +65,19 @@ export default function AppRoutes() {
         <Route path="inventario/nuevo" element={<ProtectedRoute permission="articles.create"><ArticleFormPage /></ProtectedRoute>} />
         <Route path="inventario/:id/editar" element={<ProtectedRoute permission="articles.update"><ArticleFormPage /></ProtectedRoute>} />
 
-        {/* --- Rutas de Clientes --- */}
+        {/* --- Rutas de Clientes ---
+             El historial acepta "clients.view" (modulo completo) O "clients.history.view"
+             (rol Tecnico: ve el historial de un cliente puntual, sin la lista completa). */}
         <Route path="clientes" element={<ProtectedRoute permission="clients.view"><ClientsPage /></ProtectedRoute>} />
-        <Route path="clientes/:id/historial" element={<ProtectedRoute permission="clients.view"><ClientHistoryPage /></ProtectedRoute>} />
+        <Route path="clientes/:id/historial" element={<ProtectedRoute permission={["clients.view", "clients.history.view"]}><ClientHistoryPage /></ProtectedRoute>} />
 
         {/* --- Rutas de Ordenes de Trabajo (flujo Pre: cotizacion antes de la orden, sin cambios) --- */}
-        <Route path="ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage /></ProtectedRoute>} />
+        <Route path="ordenes" element={<ProtectedRoute permission="work-orders.view"><WorkOrdersPage /></ProtectedRoute>} />
         <Route path="ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
         <Route path="ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
 
         {/* --- Rutas de Cotizaciones --- */}
-        <Route path="cotizaciones" element={<ProtectedRoute permission="dashboard.view"><QuotesPage /></ProtectedRoute>} />
+        <Route path="cotizaciones" element={<ProtectedRoute permission="quotes.view"><QuotesPage /></ProtectedRoute>} />
         <Route path="cotizaciones/nueva" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage /></ProtectedRoute>} />
         <Route path="cotizaciones/:id/editar" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage /></ProtectedRoute>} />
 
@@ -93,10 +95,10 @@ export default function AppRoutes() {
              Cotizaciones y Reportes de Post tambien reusan sus pantallas (la cotizacion
              se crea desde una orden Post con el reporte ya finalizado);
              Facturacion redirige a /facturacion porque es un solo modulo. --- */}
-        <Route path="post/ordenes" element={<ProtectedRoute permission="dashboard.view"><WorkOrdersPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/ordenes" element={<ProtectedRoute permission="work-orders.view"><WorkOrdersPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
-        <Route path="post/cotizaciones" element={<ProtectedRoute permission="dashboard.view"><QuotesPage flowType="post" /></ProtectedRoute>} />
+        <Route path="post/cotizaciones" element={<ProtectedRoute permission="quotes.view"><QuotesPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/cotizaciones/nueva" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/cotizaciones/:id/editar" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage flowType="post" /></ProtectedRoute>} />
         {/* Reusa la misma pantalla de Reportes con flowType="post": lista solo los reportes

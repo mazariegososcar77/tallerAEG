@@ -15,10 +15,17 @@ import { ApiError } from '../utils/ApiError.js';
 // si el usuario que inicio sesion no tiene el permiso indicado (por
 // ejemplo 'users.create'). Se usa poniendolo antes del controlador de cada
 // ruta que se quiera proteger.
+//
+// `code` tambien acepta un arreglo de codigos: alcanza con tener CUALQUIERA
+// de ellos (OR), no todos. Sirve para rutas que dos permisos distintos dejan
+// usar por razones distintas -- ej. el historial de un cliente lo puede ver
+// quien tiene "clients.view" (el modulo completo) o quien solo tiene
+// "clients.history.view" (un rol acotado, sin la lista completa de clientes).
 export function requirePermission(code) {
+  const codes = Array.isArray(code) ? code : [code];
   return (req, _res, next) => {
     if (!req.user) return next(new ApiError(401, 'No autenticado'));
-    if (!req.user.permissions.includes(code)) {
+    if (!codes.some((c) => req.user.permissions.includes(c))) {
       return next(new ApiError(403, 'No tienes permiso para realizar esta accion'));
     }
     next();

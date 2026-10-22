@@ -15,6 +15,7 @@ import { ArrowLeft, Wrench, FileText, ClipboardList, Truck, Receipt, ChevronDown
 import { clientsApi } from '../../api/clientsApi.js';
 import { notify } from '../../lib/toast.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useAuth } from '../../hooks/useAuth.js';
 
 const C = { bg:'var(--c-app)', card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04', green:'#10b981' };
 
@@ -99,6 +100,7 @@ export default function ClientHistoryPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { hasPermission } = useAuth();
   const [history, setHistory] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -116,8 +118,11 @@ export default function ClientHistoryPage() {
 
   return (
     <div style={{ padding: isMobile ? '12px' : '20px 16px', maxWidth:900, margin:'0 auto' }}>
-      <button onClick={() => navigate('/clientes')} style={{ display:'flex', alignItems:'center', gap:6, background:C.dark, border:'1px solid '+C.border, color:C.muted, padding:'7px 12px', borderRadius:6, cursor:'pointer', fontSize:12, marginBottom:16 }}>
-        <ArrowLeft size={14} /> Volver a Clientes
+      {/* Quien no tiene "clients.view" (ej. rol Tecnico, solo "clients.history.view") llego
+          aqui desde otra pantalla (una Orden de Trabajo), no desde la lista de Clientes --
+          esa lista le daria "No autorizado", asi que aqui solo se regresa a lo anterior. */}
+      <button onClick={() => hasPermission('clients.view') ? navigate('/clientes') : navigate(-1)} style={{ display:'flex', alignItems:'center', gap:6, background:C.dark, border:'1px solid '+C.border, color:C.muted, padding:'7px 12px', borderRadius:6, cursor:'pointer', fontSize:12, marginBottom:16 }}>
+        <ArrowLeft size={14} /> {hasPermission('clients.view') ? 'Volver a Clientes' : 'Volver'}
       </button>
 
       {/* Encabezado del cliente */}
@@ -128,16 +133,19 @@ export default function ClientHistoryPage() {
         </p>
       </div>
 
-      {/* Total facturado */}
-      <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:'16px 18px', marginBottom:16, display:'flex', alignItems:'center', gap:14 }}>
-        <div style={{ width:42, height:42, borderRadius:10, background:C.green+'18', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Receipt size={20} color={C.green} />
+      {/* Total facturado -- el backend omite esto (null) si quien pregunta no tiene
+          "billing.view" (ver clientController.getHistory), asi que un Tecnico no ve esto. */}
+      {invoices && (
+        <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:'16px 18px', marginBottom:16, display:'flex', alignItems:'center', gap:14 }}>
+          <div style={{ width:42, height:42, borderRadius:10, background:C.green+'18', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Receipt size={20} color={C.green} />
+          </div>
+          <div>
+            <p style={{ margin:0, fontSize:11, color:C.muted, fontWeight:700, textTransform:'uppercase', letterSpacing:'.6px' }}>Total Facturado Histórico</p>
+            <p style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}>Q {totalBilled.toFixed(2)}</p>
+          </div>
         </div>
-        <div>
-          <p style={{ margin:0, fontSize:11, color:C.muted, fontWeight:700, textTransform:'uppercase', letterSpacing:'.6px' }}>Total Facturado Histórico</p>
-          <p style={{ margin:0, fontSize:22, fontWeight:800, color:C.text }}>Q {totalBilled.toFixed(2)}</p>
-        </div>
-      </div>
+      )}
 
       {/* Equipos */}
       <h2 style={{ fontSize:13, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', margin:'20px 0 10px' }}>
@@ -159,24 +167,28 @@ export default function ClientHistoryPage() {
         </>
       )}
 
-      {/* Facturación */}
-      <h2 style={{ fontSize:13, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', margin:'20px 0 10px' }}>
-        Facturación ({invoices.length})
-      </h2>
-      {invoices.length === 0 ? (
-        <p style={{ fontSize:12, color:C.muted }}>Sin facturas registradas.</p>
-      ) : (
-        <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:10, overflow:'hidden' }}>
-          {invoices.map(inv => (
-            <div key={inv.id} onClick={() => navigate('/facturacion?invoice='+inv.id)}
-              style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom:'1px solid '+C.border, cursor:'pointer' }}>
-              <span style={{ fontSize:12, fontWeight:700, color:C.text }}>No. {inv.number}</span>
-              <span style={{ fontSize:11, color:C.muted }}>{inv.date ? new Date(inv.date).toLocaleDateString('es-GT') : '—'}</span>
-              <Badge status={inv.status} map={INVOICE_STATUS} />
-              <span style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:C.text }}>Q {Number(inv.total).toFixed(2)}</span>
+      {/* Facturación -- omitida de raiz para quien no tiene "billing.view" (ver arriba). */}
+      {invoices && (
+        <>
+          <h2 style={{ fontSize:13, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', margin:'20px 0 10px' }}>
+            Facturación ({invoices.length})
+          </h2>
+          {invoices.length === 0 ? (
+            <p style={{ fontSize:12, color:C.muted }}>Sin facturas registradas.</p>
+          ) : (
+            <div style={{ background:C.card, border:'1px solid '+C.border, borderRadius:10, overflow:'hidden' }}>
+              {invoices.map(inv => (
+                <div key={inv.id} onClick={() => navigate('/facturacion?invoice='+inv.id)}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderBottom:'1px solid '+C.border, cursor:'pointer' }}>
+                  <span style={{ fontSize:12, fontWeight:700, color:C.text }}>No. {inv.number}</span>
+                  <span style={{ fontSize:11, color:C.muted }}>{inv.date ? new Date(inv.date).toLocaleDateString('es-GT') : '—'}</span>
+                  <Badge status={inv.status} map={INVOICE_STATUS} />
+                  <span style={{ marginLeft:'auto', fontSize:13, fontWeight:800, color:C.text }}>Q {Number(inv.total).toFixed(2)}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       <div style={{ paddingBottom:32 }} />

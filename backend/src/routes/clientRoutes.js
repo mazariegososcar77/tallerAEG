@@ -59,8 +59,11 @@ router.post('/quick', requirePermission('clients.quick-create'), validate(create
 // Ver el detalle de un cliente especifico.
 router.get('/:id', requirePermission('clients.view'),   clientController.getById);
 // Ver el "historial de equipo" del cliente: sus maquinas, y las cotizaciones/ordenes/
-// visitas de servicio de cada una, mas el total facturado historicamente.
-router.get('/:id/history', requirePermission('clients.view'), clientController.getHistory);
+// visitas de servicio de cada una, mas el total facturado historicamente (esto ultimo
+// solo si ademas tiene "billing.view" -- ver clientService.getHistory). Acepta el permiso
+// completo de Clientes O el permiso acotado "clients.history.view" (rol Tecnico: puede ver
+// el historial de un cliente puntual sin ver la lista completa de todos los clientes).
+router.get('/:id/history', requirePermission(['clients.view', 'clients.history.view']), clientController.getHistory);
 // Marca un cliente como validado (revision del administrador).
 router.patch('/:id/validate', requirePermission('clients.validate'), clientController.validate);
 // Editar un cliente existente.
