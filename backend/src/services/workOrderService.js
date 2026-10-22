@@ -5,6 +5,7 @@
 // Cotizacion y antes del Reporte de Trabajo.
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
+import * as quoteRepository from '../repositories/quoteRepository.js';
 import * as notificationService from './notificationService.js';
 import * as numberingService from './numberingService.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -47,12 +48,19 @@ function normalizePaperForm(data) {
 // la base de datos rechaza fechas vacias con un error confuso si se le manda texto
 // vacio en vez de "sin dato". Si no llega flow_type, MySQL lo deja en 'pre' solo
 // (es el default de la columna, ver 025_work_orders_flow_pricing.sql).
-export async function create({ items, number: requestedNumber, ...data }, { restrictToPost = false } = {}) {
-  // Un rol acotado como Tecnico (permiso "work-orders.create", sin "dashboard.view") solo
-  // puede crear ordenes del flujo Post: el Pre nace de una cotizacion ya aprobada, una
-  // decision mas administrativa.
-  if (restrictToPost && data.flow_type !== 'post') {
-    throw new ApiError(403, 'Solo puedes crear ordenes de trabajo del flujo Post.');
+export async function create({ items, number: requestedNumber, ...data }, { limited = false } = {}) {
+  // Un rol acotado como Tecnico (permiso "work-orders.create", sin "dashboard.view") puede
+  // crear: (a) cualquier orden del flujo Post (el equipo se desarma sin cotizacion previa, la
+  // abre quien recibe el equipo), o (b) una orden del flujo Pre, pero SOLO si viene de una
+  // cotizacion que ya esta "aprobada" -- en cuanto el administrador la aprueba, "libera" la
+  // orden para que cualquier tecnico la inicie, sin tener que esperar a que alguien
+  // administrativo la cree por el. Crear una orden Pre sin cotizacion (o con una que no esta
+  // aprobada) sigue siendo "dashboard.view", una decision mas administrativa.
+  if (limited && data.flow_type !== 'post') {
+    const quote = data.quote_id ? await quoteRepository.findById(data.quote_id) : null;
+    if (!quote || quote.status !== 'aprobada') {
+      throw new ApiError(403, 'Solo puedes crear una orden de trabajo del flujo Post, o del flujo Pre a partir de una cotización ya aprobada.');
+    }
   }
   // El numero se puede escribir a mano (el de la orden fisica del talonario); vacio = automatico.
   const number = await numberingService.resolveNumber('work_order', requestedNumber, { findByNumber: workOrderRepository.findIdByNumber, label: 'una orden de trabajo' });

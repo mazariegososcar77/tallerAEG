@@ -396,23 +396,29 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   con `{ includeBilling }`, decidido en el controller) y `ClientHistoryPage` oculta esas dos secciones.
   `ClientHistoryPage` sigue teniendo el botón "Ver historial del cliente" (icono `History`) en la tarjeta
   de cada orden en `WorkOrdersPage` como punto de entrada alternativo a la lista de Clientes.
-- **El Técnico también puede crear Órdenes de Trabajo, pero SOLO del flujo Post** —
-  `051_tecnico_crear_ot_post.sql`. `work-orders.create` se agrega con OR a `dashboard.view` en
-  `POST /work-orders` (`requirePermission(['dashboard.view','work-orders.create'])`); la restricción de que
-  sea únicamente `flow_type==='post'` la aplica `workOrderService.create(data, { restrictToPost })` —
-  el controller calcula `restrictToPost = !req.user.permissions.includes('dashboard.view')`, mismo patrón
-  escape-hatch que `canReset`/`canForceEdit`. En el frontend, `/post/ordenes/nueva` acepta
-  `permission={['dashboard.view','work-orders.create']}` y el botón "Nueva Orden" de `WorkOrdersPage` se
-  muestra también si `isPost && hasPermission('work-orders.create')` — `/ordenes/nueva` (Pre) sigue
-  exigiendo solo `dashboard.view`, el Técnico no la ve. Esta migración también tuvo que destrabar varios
-  catálogos de solo-lectura que el formulario de "Nueva Orden" carga sin preguntar (y que antes
-  respondían 403 para un rol sin `dashboard.view`, dejando la pantalla rota): `clients.view` (el
-  `ClientPicker`, que de paso deja al Técnico entrar también a `/clientes`), `client-types.view`,
-  `loyalty.view`, `equipment-types.view`, y un permiso nuevo `machines.view` (separado de `dashboard.view`
-  igual que `work-orders.view`/`quotes.view`, para que el `MachinePicker` funcione sin dar también Máquinas
-  y Mantenimiento completos). Queda un hueco menor aceptado a propósito: el selector de "mano de obra" del
-  precio Post (`articlesApi.listByType`, exige `articles.view`) no se destrabó — si falla, ese selector
-  queda vacío pero no bloquea guardar la orden (el campo es opcional).
+- **El Técnico también puede crear Órdenes de Trabajo — del flujo Post siempre, y del flujo Pre
+  solo desde una cotización ya aprobada** — `051_tecnico_crear_ot_post.sql` +
+  `052_tecnico_crear_ot_pre_aprobada.sql`. `work-orders.create` se agrega con OR a `dashboard.view` en
+  `POST /work-orders` (`requirePermission(['dashboard.view','work-orders.create'])`); la regla de negocio
+  la aplica `workOrderService.create(data, { limited })` — el controller calcula
+  `limited = !req.user.permissions.includes('dashboard.view')`, mismo patrón escape-hatch que
+  `canReset`/`canForceEdit`. Si `limited`, acepta `flow_type==='post'` sin condiciones, o cualquier otro
+  flujo (Pre) **solo si** `data.quote_id` apunta a una cotización con `status==='aprobada'` — en cuanto el
+  administrativo la aprueba, la orden "se libera" para que cualquier Técnico la inicie, sin esperar a que
+  alguien administrativo la cree primero. En el frontend, `/post/ordenes/nueva` y `/ordenes/nueva` aceptan
+  `permission={['dashboard.view','work-orders.create']}`; el botón "Crear Orden" de `QuotesPage` (en una
+  cotización `aprobada`) se muestra también con `hasPermission('work-orders.create')`, no solo `canEdit`
+  (`dashboard.view`); el botón "Nueva Orden" de `WorkOrdersPage` solo se muestra así para el flujo Post
+  (`isPost && hasPermission('work-orders.create')`) — el Pre sigue exigiendo entrar desde una cotización
+  aprobada, no crear en blanco. `051` también tuvo que destrabar varios catálogos de solo-lectura que el
+  formulario de "Nueva Orden" carga sin preguntar (y que antes respondían 403 para un rol sin
+  `dashboard.view`, dejando la pantalla rota): `clients.view` (el `ClientPicker`, que de paso deja al
+  Técnico entrar también a `/clientes`), `client-types.view`, `loyalty.view`, `equipment-types.view`, y un
+  permiso nuevo `machines.view` (separado de `dashboard.view` igual que `work-orders.view`/`quotes.view`,
+  para que el `MachinePicker` funcione sin dar también Máquinas y Mantenimiento completos). Queda un hueco
+  menor aceptado a propósito: el selector de "mano de obra" del precio Post (`articlesApi.listByType`,
+  exige `articles.view`) no se destrabó — si falla, ese selector queda vacío pero no bloquea guardar la
+  orden (el campo es opcional).
 - `quoteService.calcTotals`/`quoteService.normalize` calculan `subtotal`/`total` a partir de
   `items[].quantity * items[].unit_price - discount` al crear/actualizar.
 - **Flujo de estados de una cotización, por clic (no por selector)** — `049_quotes_workflow.sql`. El

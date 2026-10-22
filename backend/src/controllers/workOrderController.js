@@ -18,11 +18,12 @@ export const getById = asyncHandler(async (req, res) => {
 });
 
 // Cuando el usuario guarda una orden de trabajo nueva desde el formulario, esto la recibe y la manda a guardar.
-// Quien no tenga "dashboard.view" (rol Tecnico, solo "work-orders.create") unicamente puede
-// crear ordenes del flujo Post -- la restriccion la aplica el service, no el controller.
+// Quien no tenga "dashboard.view" (rol Tecnico, solo "work-orders.create") esta limitado a
+// crear del flujo Post, o del flujo Pre a partir de una cotizacion ya aprobada -- la
+// restriccion la aplica el service, no el controller.
 export const create = asyncHandler(async (req, res) => {
-  const restrictToPost = !req.user.permissions.includes('dashboard.view');
-  res.status(201).json(await workOrderService.create(req.body, { restrictToPost }));
+  const limited = !req.user.permissions.includes('dashboard.view');
+  res.status(201).json(await workOrderService.create(req.body, { limited }));
 });
 
 // Cuando el usuario edita una orden de trabajo y guarda los cambios, esto los aplica.

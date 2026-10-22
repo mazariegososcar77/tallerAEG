@@ -71,9 +71,13 @@ export default function AppRoutes() {
         <Route path="clientes" element={<ProtectedRoute permission="clients.view"><ClientsPage /></ProtectedRoute>} />
         <Route path="clientes/:id/historial" element={<ProtectedRoute permission={["clients.view", "clients.history.view"]}><ClientHistoryPage /></ProtectedRoute>} />
 
-        {/* --- Rutas de Ordenes de Trabajo (flujo Pre: cotizacion antes de la orden, sin cambios) --- */}
+        {/* --- Rutas de Ordenes de Trabajo (flujo Pre: cotizacion antes de la orden) ---
+             "work-orders.create" (rol Tecnico) solo deja crear al entrar desde el boton "Crear
+             Orden" de una cotizacion ya aprobada -- el backend lo exige igual
+             (workOrderService.create); esto es solo para no mostrar la pantalla a quien de
+             todas formas se la rechazaria si entrara sin cotizacion. */}
         <Route path="ordenes" element={<ProtectedRoute permission="work-orders.view"><WorkOrdersPage /></ProtectedRoute>} />
-        <Route path="ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
+        <Route path="ordenes/nueva" element={<ProtectedRoute permission={["dashboard.view", "work-orders.create"]}><WorkOrderFormPage /></ProtectedRoute>} />
         <Route path="ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage /></ProtectedRoute>} />
 
         {/* --- Rutas de Cotizaciones --- */}
