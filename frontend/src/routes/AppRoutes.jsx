@@ -96,7 +96,10 @@ export default function AppRoutes() {
              se crea desde una orden Post con el reporte ya finalizado);
              Facturacion redirige a /facturacion porque es un solo modulo. --- */}
         <Route path="post/ordenes" element={<ProtectedRoute permission="work-orders.view"><WorkOrdersPage flowType="post" /></ProtectedRoute>} />
-        <Route path="post/ordenes/nueva" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
+        {/* "work-orders.create" (rol Tecnico) solo deja crear del flujo Post -- el backend
+            tambien lo exige (workOrderService.create), esto es solo para no mostrar la
+            pantalla a quien de todas formas se la rechazaria. */}
+        <Route path="post/ordenes/nueva" element={<ProtectedRoute permission={["dashboard.view", "work-orders.create"]}><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/ordenes/:id/editar" element={<ProtectedRoute permission="dashboard.view"><WorkOrderFormPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/cotizaciones" element={<ProtectedRoute permission="quotes.view"><QuotesPage flowType="post" /></ProtectedRoute>} />
         <Route path="post/cotizaciones/nueva" element={<ProtectedRoute permission="dashboard.view"><QuoteFormPage flowType="post" /></ProtectedRoute>} />

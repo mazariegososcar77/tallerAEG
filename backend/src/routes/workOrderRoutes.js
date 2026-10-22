@@ -18,8 +18,9 @@ router.use(authenticate);
 router.get('/',              requirePermission('work-orders.view'), workOrderController.list);
 // Ver el detalle de una orden especifica.
 router.get('/:id',           requirePermission('work-orders.view'), workOrderController.getById);
-// Crear una orden de trabajo nueva.
-router.post('/',             requirePermission('dashboard.view'), workOrderController.create);
+// Crear una orden de trabajo nueva. "work-orders.create" (rol Tecnico) solo deja crear
+// del flujo Post -- esa restriccion se aplica en workOrderService.create, no aqui.
+router.post('/',             requirePermission(['dashboard.view', 'work-orders.create']), workOrderController.create);
 // Editar una orden de trabajo existente.
 router.put('/:id',           requirePermission('dashboard.view'), workOrderController.update);
 // Cambiar solo el estado de una orden (recibido, en proceso, listo, entregado, garantia, devolucion).
