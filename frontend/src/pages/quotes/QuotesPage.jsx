@@ -156,8 +156,12 @@ export default function QuotesPage({ flowType = 'pre' }) {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                     {q.total > 0 && <span style={{ fontWeight: 700, color: '#10b981', fontSize: 15 }}>Q {Number(q.total).toFixed(2)}</span>}
                     {/* Solo aparece si la cotizacion ya esta "aprobada": abre el formulario de
-                        Orden de Trabajo prellenado con los datos de este equipo/cotizacion. */}
-                    {!isPost && q.status === 'aprobada' && canEdit && (
+                        Orden de Trabajo prellenado con los datos de este equipo/cotizacion. En
+                        cuanto se aprueba, la orden queda "liberada" tambien para un Tecnico
+                        (work-orders.create), no solo para quien tiene dashboard.view -- asi
+                        cualquiera con ese rol la puede iniciar sin esperar a que alguien
+                        administrativo la cree primero. */}
+                    {!isPost && q.status === 'aprobada' && (canEdit || hasPermission('work-orders.create')) && (
                       <button onClick={() => navigate('/ordenes/nueva?fromQuote=' + q.id)} title="Crear orden de trabajo desde esta cotización" style={{ background: '#E8551C22', border: '1px solid #E8551C55', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#E8551C', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700 }}>
                         <ClipboardList size={15} /> Crear Orden
                       </button>

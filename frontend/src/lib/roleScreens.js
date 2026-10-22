@@ -30,7 +30,8 @@ export const SCREEN_GROUPS = [
     screens: [
       { key: 'quotes', label: 'Cotizaciones (ver)', codes: ['quotes.view'] },
       {
-        key: 'work-orders', label: 'Ordenes de Trabajo (ver, cambiar estado, crear del flujo Post)',
+        key: 'work-orders', label: 'Ordenes de Trabajo (ver, cambiar estado, crear)',
+        description: 'Crear deja el flujo Post (siempre) y el flujo Pre solo a partir de una cotización ya aprobada.',
         codes: ['work-orders.view', 'work-orders.update-status', 'work-orders.create'],
       },
       {
