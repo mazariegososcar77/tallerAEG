@@ -7,10 +7,12 @@ import { requirePermission } from '../middleware/rbac.middleware.js';
 const router = Router();
 // A partir de aqui, todas las rutas de este archivo exigen haber iniciado sesion.
 router.use(authenticate);
-// Ver la lista de maquinas. (Nota: hoy solo exige el permiso general de "ver dashboard", no un permiso especifico de maquinas)
-router.get('/', requirePermission('dashboard.view'), machineController.list);
+// Ver la lista de maquinas. Permiso propio (no el generico "dashboard.view") para que
+// un formulario que solo necesita ELEGIR una maquina (ej. MachinePicker en Ordenes de
+// Trabajo) no obligue a dar tambien el modulo completo de Maquinas y Mantenimiento.
+router.get('/', requirePermission('machines.view'), machineController.list);
 // Ver el detalle de una maquina especifica.
-router.get('/:id', requirePermission('dashboard.view'), machineController.getById);
+router.get('/:id', requirePermission('machines.view'), machineController.getById);
 // Crear una maquina nueva.
 router.post('/', requirePermission('dashboard.view'), machineController.create);
 // Editar una maquina existente.

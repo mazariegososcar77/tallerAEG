@@ -47,7 +47,13 @@ function normalizePaperForm(data) {
 // la base de datos rechaza fechas vacias con un error confuso si se le manda texto
 // vacio en vez de "sin dato". Si no llega flow_type, MySQL lo deja en 'pre' solo
 // (es el default de la columna, ver 025_work_orders_flow_pricing.sql).
-export async function create({ items, number: requestedNumber, ...data }) {
+export async function create({ items, number: requestedNumber, ...data }, { restrictToPost = false } = {}) {
+  // Un rol acotado como Tecnico (permiso "work-orders.create", sin "dashboard.view") solo
+  // puede crear ordenes del flujo Post: el Pre nace de una cotizacion ya aprobada, una
+  // decision mas administrativa.
+  if (restrictToPost && data.flow_type !== 'post') {
+    throw new ApiError(403, 'Solo puedes crear ordenes de trabajo del flujo Post.');
+  }
   // El numero se puede escribir a mano (el de la orden fisica del talonario); vacio = automatico.
   const number = await numberingService.resolveNumber('work_order', requestedNumber, { findByNumber: workOrderRepository.findIdByNumber, label: 'una orden de trabajo' });
   if (data.total === '' || data.total === null || data.total === undefined) data.total = 0;

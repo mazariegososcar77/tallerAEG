@@ -159,7 +159,9 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
             <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: 0 }}>{flowOrders.length} ordenes registradas</p>
           </div>
         </div>
-        {hasPermission('dashboard.view') && (
+        {/* "work-orders.create" (rol Tecnico) solo aplica al flujo Post -- el backend lo exige
+            igual, ver workOrderService.create. */}
+        {(hasPermission('dashboard.view') || (isPost && hasPermission('work-orders.create'))) && (
           <button
             onClick={() => navigate(basePath + '/nueva')}
             title="Crear una nueva orden de trabajo"
