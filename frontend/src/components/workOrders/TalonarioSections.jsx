@@ -166,10 +166,11 @@ export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker 
 
           <div style={sub}>Físico</div>
           <CheckGroup options={PHYSICAL_CHECKS} values={form.physical_parts} onToggle={(v) => toggleIn('physical_parts', v)} cols={4} isMobile={isMobile} />
-          <div style={{ ...grid(isMobile, 4, 2), marginTop: 10 }}>
-            <Field label="Cambio de cojinetes No."><Txt form={form} set={set} name="bearings_count" upper={false} /></Field>
-            <Field label="Cojinetes medida 1 (mm)"><Txt form={form} set={set} name="bearings_mm" upper={false} /></Field>
-            <Field label="Cojinetes medida 2 (mm)"><Txt form={form} set={set} name="bearings_mm_2" upper={false} /></Field>
+          <div style={{ ...grid(isMobile, 5, 2), marginTop: 10 }}>
+            <Field label="Cojinete 1 No."><Txt form={form} set={set} name="bearings_count" upper={false} /></Field>
+            <Field label="Medida 1 (mm)"><Txt form={form} set={set} name="bearings_mm" upper={false} /></Field>
+            <Field label="Cojinete 2 No."><Txt form={form} set={set} name="bearings_count_2" upper={false} /></Field>
+            <Field label="Medida 2 (mm)"><Txt form={form} set={set} name="bearings_mm_2" upper={false} /></Field>
             <Field label="Retenedores No.">
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input value={ret1} onChange={(e) => setRet(e.target.value, ret2)} style={inp} />
@@ -183,10 +184,8 @@ export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker 
             <Field label="Tapa delantera (mm)"><Txt form={form} set={set} name="front_cover_mm" upper={false} /></Field>
             <Field label="Tapa trasera (mm)"><Txt form={form} set={set} name="rear_cover_mm" upper={false} /></Field>
           </div>
-          <div style={grid(isMobile, 4, 2)}>
+          <div style={grid(isMobile, 2, 2)}>
             <Field label="Rectificar eje (mm)"><Txt form={form} set={set} name="shaft_rectify_mm" upper={false} /></Field>
-            <Field label="HP"><Txt form={form} set={set} name="lathe_hp" upper={false} /></Field>
-            <Field label="KW"><Txt form={form} set={set} name="lathe_kw" upper={false} /></Field>
             <Field label="Camisa sello (mm)"><Txt form={form} set={set} name="seal_liner_mm" upper={false} /></Field>
           </div>
           <div style={grid(isMobile, 4, 2)}>
@@ -264,7 +263,7 @@ export function MeasurementTab({ title, value, onChange, variant, isMobile }) {
           <label style={lbl}>Voltaje aplicado</label>
           <ChoiceGroup options={volts} value={v.applied_voltage} onChange={(x) => setField('applied_voltage', x)} isMobile={isMobile} cols={4} />
         </div>
-        {triple('connection', 'Conexión')}
+        {single('connection', 'Conexión')}
         {triple('temperature', 'Medición de temperatura')}
         <div style={{ marginBottom: 10 }}>
           <label style={lbl}>Medición de tierra</label>
