@@ -118,19 +118,24 @@ const triple = (v) => {
   return { l1: v || '', l2: '', l3: '' }; // formato viejo: un solo valor
 };
 
+// "Conexión" es un solo valor (ej. "Triángulo", "Estrella"), no trae L1/L2/L3 como Temperatura
+// -- en el papel real es una sola casilla. Si una orden ya quedo guardada como {l1,l2,l3} (asi
+// se guardo por un tiempo, por error), se recupera l1 y el resto se descarta.
+const single = (v) => (v && typeof v === 'object' ? (v.l1 || '') : (v || ''));
+
 export const emptyMeasurement = () => ({
   insulation: { l1: '', l2: '', l3: '' }, ohms: { l1: '', l2: '', l3: '' }, amperage: { l1: '', l2: '', l3: '' },
-  applied_voltage: '', connection: { l1: '', l2: '', l3: '' }, temperature: { l1: '', l2: '', l3: '' }, ground: '',
+  applied_voltage: '', connection: '', temperature: { l1: '', l2: '', l3: '' }, ground: '',
   pulley_distance: '', coupling_distance: '', turbine_distance: '',
 });
 export const emptyMeasurementIntake = () => ({ ...emptyMeasurement(), balance_rotor: '', balance_turbine: '' });
 export const emptyMeasurementDelivery = () => ({ ...emptyMeasurement(), wire_type: '' });
 
-// Conexion y temperatura pasaron de una caja a tres (L1/L2/L3, como en el papel).
+// Temperatura paso de una caja a tres (L1/L2/L3, como en el papel); Conexion vuelve a una sola.
 export function normalizeMeasurement(m, variant) {
   const base = variant === 'intake' ? emptyMeasurementIntake() : emptyMeasurementDelivery();
   if (!m || typeof m !== 'object') return base;
-  return { ...base, ...m, connection: triple(m.connection), temperature: triple(m.temperature) };
+  return { ...base, ...m, connection: single(m.connection), temperature: triple(m.temperature) };
 }
 
 // El talonario no tiene "Nombre del equipo" ni "Tipo de trabajo general", pero el resto

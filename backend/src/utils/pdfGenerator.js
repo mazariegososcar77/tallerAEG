@@ -486,11 +486,11 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   sectionHeader('FÍSICO / TORNO', NARANJA);
   const physicalParts = Array.isArray(order.physical_parts) ? order.physical_parts : [];
   threeColList(physicalParts.map((p) => PHYSICAL_PART_LABELS[p] || p));
-  fila(['Cambio cojinetes No.:', order.bearings_count], ['Cojinetes medida 1 (mm):', order.bearings_mm], 115, 125);
-  fila(['Cojinetes medida 2 (mm):', order.bearings_mm_2], ['Retenedores No.:', order.retainers_count], 125, 100);
+  fila(['Cojinete 1 No.:', order.bearings_count], ['Medida 1 (mm):', order.bearings_mm], 90, 100);
+  fila(['Cojinete 2 No.:', order.bearings_count_2], ['Medida 2 (mm):', order.bearings_mm_2], 90, 100);
+  fila(['Retenedores No.:', order.retainers_count], null, 100);
   fila(['Torno:', order.lathe_note], ['Rectificar eje (mm):', order.shaft_rectify_mm], 45, 115);
   fila(['Tapa delantera (mm):', order.front_cover_mm], ['Tapa trasera (mm):', order.rear_cover_mm], 115, 105);
-  fila(['HP:', order.lathe_hp], ['KW:', order.lathe_kw], 30, 30);
   fila(['Camisa sello (mm):', order.seal_liner_mm], ['Perforación ventilador (mm):', order.fan_hole_mm], 105, 145);
   fila(['Otros:', order.physical_other], null, 45);
   const lodo = marcados(TALONARIO_LODO, workTypes);
@@ -532,7 +532,11 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
     field('Voltaje aplicado:', m.applied_voltage ? m.applied_voltage + ' V' : null, L, 105);
     field('Medición de tierra:', yesNo(m.ground), col2, 110);
     y += 13;
-    tres('Conexión', m.connection);
+    // "Conexión" es un solo valor (ej. "Triángulo"), no L1/L2/L3 como el resto -- una orden
+    // vieja puede haberlo guardado como {l1,l2,l3} por error; en ese caso se imprime l1.
+    ensureSpace(13);
+    field('Conexión:', typeof m.connection === 'object' ? (m.connection?.l1 || null) : (m.connection || null), L, 90);
+    y += 13;
     tres('Medición de temperatura', m.temperature);
     ensureSpace(13);
     field('Distancia polea:', m.pulley_distance, L, 90);
