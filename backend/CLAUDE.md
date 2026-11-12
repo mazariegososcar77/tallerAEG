@@ -347,8 +347,15 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   `009_clients_seed.sql` / `010_loyalty_tier_appearance.sql`.
 - Endpoints: `/clients` (CRUD), `/client-types` y `/loyalty-tiers` (CRUD). Borrado de tipo/nivel
   bloqueado (409) si hay clientes que lo usan.
-- **Regla NIT/DPI:** al menos uno debe venir (solo uno puede quedar vacío); se valida en el schema
-  zod de `clientRoutes` y de nuevo en `clientService`. NIT y DPI son únicos cuando no están vacíos.
+- **Regla NIT/DPI:** `clientService.create` (alta normal, desde Clientes) exige al menos uno de los
+  dos (`assertTieneNitODpi`) — el formato de cada uno sí lo valida el schema zod de `clientRoutes`,
+  pero el "al menos uno" es solo de `clientService`. `clientService.quickCreate` (alta rápida desde
+  el selector de Órdenes/Cotizaciones) **no** exige ninguno de los dos a propósito: quien la usa
+  (típicamente un Técnico en campo) puede no tenerlo a mano todavía, y el cliente queda
+  `is_validated=0` para que un administrador lo complete después al validarlo — mientras tanto no se
+  puede facturar/certificar ante la SAT. En el frontend, `ClientFormModal` refleja esto con la prop
+  `quick`: el campo NIT de la categoría Empresa deja de ser obligatorio y el aviso "Indique al menos
+  el NIT o el DPI" de Particular se oculta. NIT y DPI son únicos cuando no están vacíos.
 - `clientService.toPublic` resuelve `full_name`, `client_type_name`, `loyalty_tier_name`,
   `loyalty_tier_color`, `loyalty_tier_icon`, `loyalty_discount` y `loyalty_benefits`.
 - **Permisos:** `clients.*`, `client-types.*`, `loyalty.*` (ids 23–34 en el seed). Para topear datos

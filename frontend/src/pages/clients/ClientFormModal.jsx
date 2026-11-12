@@ -89,7 +89,10 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
     if (form.first_name.trim().length < 2) found.first_name = `${nombre} debe tener al menos 2 letras.`;
     if (form.nit.trim() && !isValidNit(form.nit)) found.nit = MENSAJES.nit;
     if (form.dpi.trim() && !isValidDpi(form.dpi)) found.dpi = MENSAJES.dpi;
-    if (!form.nit.trim() && !form.dpi.trim()) {
+    // En alta rapida (quick) no se exige NIT/DPI: quien la usa (tipicamente un Tecnico en
+    // campo) puede no tenerlo a mano todavia: el cliente igual se puede usar de inmediato
+    // y queda "pendiente de validacion" para que un administrador lo complete despues.
+    if (!quick && !form.nit.trim() && !form.dpi.trim()) {
       found.nit = 'Indica al menos el NIT o el DPI.';
       found.dpi = 'Indica al menos el NIT o el DPI.';
     }
@@ -224,7 +227,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
         {/* PARTICULAR */}
         {category === 'particular' && (
           <>
-            <p className="text-xs text-slate-500">Indique al menos el <strong>NIT</strong> o el <strong>DPI</strong>.</p>
+            {!quick && <p className="text-xs text-slate-500">Indique al menos el <strong>NIT</strong> o el <strong>DPI</strong>.</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Nombre *" value={form.first_name} onChange={setField('first_name')} error={errors.first_name} required />
               <Input label="Apellido *" value={form.last_name} onChange={setField('last_name')} error={errors.last_name} required />
@@ -243,7 +246,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Razon Social *" value={form.first_name} onChange={setField('first_name')} error={errors.first_name} required />
               <Input label="Nombre Comercial" value={form.trade_name} onChange={setField('trade_name')} error={errors.trade_name} />
-              <Input label="NIT *" value={form.nit} onChange={setField('nit')} error={errors.nit} required />
+              <Input label={quick ? 'NIT' : 'NIT *'} value={form.nit} onChange={setField('nit')} error={errors.nit} required={!quick} />
               <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />

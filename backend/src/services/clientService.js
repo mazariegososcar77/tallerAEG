@@ -91,10 +91,13 @@ export async function create({ contacts, ...data }) {
 
 // Alta "de ultima instancia" desde el selector de Ordenes/Cotizaciones: el
 // cliente puede usarse de inmediato pero entra SIN validar para que un
-// administrador revise sus datos despues.
+// administrador revise sus datos despues. A diferencia de create(), NO exige
+// NIT/DPI -- quien da de alta rapido (tipicamente un Tecnico en campo) puede no
+// tenerlo a mano todavia; un administrador lo completa despues al validar al
+// cliente (ver validate() abajo). Mientras tanto ese cliente no se puede
+// facturar/certificar ante la SAT (billing.certify ya revisa el NIT por su cuenta).
 export async function quickCreate({ contacts, ...data }) {
   const limpio = normalize(data);
-  assertTieneNitODpi(limpio);
   await assertNoDuplicado(limpio);
   const created = await clientRepository.create({ ...limpio, is_validated: 0 });
   if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
