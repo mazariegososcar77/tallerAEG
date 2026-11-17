@@ -13,8 +13,10 @@ router.use(authenticate);
 router.get('/', requirePermission('machines.view'), machineController.list);
 // Ver el detalle de una maquina especifica.
 router.get('/:id', requirePermission('machines.view'), machineController.getById);
-// Crear una maquina nueva.
-router.post('/', requirePermission('dashboard.view'), machineController.create);
+// Crear una maquina nueva. Permiso propio ademas del generico (igual que "ver"), para
+// que un Tecnico en campo pueda registrar el equipo de un cliente sin tener tambien
+// el modulo completo de Maquinas y Mantenimiento.
+router.post('/', requirePermission(['dashboard.view', 'machines.create']), machineController.create);
 // Editar una maquina existente.
 router.put('/:id', requirePermission('dashboard.view'), machineController.update);
 // Borrar una maquina.

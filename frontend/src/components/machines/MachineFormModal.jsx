@@ -54,7 +54,7 @@ export default function MachineFormModal({ open, onClose, onSaved, clients, mach
       notify.success(isEdit ? 'Maquina actualizada' : 'Maquina creada');
       onSaved(saved);
     } catch (e) {
-      notify.error(e.response?.data?.message || 'Error al guardar la maquina');
+      notify.error(e.message || 'Error al guardar la maquina');
     } finally {
       setSaving(false);
     }
