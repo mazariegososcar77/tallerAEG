@@ -428,6 +428,17 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   menor aceptado a propósito: el selector de "mano de obra" del precio Post (`articlesApi.listByType`,
   exige `articles.view`) no se destrabó — si falla, ese selector queda vacío pero no bloquea guardar la
   orden (el campo es opcional).
+- **El Técnico también puede registrar una máquina nueva** (`054_tecnico_crear_maquina.sql`): hasta
+  entonces solo tenía `machines.view` (elegir una existente en el `MachinePicker`), así que el botón
+  "+ Nueva máquina" se veía pero `POST /machines` respondía 403 — un Técnico en campo no podía dar de
+  alta el equipo de un cliente nuevo por su cuenta. `machines.create` se agrega con OR a
+  `dashboard.view` en `POST /machines` (`requirePermission(['dashboard.view','machines.create'])`), sin
+  regla de negocio adicional (a diferencia de `work-orders.create`): editar/borrar una máquina y el
+  resto de Mantenimiento siguen siendo solo `dashboard.view`. De paso se corrigió un bug en
+  `MachineFormModal.jsx`: leía `e.response?.data?.message` (el backend manda `{ error, details? }`, no
+  `message` — ver "Mensajes de error" abajo) y además el interceptor de `api/client.js` ya normaliza el
+  error a `e.message`, así que un 403 por falta de permiso siempre caía al texto genérico "Error al
+  guardar la maquina" en vez de mostrar la razón real.
 - `quoteService.calcTotals`/`quoteService.normalize` calculan `subtotal`/`total` a partir de
   `items[].quantity * items[].unit_price - discount` al crear/actualizar.
 - **Flujo de estados de una cotización, por clic (no por selector)** — `049_quotes_workflow.sql`. El
