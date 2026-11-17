@@ -89,12 +89,17 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
     if (form.first_name.trim().length < 2) found.first_name = `${nombre} debe tener al menos 2 letras.`;
     if (form.nit.trim() && !isValidNit(form.nit)) found.nit = MENSAJES.nit;
     if (form.dpi.trim() && !isValidDpi(form.dpi)) found.dpi = MENSAJES.dpi;
-    if (!form.nit.trim() && !form.dpi.trim()) {
+    // En alta rapida (quick) no se exige NIT/DPI: quien la usa (tipicamente un Tecnico en
+    // campo) puede no tenerlo a mano todavia: el cliente igual se puede usar de inmediato
+    // y queda "pendiente de validacion" para que un administrador lo complete despues.
+    if (!quick && !form.nit.trim() && !form.dpi.trim()) {
       found.nit = 'Indica al menos el NIT o el DPI.';
       found.dpi = 'Indica al menos el NIT o el DPI.';
     }
-    if (!form.phone.trim()) found.phone = 'El teléfono es obligatorio.';
-    else if (!isValidPhone(form.phone)) found.phone = MENSAJES.phone;
+    // Igual que NIT/DPI: en alta rapida tampoco se exige el telefono -- el Tecnico puede dejar
+    // un cliente "temporal" solo con el nombre, y alguien con mas datos lo completa despues.
+    if (!quick && !form.phone.trim()) found.phone = 'El teléfono es obligatorio.';
+    else if (form.phone.trim() && !isValidPhone(form.phone)) found.phone = MENSAJES.phone;
     const malos = form.contacts
       .map((c, i) => ({ email: c.email.trim(), n: i + 1 }))
       .filter((c) => c.email && !isValidEmail(c.email));
@@ -224,13 +229,13 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
         {/* PARTICULAR */}
         {category === 'particular' && (
           <>
-            <p className="text-xs text-slate-500">Indique al menos el <strong>NIT</strong> o el <strong>DPI</strong>.</p>
+            {!quick && <p className="text-xs text-slate-500">Indique al menos el <strong>NIT</strong> o el <strong>DPI</strong>.</p>}
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Nombre *" value={form.first_name} onChange={setField('first_name')} error={errors.first_name} required />
               <Input label="Apellido *" value={form.last_name} onChange={setField('last_name')} error={errors.last_name} required />
               <Input label="DPI" value={form.dpi} onChange={setField('dpi')} error={errors.dpi} />
               <Input label="NIT" value={form.nit} onChange={setField('nit')} error={errors.nit} />
-              <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
+              <Input label={quick ? 'Telefono' : 'Telefono *'} value={form.phone} onChange={setField('phone')} error={errors.phone} required={!quick} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />
             </div>
             <Textarea label="Direccion" rows={2} value={form.address} onChange={setField('address')} error={errors.address} />
@@ -243,8 +248,8 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
             <div className="grid gap-4 sm:grid-cols-2">
               <Input label="Razon Social *" value={form.first_name} onChange={setField('first_name')} error={errors.first_name} required />
               <Input label="Nombre Comercial" value={form.trade_name} onChange={setField('trade_name')} error={errors.trade_name} />
-              <Input label="NIT *" value={form.nit} onChange={setField('nit')} error={errors.nit} required />
-              <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
+              <Input label={quick ? 'NIT' : 'NIT *'} value={form.nit} onChange={setField('nit')} error={errors.nit} required={!quick} />
+              <Input label={quick ? 'Telefono' : 'Telefono *'} value={form.phone} onChange={setField('phone')} error={errors.phone} required={!quick} />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />
             </div>
@@ -259,7 +264,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="Nombre de la Entidad *" value={form.first_name} onChange={setField('first_name')} error={errors.first_name} required />
               <Input label="Dependencia / Unidad" value={form.dependency} onChange={setField('dependency')} error={errors.dependency} />
               <Input label="NIT" value={form.nit} onChange={setField('nit')} error={errors.nit} />
-              <Input label="Telefono *" value={form.phone} onChange={setField('phone')} error={errors.phone} required />
+              <Input label={quick ? 'Telefono' : 'Telefono *'} value={form.phone} onChange={setField('phone')} error={errors.phone} required={!quick} />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
             </div>
             <Textarea label="Direccion" rows={2} value={form.address} onChange={setField('address')} error={errors.address} />
