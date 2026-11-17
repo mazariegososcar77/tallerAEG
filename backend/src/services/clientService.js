@@ -62,6 +62,15 @@ function assertTieneNitODpi({ nit, dpi }) {
   }
 }
 
+// El telefono tambien es obligatorio para un cliente dado de alta normalmente (no asi en
+// quickCreate, ver abajo).
+function assertTieneTelefono({ phone }) {
+  if (!phone) {
+    const message = 'El teléfono es obligatorio.';
+    throw new ApiError(400, message, [{ field: 'phone', message }]);
+  }
+}
+
 // Devuelve la lista completa de clientes.
 export async function list() {
   return clientRepository.getAll();
@@ -83,6 +92,7 @@ export async function create({ contacts, ...data }) {
   // usa su DEFAULT (1), asi que las altas del modulo Clientes entran validadas.
   const limpio = normalize(data);
   assertTieneNitODpi(limpio);
+  assertTieneTelefono(limpio);
   await assertNoDuplicado(limpio);
   const created = await clientRepository.create(limpio);
   if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
@@ -92,10 +102,12 @@ export async function create({ contacts, ...data }) {
 // Alta "de ultima instancia" desde el selector de Ordenes/Cotizaciones: el
 // cliente puede usarse de inmediato pero entra SIN validar para que un
 // administrador revise sus datos despues. A diferencia de create(), NO exige
-// NIT/DPI -- quien da de alta rapido (tipicamente un Tecnico en campo) puede no
-// tenerlo a mano todavia; un administrador lo completa despues al validar al
-// cliente (ver validate() abajo). Mientras tanto ese cliente no se puede
-// facturar/certificar ante la SAT (billing.certify ya revisa el NIT por su cuenta).
+// NIT/DPI ni telefono -- un Tecnico en campo puede dejar un cliente "temporal"
+// solo con el nombre (lo unico que si se exige siempre, en el schema zod de la
+// ruta) y que alguien con mas datos (administrador/operador) lo complete despues
+// al validar al cliente (ver validate() abajo). Mientras tanto ese cliente no se
+// puede facturar/certificar ante la SAT (billing.certify ya revisa el NIT por su
+// cuenta).
 export async function quickCreate({ contacts, ...data }) {
   const limpio = normalize(data);
   await assertNoDuplicado(limpio);

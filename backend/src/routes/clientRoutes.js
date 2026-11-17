@@ -21,9 +21,12 @@ const contactSchema = z.object({
   name:  z.string().trim().max(150).optional().or(z.literal('')),
 });
 
-// Datos que se piden para crear o editar un cliente: el nombre y el telefono son obligatorios,
-// y debe existir NIT o DPI (se revisa aparte en el servicio). "contacts", si viene, REEMPLAZA
-// por completo la lista de contactos del cliente (no es un patch fila por fila).
+// Datos que se piden para crear o editar un cliente: el nombre es obligatorio. El telefono y que
+// exista NIT o DPI se revisan aparte en el servicio -- create() (alta normal) los exige, pero
+// quickCreate() (alta rapida desde el selector de Ordenes/Cotizaciones) no, para que un Tecnico en
+// campo pueda dejar un cliente "temporal" solo con el nombre, pendiente de que un administrador lo
+// complete despues. "contacts", si viene, REEMPLAZA por completo la lista de contactos del cliente
+// (no es un patch fila por fila).
 const baseShape = {
   nit:           z.string().trim().max(30).refine((v) => v === '' || isValidNit(v), MENSAJES.nit).nullish(),
   dpi:           z.string().trim().max(30).refine((v) => v === '' || isValidDpi(v), MENSAJES.dpi).nullish(),
@@ -34,7 +37,7 @@ const baseShape = {
   dependency:    z.string().trim().max(150).optional().or(z.literal('')),
   contacts:      z.array(contactSchema).optional(),
   address:       z.string().max(255).optional(),
-  phone:         z.string().trim().min(1, 'El teléfono es obligatorio.').refine(isValidPhone, MENSAJES.phone),
+  phone:         z.string().trim().max(40).refine((v) => v === '' || isValidPhone(v), MENSAJES.phone).optional(),
   client_type_id:  optionalRef,
   loyalty_tier_id: optionalRef,
   is_active:     booleanFlag.optional(),
