@@ -363,6 +363,12 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
 - **Permisos:** `clients.*`, `client-types.*`, `loyalty.*` (ids 23–34 en el seed). Para topear datos
   ya sembrados sin reinicializar: `node scripts/backfill_clients.mjs` (idempotente) y
   `node scripts/backfill_loyalty_appearance.mjs` (agrega `color`/`icon` a niveles existentes).
+- **Rol Técnico y clientes** (`051_tecnico_crear_ot_post.sql` + `055_tecnico_crear_clientes.sql`):
+  tiene `clients.view` (entra a `/clientes` y ve la lista completa) y `clients.create` (botón "Nuevo
+  cliente" de esa pantalla, alta normal con NIT/DPI y teléfono obligatorios) — no tiene
+  `clients.update`/`clients.delete`/`clients.validate`. Esto es aparte de `clients.quick-create` (la
+  alta rápida sin validar desde el `ClientPicker` de Órdenes/Cotizaciones, ver arriba), que ya tenía
+  asignada desde la pantalla de Roles antes de que existiera esta migración.
 
 ## Órdenes de trabajo, cotizaciones, máquinas y mantenimiento — notas
 
