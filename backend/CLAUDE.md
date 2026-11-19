@@ -363,6 +363,15 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
 - **Permisos:** `clients.*`, `client-types.*`, `loyalty.*` (ids 23–34 en el seed). Para topear datos
   ya sembrados sin reinicializar: `node scripts/backfill_clients.mjs` (idempotente) y
   `node scripts/backfill_loyalty_appearance.mjs` (agrega `color`/`icon` a niveles existentes).
+- **Rol Técnico y clientes:** solo `clients.view` (entra a `/clientes`, ve la lista completa —
+  concedido en `051_tecnico_crear_ot_post.sql` para el `ClientPicker`), `clients.quick-create` (alta
+  rápida sin validar desde el `ClientPicker` de Órdenes/Cotizaciones) y `clients.history.view`. **A
+  propósito no tiene** `clients.create`/`clients.update`/`clients.delete`/`clients.validate` — un
+  Técnico no debe poder dar de alta o editar un cliente "completo", solo dejar uno provisional
+  (`is_validated=0`) para que un administrador/operador lo revise después. `clients.create` y
+  `clients.update` llegaron a estar asignados por error (quedaron marcados a mano en Modo avanzado
+  del editor de Roles, ninguna migración se los dio) y se revirtió en
+  `055_tecnico_quitar_create_update_clientes.sql`.
 
 ## Órdenes de trabajo, cotizaciones, máquinas y mantenimiento — notas
 
