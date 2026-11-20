@@ -57,6 +57,21 @@ objeto (`reportes/2026/08/<uuid>.jpg`). Guía completa y rollout en
   único punto donde los bytes de una imagen vuelven a pasar por el backend.
 - **El video es la excepción:** sigue viajando al backend porque `ffprobe`/`ffmpeg` trabajan sobre
   archivos; lo que cambió es que el MP4 comprimido se sube al bucket y los locales se borran.
+- **Bypass de Cloudflare para subir el video:** el dominio público pasa por Cloudflare, que recorta
+  cualquier subida grande (límite del plan, 100–200MB según el plan, no configurable desde el
+  código) antes de que llegue al servidor — un video crudo de un celular grabando 4K/8K puede pesar
+  más que eso aunque dure solo los 30 segundos permitidos (`MAX_VIDEO_SECONDS`). Ni el backend
+  (`upload.middleware.js`, sin `fileSize` en `limits` a propósito) ni `frontend/nginx.conf`
+  (`client_max_body_size 0`) ponen tope — el tope real es la duración, no el peso. Para esquivar el
+  límite de Cloudflare, existe un subdominio aparte **DNS-only** (sin proxy de Cloudflare, "nube
+  gris") que apunta directo a la IP de la VM, con su propio HTTPS vía Caddy (reverse proxy liviano
+  en la VM, fuera de Docker, que solo reenvía a `localhost:<FRONTEND_PORT>`, el mismo puerto que ya
+  usa el dominio normal). `frontend/src/api/workReportsApi.js` → `uploadVideo` usa ese subdominio
+  (variable `VITE_VIDEO_UPLOAD_URL`, ver `.env.example`) **solo para esta subida**; el resto de la
+  app sigue por Cloudflare sin cambios. Es una variable de build de Vite (se graba al compilar, no
+  se lee en tiempo de ejecución), así que llega como build-arg desde `.github/workflows/cd.yml`
+  (variable de repo `vars.VITE_VIDEO_UPLOAD_URL` en GitHub, vacía = sin cambios de comportamiento) —
+  ver `frontend/Dockerfile`.
 - **Migración de lo que ya existía:** `node scripts/migrate-uploads-to-gcs.mjs --dry-run` (lotes,
   reanudable, idempotente, no borra nada).
 
