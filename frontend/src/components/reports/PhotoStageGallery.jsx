@@ -4,6 +4,7 @@ import { notify } from '../../lib/toast.js';
 import { prepareImageForUpload, IMAGE_ACCEPT } from '../../lib/image.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Spinner from '../ui/Spinner.jsx';
+import ImageViewerModal from '../ui/ImageViewerModal.jsx';
 
 /**
  * Cada "boton" para agregar fotos es en realidad una etiqueta con un input de
@@ -63,6 +64,7 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled, m
   const [uploading, setUploading] = useState(false); // true mientras se estan subiendo fotos
   const [avance, setAvance] = useState(''); // texto de avance: "2/5 · 40%"
   const [removingId, setRemovingId] = useState(null); // id de la foto que se esta borrando en este momento
+  const [viewerIndex, setViewerIndex] = useState(null); // foto abierta en grande, o null si esta cerrado
 
   // Se ejecuta cuando el usuario elige una o varias fotos (o toma una con la
   // camara): las convierte a JPG y las sube una por una llamando a onAdd.
@@ -109,9 +111,14 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled, m
   return (
     <div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-        {photos.map((p) => (
+        {photos.map((p, i) => (
           <div key={p.id} className="group relative h-28 overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
-            <img src={p.photo_url} alt={p.caption || 'Foto'} className="h-full w-full object-cover" />
+            <img
+              src={p.photo_url}
+              alt={p.caption || 'Foto'}
+              onClick={() => setViewerIndex(i)}
+              className="h-full w-full cursor-pointer object-cover"
+            />
             {!disabled && (
               <button
                 type="button"
@@ -163,6 +170,14 @@ export default function PhotoStageGallery({ photos, onAdd, onRemove, disabled, m
           </p>
         )
       )}
+
+      <ImageViewerModal
+        open={viewerIndex != null}
+        onClose={() => setViewerIndex(null)}
+        images={photos.map((p) => ({ url: p.photo_url, caption: p.caption }))}
+        index={viewerIndex ?? 0}
+        onIndexChange={setViewerIndex}
+      />
     </div>
   );
 }

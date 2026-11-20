@@ -8,6 +8,7 @@ import Modal from '../../components/ui/Modal.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
+import ImageViewerModal from '../../components/ui/ImageViewerModal.jsx';
 
 // Pequeño bloque de "etiqueta: valor" que se repite varias veces en la pantalla de información.
 function Field({ label, children }) {
@@ -50,6 +51,7 @@ function ReadOnlyList({ items, emptyIcon, emptyText }) {
 export default function ArticleViewModal({ open, onClose, article }) {
   const [broken, setBroken] = useState(false);
   const [tab, setTab] = useState('info');
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
     setBroken(false);
@@ -98,7 +100,8 @@ export default function ArticleViewModal({ open, onClose, article }) {
                 <img
                   src={article.image_display_url}
                   alt={article.name}
-                  className="h-full w-full object-contain"
+                  onClick={() => setViewerOpen(true)}
+                  className="h-full w-full cursor-pointer object-contain"
                   onError={() => setBroken(true)}
                 />
               ) : (
@@ -183,6 +186,14 @@ export default function ArticleViewModal({ open, onClose, article }) {
           />
         )}
       </div>
+
+      <ImageViewerModal
+        open={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+        images={[{ url: article.image_display_url, caption: article.name }]}
+        index={0}
+        onIndexChange={() => {}}
+      />
     </Modal>
   );
 }
