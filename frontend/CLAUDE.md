@@ -160,7 +160,13 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `canvas.toBlob` y sube igual que una foto de etapa. Un reporte `finalizado` queda de solo lectura
   para todos salvo quien tenga `work-reports.force-edit` (ver `backend/CLAUDE.md`); en ese caso se
   muestra un aviso y el botón "Guardar Notas" sigue activo, pero "Finalizar Reporte" no vuelve a
-  aparecer. `WorkReportsPage` (la lista) tiene los mismos botones visualizar/descargar PDF que
+  aparecer. **Autoguardado de notas:** además del botón "Guardar Notas", las notas (generales y de
+  cada etapa) se guardan solas 1.5s después de que el usuario deja de escribir. Es a propósito: en
+  celular, tomar una foto abre la cámara nativa y Android a veces mata la pestaña en segundo plano
+  por memoria — al volver, la página se recarga desde cero y sin esto cualquier nota escrita pero no
+  guardada se perdía (las fotos no, esas ya habían quedado subidas al tomarlas). También se agregó
+  `overscroll-behavior-y: contain` en `index.css` para que el gesto de "deslizar hacia abajo" en
+  celular no dispare el refresco nativo de la página. `WorkReportsPage` (la lista) tiene los mismos botones visualizar/descargar PDF que
   Cotizaciones/Órdenes/Facturación, apuntando a `GET /work-reports/:id/pdf`.
 - **Facturación** (`pages/billing/`, ruta `/facturacion`): `InvoicesPage` (filtro por cliente/rango de
   fechas/"solo pendientes", todo client-side sobre `invoicesApi.list()`) + `CertifyInvoiceModal`
