@@ -41,12 +41,22 @@ client.interceptors.response.use(
       }
     }
 
-    // Mensaje siempre en español: el del backend si existe; si no hubo respuesta
-    // (red caída, servidor apagado) se evita el texto en inglés de axios.
+    // Mensaje siempre en español: el del backend si existe. Si no hubo respuesta
+    // (red caída, servidor apagado) se evita el texto en inglés de axios. Y si SI
+    // hubo respuesta pero sin el formato {error} esperado, es porque no fue el
+    // backend quien contesto sino nginx (archivo demasiado grande, backend caido
+    // o sin responder) -- se agrega el codigo HTTP al mensaje para no quedar a
+    // ciegas la proxima vez que pase (ver backend/CLAUDE.md, "Mensajes de error").
+    const sinFormatoEsperado = {
+      413: 'El archivo es demasiado grande.',
+      502: 'El servidor no respondió (puede haberse quedado sin memoria procesando el archivo).',
+      503: 'El servidor no está disponible en este momento.',
+      504: 'El servidor tardó demasiado en responder.',
+    };
     const normalized = new Error(
       error.response?.data?.error
         || (error.response
-          ? 'Ocurrió un error inesperado. Inténtalo de nuevo.'
+          ? `${sinFormatoEsperado[status] || 'Ocurrió un error inesperado.'} Inténtalo de nuevo. (código ${status})`
           : 'No se pudo conectar con el servidor. Verifica tu conexión e inténtalo de nuevo.'),
     );
     normalized.status = status;
