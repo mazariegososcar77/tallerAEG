@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Video, X, Upload } from 'lucide-react';
+import { Video, X, Upload, Images } from 'lucide-react';
 import { notify } from '../../lib/toast.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import Spinner from '../ui/Spinner.jsx';
 
 // Mismo tope que el servidor (workReportService.MAX_VIDEO_SECONDS /
@@ -41,6 +42,7 @@ function readDuration(file) {
  * no hacer esperar al usuario en vano.
  */
 export default function VideoField({ videoUrl, durationSeconds, sizeBytes, disabled, onUpload, onRemove }) {
+  const isMobile = useIsMobile();
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
 
@@ -109,13 +111,38 @@ export default function VideoField({ videoUrl, durationSeconds, sizeBytes, disab
     return <p className="text-xs italic text-slate-400">Sin video.</p>;
   }
 
+  // En celular: grabar y elegir de galeria por separado (igual que las fotos
+  // de etapa, ver PhotoStageGallery) -- con "capture" puesto siempre, el
+  // selector de archivos del celular a veces abre la camara directo y nunca
+  // deja elegir un video ya guardado. En computadora un solo boton basta.
   return (
-    <label className="flex h-28 w-full max-w-xs cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-500">
-      {uploading ? <Spinner size={18} /> : <Video size={18} />}
-      <span className="flex items-center gap-1 text-[11px]">
-        {uploading ? 'Subiendo y comprimiendo...' : <><Upload size={11} /> Grabar o elegir video (máx. 30s)</>}
-      </span>
-      <input type="file" accept="video/*" capture="environment" className="hidden" onChange={handleFile} disabled={uploading} />
+    <div className="flex gap-2">
+      {isMobile ? (
+        <>
+          <VideoTile icon={Video} label="Grabar video" capture uploading={uploading} onFile={handleFile} />
+          <VideoTile icon={Images} label="Elegir de galería" uploading={uploading} onFile={handleFile} />
+        </>
+      ) : (
+        <VideoTile icon={Upload} label="Elegir video (máx. 30s)" uploading={uploading} onFile={handleFile} />
+      )}
+    </div>
+  );
+}
+
+/** Un "boton" para elegir el video, igual que AddTile en PhotoStageGallery. */
+function VideoTile({ icon: Icon, label, capture, uploading, onFile }) {
+  return (
+    <label className="flex h-28 w-full max-w-[9.5rem] cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-slate-300 text-slate-400 hover:border-orange-400 hover:bg-orange-50 hover:text-orange-500">
+      {uploading ? <Spinner size={18} /> : <Icon size={18} />}
+      <span className="text-center text-[11px]">{uploading ? 'Subiendo y comprimiendo...' : label}</span>
+      <input
+        type="file"
+        accept="video/*"
+        {...(capture ? { capture: 'environment' } : {})}
+        className="hidden"
+        onChange={onFile}
+        disabled={uploading}
+      />
     </label>
   );
 }

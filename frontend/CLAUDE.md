@@ -141,7 +141,11 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   documenta las 4 etapas fijas (antes/desarmado/piezas_nuevas/armado_final) con
   `components/reports/PhotoStageGallery` (galería controlada, sube una foto por llamada a
   `workReportsApi.addPhoto`; en celular muestra "Tomar foto" —abre la cámara— y "Galería" por
-  separado, en escritorio un solo botón de archivos) + una nota de texto por etapa. No se crea "en blanco": el botón cámara de
+  separado, en escritorio un solo botón de archivos) + una nota de texto por etapa, más
+  `components/reports/VideoField` (una sola ranura, máx. 30s, igual criterio que la firma): en
+  celular también separa "Grabar video" (con `capture`) de "Elegir de galería" (sin `capture`) —
+  un solo `<input>` con `capture` siempre puesto hace que el celular abra la cámara directo y
+  nunca deje elegir un video ya grabado. No se crea "en blanco": el botón cámara de
   `WorkOrdersPage` llama `workReportsApi.createForOrder(orderId)` (idempotente) y navega ahí. **Para
   finalizar son obligatorios**: foto + nota en las 4 etapas, y ambas firmas — el botón "Finalizar
   Reporte" se deshabilita y se muestra un checklist de lo que falta (`report.missing_requirements`,
