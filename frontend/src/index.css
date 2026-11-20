@@ -76,6 +76,11 @@
     @apply antialiased;
     background-color: var(--c-app);
     color: var(--c-text);
+    /* Evita que el gesto de "deslizar hacia abajo" en celular dispare el
+       refresco nativo de la pagina (Chrome/Android) y se pierda lo que el
+       usuario tenia escrito sin guardar todavia, por ejemplo en el Reporte
+       de Trabajo. */
+    overscroll-behavior-y: contain;
   }
   main {
     color: var(--c-text);

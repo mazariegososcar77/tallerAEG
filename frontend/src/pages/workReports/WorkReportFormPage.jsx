@@ -17,7 +17,7 @@
 // pantalla de Facturación. Una vez finalizado, el reporte queda de solo
 // lectura para todos, salvo un administrador con permiso especial, que puede
 // seguir editando fotos y notas (pero ya no se genera otra factura).
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { workReportsApi } from '../../api/workReportsApi.js';
 import { notify } from '../../lib/toast.js';
@@ -85,12 +85,18 @@ export default function WorkReportFormPage() {
   const [docsStep, setDocsStep] = useState(false); // paso de documentos abierto antes de finalizar
   const [signingLink, setSigningLink] = useState(null);
   const [loadingLink, setLoadingLink] = useState(false);
+  const [autoSavedAt, setAutoSavedAt] = useState(null);
+  // true justo despues de traer el reporte del servidor: evita que el efecto de
+  // autoguardado de abajo dispare un guardado innecesario con los datos que
+  // acaban de llegar (no son un cambio del usuario).
+  const skipNextAutosave = useRef(false);
 
   // Trae el reporte completo del servidor (datos, fotos, notas y firmas) y lo
   // pone en pantalla. Se llama de nuevo cada vez que se agrega una foto, se
   // borra, o se guarda una firma, para que la pantalla siempre muestre lo ultimo.
   const load = useCallback(() => {
     workReportsApi.get(id).then(r => {
+      skipNextAutosave.current = true;
       setReport(r);
       setGeneralNotes(r.general_notes || '');
       setStageNotes(r.stage_notes || {});
@@ -98,6 +104,28 @@ export default function WorkReportFormPage() {
   }, [id]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Autoguardado de las notas: en celular, tomar una foto abre la camara nativa y
+  // Android a veces mata la pestaña en segundo plano por memoria -- al volver, la
+  // pagina se recarga desde cero y cualquier nota escrita pero no guardada
+  // todavia se pierde (las fotos no, esas ya quedaron subidas al tomarlas). Para
+  // que la ventana de perdida sea de segundos y no de "todo lo que llevaba
+  // escrito", se guarda solo en el servidor 1.5s despues de que el usuario deja
+  // de escribir, ademas del boton "Guardar Notas" de siempre.
+  useEffect(() => {
+    if (skipNextAutosave.current) { skipNextAutosave.current = false; return; }
+    if (!report) return;
+    const isFinalNow = report.status === 'finalizado';
+    const readOnlyNow = !hasPermission('work-reports.update') || (isFinalNow && !hasPermission('work-reports.force-edit'));
+    if (readOnlyNow) return;
+    const timer = setTimeout(() => {
+      workReportsApi.update(id, { general_notes: generalNotes, stage_notes: stageNotes })
+        .then(() => setAutoSavedAt(Date.now()))
+        .catch(() => {}); // si falla, el boton "Guardar Notas" sigue disponible y avisa con toast
+    }, 1500);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [generalNotes, stageNotes]);
 
   if (!report) {
     return <p style={{ color: C.muted, textAlign: 'center', marginTop: 40 }}>Cargando...</p>;
@@ -205,6 +233,7 @@ export default function WorkReportFormPage() {
     setSaving(true);
     try {
       await workReportsApi.update(id, { general_notes: generalNotes, stage_notes: stageNotes });
+      setAutoSavedAt(Date.now());
       notify.success('Notas guardadas');
     } catch (e) {
       notify.error(e.message || 'Error al guardar');
@@ -292,7 +321,10 @@ export default function WorkReportFormPage() {
           </span>
         </div>
         {!readOnly && (
-          <div style={{ display:'flex', gap:8 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            {autoSavedAt && !saving && (
+              <span style={{ fontSize:11, color:C.muted }}>Guardado automático</span>
+            )}
             <button onClick={handleSaveNotes} disabled={saving} style={{ background:C.dark, border:'1px solid '+C.border, color:C.text, padding:'8px 16px', borderRadius:6, fontWeight:700, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:7, opacity:saving?0.7:1 }}>
               <SaveIcon /> {saving ? 'Guardando...' : 'Guardar Notas'}
             </button>
