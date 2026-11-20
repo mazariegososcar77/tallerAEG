@@ -10,6 +10,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
+# Variables VITE_* quedan grabadas en el build de produccion (no se leen en tiempo de
+# ejecucion): tienen que llegar como build-arg desde cd.yml. Vacias = mismo
+# comportamiento de siempre (ver .env.example).
+ARG VITE_VIDEO_UPLOAD_URL
+ENV VITE_VIDEO_UPLOAD_URL=$VITE_VIDEO_UPLOAD_URL
+
 COPY . .
 RUN npm run build
 

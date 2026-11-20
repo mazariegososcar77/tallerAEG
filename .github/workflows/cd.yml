@@ -79,6 +79,12 @@ jobs:
           tags: |
             ghcr.io/${{ steps.owner.outputs.name }}/talleraeg-${{ matrix.service }}:${{ github.sha }}
             ghcr.io/${{ steps.owner.outputs.name }}/talleraeg-${{ matrix.service }}:${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+          # Solo lo usa el Dockerfile del frontend (ver ARG ahi); pasarlo igual al
+          # build del backend no hace nada, Docker ignora un build-arg que el
+          # Dockerfile no declara. Vacio (variable de repo sin configurar todavia)
+          # = mismo comportamiento de siempre.
+          build-args: |
+            VITE_VIDEO_UPLOAD_URL=${{ vars.VITE_VIDEO_UPLOAD_URL }}
           # Cache entre corridas: sin esto cada deploy reinstalaria node_modules
           # desde cero. El scope separa backend de frontend y dev de prod para
           # que no se pisen la cache entre si.

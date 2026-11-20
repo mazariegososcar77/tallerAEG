@@ -40,10 +40,18 @@ export const workReportsApi = {
   // con ffprobe (se rechaza si pasa de 30 segundos) y se comprime con ffmpeg antes
   // de guardarlo. Lo que si cambia es donde termina: el MP4 ya comprimido se sube al
   // bucket, no al disco de la VM.
+  //
+  // El archivo CRUDO puede pesar varios cientos de MB (celular grabando 4K/8K), y el
+  // dominio publico pasa por Cloudflare, que recorta cualquier subida grande antes de
+  // que llegue al servidor (limite del plan, no configurable desde aqui). Si
+  // VITE_VIDEO_UPLOAD_URL esta definida (un subdominio DNS-only que apunta directo a
+  // la VM, sin pasar por Cloudflare -- ver backend/CLAUDE.md), SOLO esta subida la usa
+  // en vez del dominio normal; el resto de la app sigue por Cloudflare sin cambios.
   uploadVideo: (id, file) => {
     const form = new FormData();
     form.append('video', file);
-    return client.post(`/work-reports/${id}/video`, form).then(r => r.data);
+    const baseURL = import.meta.env.VITE_VIDEO_UPLOAD_URL || undefined;
+    return client.post(`/work-reports/${id}/video`, form, { baseURL }).then(r => r.data);
   },
   removeVideo: (id) => client.delete(`/work-reports/${id}/video`).then(r => r.data),
   // Sube la imagen de una firma (tecnico o cliente que recibe) capturada en pantalla.
