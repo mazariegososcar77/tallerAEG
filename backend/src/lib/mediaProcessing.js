@@ -101,6 +101,21 @@ export async function processVideo(inputPath, outputPath) {
       outputPath,
     ], { timeout: FFMPEG_TIMEOUT_MS });
   } catch (err) {
+    // Se deja constancia en el log del servidor de la causa real (stderr de
+    // ffmpeg, o la señal con la que murió el proceso) -- el mensaje que ve el
+    // usuario es a propósito genérico (no tiene sentido mostrarle la salida
+    // tecnica de ffmpeg), pero sin esto no queda ningun rastro de POR QUE
+    // fallo un video puntual.
+    console.error('[processVideo] ffmpeg fallo:', {
+      inputPath, signal: err.signal, code: err.code, killed: err.killed,
+      stderr: (err.stderr || '').slice(-2000),
+    });
+    if (err.killed && err.signal === 'SIGTERM') {
+      throw new ApiError(500, `El video tardó más de ${FFMPEG_TIMEOUT_MS / 1000}s en procesarse y se canceló. Intenta con un video más liviano.`);
+    }
+    if (err.signal === 'SIGKILL') {
+      throw new ApiError(500, 'El servidor se quedó sin memoria procesando el video. Intenta con un video más liviano o de menor resolución.');
+    }
     throw new ApiError(500, 'No se pudo procesar el video. Intenta con otro archivo.');
   }
 
