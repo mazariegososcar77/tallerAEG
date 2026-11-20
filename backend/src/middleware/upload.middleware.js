@@ -129,12 +129,13 @@ export function uploadReportPhoto(req, res, next) {
 const VIDEO_TMP_DIR = path.join(UPLOADS_DIR, 'tmp');
 fs.mkdirSync(VIDEO_TMP_DIR, { recursive: true });
 
-// Limite generoso: es el archivo CRUDO (un celular grabando 4K puede pesar
-// varias decenas de MB incluso en 30 segundos), no lo que queda guardado. La
-// duracion real se valida despues con ffprobe (workReportService.setVideo);
-// este limite solo evita que alguien llene el disco temporal con un archivo
-// gigante antes de que ffprobe alcance a rechazarlo.
-const MAX_VIDEO_SIZE_MB = 200;
+// Sin limite de tamano a proposito: es el archivo CRUDO (un celular grabando
+// 4K/8K puede pesar varios cientos de MB incluso en 30 segundos) y un tope
+// aqui solo volvia a tapar el mismo problema con otro numero -- 200MB ya
+// resulto insuficiente en la practica. Lo que de verdad acota el archivo es
+// la duracion (30s, validada con ffprobe en workReportService.setVideo); el
+// crudo nunca se guarda para siempre, se borra apenas termina de procesarse
+// (ver setVideo), asi que un archivo grande ocupa disco solo un momento.
 const ALLOWED_VIDEO_MIMES = new Set([
   'video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/3gpp2',
   'video/x-msvideo', 'video/x-matroska',
@@ -161,7 +162,7 @@ const videoFilter = (_req, file, cb) => {
 
 const singleVideo = multer({
   storage: videoStorage,
-  limits: { fileSize: MAX_VIDEO_SIZE_MB * 1024 * 1024, files: 1 },
+  limits: { files: 1 }, // sin fileSize: sin limite de tamano (ver comentario arriba)
   fileFilter: videoFilter,
 }).single('video');
 
@@ -171,11 +172,7 @@ const singleVideo = multer({
 export function uploadReportVideo(req, res, next) {
   singleVideo(req, res, (err) => {
     if (!err) return next();
-    if (err instanceof multer.MulterError) {
-      const msg =
-        err.code === 'LIMIT_FILE_SIZE' ? `El video excede ${MAX_VIDEO_SIZE_MB} MB` : err.message;
-      return next(new ApiError(400, msg));
-    }
+    if (err instanceof multer.MulterError) return next(new ApiError(400, err.message));
     return next(err);
   });
 }
