@@ -48,6 +48,7 @@ import Combobox from '../../components/ui/Combobox.jsx';
 import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import ProjectPicker from '../../components/clients/ProjectPicker.jsx';
 import ClientFormModal from '../clients/ClientFormModal.jsx';
 import {
   C, inp, lbl, sec, secBody, SectionHeader,
@@ -122,7 +123,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
   const [equipIndex, setEquipIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('general');
   const [form, setForm] = useState({
-    client_id:'', machine_id:null, received_at:new Date().toISOString().slice(0,10),
+    client_id:'', machine_id:null, project_id:null, received_at:new Date().toISOString().slice(0,10),
     delivery_at:'', next_service_at:'', reported_problem:'', code:'',
     authorized_by:'', project:'', status:'recibido',
     equipment_name:'', equipment_type: emptyEquipmentType(), brand:'', model:'', serial:'',
@@ -155,6 +156,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
     setForm(f => ({
       ...f,
       client_id: quote.client_id,
+      project_id: quote.project_id || null,
       machine_id: eq.machine_id || null,
       equipment_name: eq.name || '', brand: eq.brand || '', model: eq.model || '', serial: eq.serial || '',
       work_type: quote.work_type || '',
@@ -310,6 +312,7 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
             value={form.machine_id}
             onChange={v => set('machine_id', v)}
             onMachineLoaded={m => setForm(f => ({ ...f, machine_id: m.id,
+              project_id: m.project_id || f.project_id,
               equipment_name: m.name || f.equipment_name, brand: m.brand || f.brand,
               model: m.model || f.model,
               serial: m.serial || f.serial, kw: m.kw || f.kw, voltage: m.voltage || f.voltage,
@@ -408,6 +411,13 @@ export default function WorkOrderFormPage({ flowType = 'pre' }) {
                 onChange={v => set('client_id', v)}
                 canCreate={hasPermission('clients.quick-create')}
                 onCreateNew={() => setShowClientModal(true)}
+              />
+            }
+            projectPicker={
+              <ProjectPicker
+                clientId={form.client_id}
+                value={form.project_id}
+                onChange={v => set('project_id', v)}
               />
             }
           />

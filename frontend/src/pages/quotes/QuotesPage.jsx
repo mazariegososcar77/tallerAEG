@@ -70,6 +70,7 @@ export default function QuotesPage({ flowType = 'pre' }) {
   const filtered = quotes.filter(q => (q.flow_type || 'pre') === flowType).filter(q =>
     q.number?.toLowerCase().includes(search.toLowerCase()) ||
     q.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+    q.project_name?.toLowerCase().includes(search.toLowerCase()) ||
     q.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -146,7 +147,7 @@ export default function QuotesPage({ flowType = 'pre' }) {
                     {/* Estado en forma de línea de tiempo (chips con check): se ve de un vistazo en
                         qué va la cotización sin tener que entrar a editarla. */}
                     <QuoteStatusTimeline quoteId={q.id} status={q.status} onChanged={() => quotesApi.list().then(setQuotes)} />
-                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{q.client_name || '—'}</p>
+                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{q.client_name || '—'}{q.project_name && ' · ' + q.project_name}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: '#94a3b8' }}>{q.equipment_name || 'Sin equipo'} {q.brand ? '· ' + q.brand : ''}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: '#64748b' }}>
                       Fecha: {q.date?.slice(0,10)}

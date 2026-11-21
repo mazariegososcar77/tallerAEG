@@ -112,6 +112,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
   const filtered = flowOrders.filter(o =>
     o.number?.toLowerCase().includes(search.toLowerCase()) ||
     o.client_name?.toLowerCase().includes(search.toLowerCase()) ||
+    o.project?.toLowerCase().includes(search.toLowerCase()) ||
     o.equipment_name?.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -214,7 +215,7 @@ export default function WorkOrdersPage({ flowType = 'pre' }) {
                         <span style={{ background: st.color + '22', color: st.color, border: '1px solid ' + st.color + '44', borderRadius: 20, padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>{st.label}</span>
                       )}
                     </div>
-                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{order.client_name || '—'}</p>
+                    <p style={{ margin: '2px 0', fontSize: 14, fontWeight: 600, color: 'var(--c-text)' }}>{order.client_name || '—'}{order.project && ' · ' + order.project}</p>
                     <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--c-muted)' }}>{order.equipment_name || 'Sin equipo'} {order.brand ? '· ' + order.brand : ''}</p>
                     <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--c-muted)' }}>Recibido: {order.received_at?.slice(0,10)} {order.delivery_at ? '· Entrega: ' + order.delivery_at.slice(0,10) : ''}</p>
                   </div>

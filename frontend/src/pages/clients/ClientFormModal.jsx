@@ -24,7 +24,7 @@ import ClientContactsInput from '../../components/clients/ClientContactsInput.js
 // Formulario vacío: valores iniciales cuando se crea un cliente nuevo.
 const emptyForm = {
   nit: '', dpi: '', first_name: '', last_name: '',
-  contacts: [], address: '', phone: '',
+  contacts: [], address: '', phone: '', office_phone: '',
   client_type_id: '', loyalty_tier_id: '',
   is_active: true,
   company_name: '', trade_name: '', contact_name: '', dependency: '',
@@ -63,6 +63,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
       contacts: (client.contacts || []).map(c => ({ email: c.email || '', name: c.name || '' })),
       address: client.address || '',
       phone: client.phone || '',
+      office_phone: client.office_phone || '',
       client_type_id: client.client_type_id ?? UNASSIGNED,
       loyalty_tier_id: client.loyalty_tier_id ?? UNASSIGNED,
       is_active: client.is_active,
@@ -100,6 +101,8 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
     // un cliente "temporal" solo con el nombre, y alguien con mas datos lo completa despues.
     if (!quick && !form.phone.trim()) found.phone = 'El teléfono es obligatorio.';
     else if (form.phone.trim() && !isValidPhone(form.phone)) found.phone = MENSAJES.phone;
+    // El telefono de oficina nunca es obligatorio; si se llena, se valida igual que el otro.
+    if (form.office_phone.trim() && !isValidPhone(form.office_phone)) found.office_phone = MENSAJES.phone;
     const malos = form.contacts
       .map((c, i) => ({ email: c.email.trim(), n: i + 1 }))
       .filter((c) => c.email && !isValidEmail(c.email));
@@ -132,6 +135,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
         .map(c => ({ email: c.email.trim(), name: c.name.trim() })),
       address: form.address,
       phone: form.phone,
+      office_phone: form.office_phone,
       client_type_id: form.client_type_id ? Number(form.client_type_id) : null,
       loyalty_tier_id: form.loyalty_tier_id ? Number(form.loyalty_tier_id) : null,
       is_active: form.is_active,
@@ -236,6 +240,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="DPI" value={form.dpi} onChange={setField('dpi')} error={errors.dpi} />
               <Input label="NIT" value={form.nit} onChange={setField('nit')} error={errors.nit} />
               <Input label={quick ? 'Telefono' : 'Telefono *'} value={form.phone} onChange={setField('phone')} error={errors.phone} required={!quick} />
+              <Input label="Telefono de Oficina" value={form.office_phone} onChange={setField('office_phone')} error={errors.office_phone} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />
             </div>
             <Textarea label="Direccion" rows={2} value={form.address} onChange={setField('address')} error={errors.address} />
@@ -250,6 +255,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="Nombre Comercial" value={form.trade_name} onChange={setField('trade_name')} error={errors.trade_name} />
               <Input label={quick ? 'NIT' : 'NIT *'} value={form.nit} onChange={setField('nit')} error={errors.nit} required={!quick} />
               <Input label={quick ? 'Telefono' : 'Telefono *'} value={form.phone} onChange={setField('phone')} error={errors.phone} required={!quick} />
+              <Input label="Telefono de Oficina" value={form.office_phone} onChange={setField('office_phone')} error={errors.office_phone} />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
               <Select label="Fidelizacion" value={form.loyalty_tier_id} onChange={setValue('loyalty_tier_id')} options={loyaltyOptions} />
             </div>
@@ -265,6 +271,7 @@ export default function ClientFormModal({ open, onClose, onSaved, client, client
               <Input label="Dependencia / Unidad" value={form.dependency} onChange={setField('dependency')} error={errors.dependency} />
               <Input label="NIT" value={form.nit} onChange={setField('nit')} error={errors.nit} />
               <Input label={quick ? 'Telefono' : 'Telefono *'} value={form.phone} onChange={setField('phone')} error={errors.phone} required={!quick} />
+              <Input label="Telefono de Oficina" value={form.office_phone} onChange={setField('office_phone')} error={errors.office_phone} />
               <Input label="Contacto Principal" value={form.contact_name} onChange={setField('contact_name')} error={errors.contact_name} />
             </div>
             <Textarea label="Direccion" rows={2} value={form.address} onChange={setField('address')} error={errors.address} />

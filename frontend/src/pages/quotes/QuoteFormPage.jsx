@@ -21,6 +21,7 @@ import Combobox from '../../components/ui/Combobox.jsx';
 import AutocompleteInput from '../../components/ui/AutocompleteInput.jsx';
 import CurrencyInput from '../../components/ui/CurrencyInput.jsx';
 import ClientPicker from '../../components/clients/ClientPicker.jsx';
+import ProjectPicker from '../../components/clients/ProjectPicker.jsx';
 import MachinePicker from '../../components/machines/MachinePicker.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
@@ -160,7 +161,7 @@ export default function QuoteFormPage({ flowType = 'pre' }) {
   const [articleModal, setArticleModal] = useState(null); // 'labor' | 'part' | null
   const [saving, setSaving] = useState(false);
   const [quoteNumber, setQuoteNumber] = useState('_');
-  const [form, setForm] = useState({ client_id:'', date:new Date().toISOString().slice(0,10), valid_until:'', status:'borrador', work_type:'', observations:'', discount:0 });
+  const [form, setForm] = useState({ client_id:'', project_id:null, date:new Date().toISOString().slice(0,10), valid_until:'', status:'borrador', work_type:'', observations:'', discount:0 });
   const [equipments, setEquipments] = useState([emptyEquipment()]);
   const [sourceWorkOrder, setSourceWorkOrder] = useState(null);
 
@@ -208,7 +209,7 @@ export default function QuoteFormPage({ flowType = 'pre' }) {
     } else if (fromWorkOrderId) {
       workOrdersApi.get(fromWorkOrderId).then(order => {
         setSourceWorkOrder(order);
-        setForm(f => ({ ...f, client_id: order.client_id, work_type: order.work_type || '' }));
+        setForm(f => ({ ...f, client_id: order.client_id, project_id: order.project_id || null, work_type: order.work_type || '' }));
         const labor = [];
         if (order.labor_price) labor.push({ description:'Mano de obra (estimado, ajustar segun diagnostico)', quantity:1, unit_price:order.labor_price });
         if (order.torno_price) labor.push({ description:'Torno', quantity:1, unit_price:order.torno_price });
@@ -345,10 +346,14 @@ export default function QuoteFormPage({ flowType = 'pre' }) {
               </div>
             </div>
             <div style={{ ...g(isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)'), marginTop:10 }}>
-              <div style={{ gridColumn:'span 2' }}>
+              <div>
                 <label style={lbl}>Tipo de Trabajo</label>
                 <Combobox value={form.work_type||''} onChange={v => set('work_type', v)}
                   options={workTypes.filter(t => t.is_active).map(t => ({ value:t.name, label:t.name }))} placeholder="Seleccionar..." />
+              </div>
+              <div>
+                <label style={lbl}>Proyecto (opcional)</label>
+                <ProjectPicker clientId={form.client_id} value={form.project_id} onChange={v => set('project_id', v)} />
               </div>
               {/* El estado ya no se elige aqui: se cambia con un clic en la tarjeta de la
                   lista de Cotizaciones (Borrador -> Enviada -> Aprobada/Rechazada), con
@@ -393,10 +398,13 @@ export default function QuoteFormPage({ flowType = 'pre' }) {
                   clients={clients}
                   value={eq.machine_id}
                   onChange={v => setEqField(ei,'machine_id',v)}
-                  onMachineLoaded={m => setEquipments(prev => prev.map((row,i) => i!==ei ? row : {
-                    ...row, machine_id:m.id, name: m.name || row.name, brand: m.brand || row.brand,
-                    model: m.model || row.model, serial: m.serial || row.serial,
-                  }))}
+                  onMachineLoaded={m => {
+                    setEquipments(prev => prev.map((row,i) => i!==ei ? row : {
+                      ...row, machine_id:m.id, name: m.name || row.name, brand: m.brand || row.brand,
+                      model: m.model || row.model, serial: m.serial || row.serial,
+                    }));
+                    if (m.project_id && !form.project_id) set('project_id', m.project_id);
+                  }}
                 />
               </div>
               <div style={g(isMobile ? 'minmax(0, 1fr) minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)')}>

@@ -111,8 +111,11 @@ const Txt = ({ form, set, name, upper = true, type = 'text', ...rest }) => (
 // ═══ PESTAÑA 1: DATOS GENERALES ═══
 // `extras`: lo que el sistema necesita y NO esta en el papel (estado, maquina del
 // cliente, cotizacion vinculada) -- va arriba, aparte del papel. `clientPicker`: el
-// selector de cliente que ocupa el lugar de "Cliente" del papel.
-export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker }) {
+// selector de cliente que ocupa el lugar de "Cliente" del papel. `projectPicker`
+// (opcional): si viene, reemplaza el campo "Proyecto" de texto libre por el selector
+// de sub-proyecto del cliente (ver ProjectPicker.jsx) -- solo la Orden de Trabajo lo
+// usa hoy; la Orden de Servicio sigue con el texto libre de siempre.
+export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker, projectPicker }) {
   const tablet = useIsTablet();
   const grid = (m, cols, mobileCols) => gridBase(m, tablet, cols, mobileCols);
   const toggleIn = (key, value) => setForm((f) => {
@@ -144,7 +147,7 @@ export function GeneralTab({ form, set, setForm, isMobile, extras, clientPicker 
           </div>
           <div style={grid(isMobile, 3, 1)}>
             <Field label="Cliente *">{clientPicker}</Field>
-            <Field label="Proyecto"><Txt form={form} set={set} name="project" /></Field>
+            <Field label="Proyecto">{projectPicker || <Txt form={form} set={set} name="project" />}</Field>
             <Field label="Autorizado por"><Txt form={form} set={set} name="authorized_by" /></Field>
           </div>
           <div style={{ maxWidth: isMobile ? '100%' : 280 }}>

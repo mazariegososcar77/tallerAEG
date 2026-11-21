@@ -39,7 +39,7 @@ export default function MachinesPage() {
   };
   // Filtra la lista de maquinas segun lo que el usuario escribio en el buscador
   // (busca en nombre, marca o cliente).
-  const filtered = machines.filter(m => (!search || m.name?.toLowerCase().includes(search.toLowerCase()) || m.brand?.toLowerCase().includes(search.toLowerCase()) || m.client_name?.toLowerCase().includes(search.toLowerCase())));
+  const filtered = machines.filter(m => (!search || m.name?.toLowerCase().includes(search.toLowerCase()) || m.brand?.toLowerCase().includes(search.toLowerCase()) || m.client_name?.toLowerCase().includes(search.toLowerCase()) || m.project_name?.toLowerCase().includes(search.toLowerCase())));
   // Abre el formulario vacio para registrar una maquina nueva.
   const openNew = () => { setEditing(null); setShowForm(true); };
   // Abre el formulario ya lleno con los datos de la maquina que se quiere editar.
@@ -100,7 +100,7 @@ export default function MachinesPage() {
                   <span style={{ fontWeight:700, fontSize:15, color:C.text }}>{m.name}</span>
                   {m.brand && <span style={{ fontSize:12, color:C.muted }}>· {m.brand}</span>}
                 </div>
-                <p style={{ margin:0, fontSize:13, color:C.orange }}>{m.client_name}</p>
+                <p style={{ margin:0, fontSize:13, color:C.orange }}>{m.client_name}{m.project_name && ' · ' + m.project_name}</p>
                 <p style={{ margin:'2px 0 0', fontSize:12, color:C.muted }}>{[m.serial && 'S/N: '+m.serial, m.voltage && m.voltage+'V', m.kw && m.kw+'KW', m.rpm && m.rpm+'RPM'].filter(Boolean).join(' · ')}</p>
                 {m.location && <p style={{ margin:'2px 0 0', fontSize:12, color:C.muted }}>Ubicacion: {m.location}</p>}
               </div>

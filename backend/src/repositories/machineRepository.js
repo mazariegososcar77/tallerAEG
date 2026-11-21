@@ -4,11 +4,13 @@ import pool from '../lib/db.js';
 import { pickColumns } from '../lib/tableColumns.js';
 
 // Consulta base reutilizada por getAll y findById: trae también el nombre del cliente
-// dueño de la máquina, para no tener que buscarlo aparte.
+// dueño de la máquina y, si tiene, el de su sub-proyecto (ver client_projects en
+// 056_client_projects.sql), para no tener que buscarlos aparte.
 const SELECT = `
-  SELECT m.*, c.first_name as client_name
+  SELECT m.*, c.first_name as client_name, cp.name as project_name
   FROM machines m
   LEFT JOIN clients c ON m.client_id = c.id
+  LEFT JOIN client_projects cp ON m.project_id = cp.id
 `;
 
 // Trae la lista de máquinas. Si se indica un clientId, solo trae las de ese cliente

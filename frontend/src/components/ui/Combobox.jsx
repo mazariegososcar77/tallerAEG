@@ -120,7 +120,10 @@ export default function Combobox({
 
   const choose = (val) => { onChange?.(val); close(); };
 
-  const handleCreate = () => { close(); onCreateNew?.(); };
+  // El texto que se le pasa es lo que el usuario ya habia escrito en el buscador (si
+  // `searchable`), para que quien cree el registro nuevo pueda prellenarlo con eso en vez
+  // de empezar en blanco. Los que no lo usan (la mayoria) simplemente lo ignoran.
+  const handleCreate = () => { const typed = query; close(); onCreateNew?.(typed); };
 
   const handleKeyDown = (e) => {
     if (disabled) return;

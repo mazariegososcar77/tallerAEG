@@ -59,6 +59,7 @@ export default function ClientViewModal({ open, onClose, client }) {
           <Field label="NIT">{client.nit || '—'}</Field>
           <Field label="DPI">{client.dpi || '—'}</Field>
           <Field label="Telefono">{client.phone || '—'}</Field>
+          <Field label="Telefono de Oficina">{client.office_phone || '—'}</Field>
           <div className="sm:col-span-2">
             <Field label="Direccion">{client.address || '—'}</Field>
           </div>
