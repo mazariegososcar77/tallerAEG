@@ -340,11 +340,47 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
 
 ## Clientes — notas
 
-- Tablas: **clients** (`nit?, dpi?, first_name, last_name, email, address, phone, client_type_id?,
-  loyalty_tier_id?, is_active`), **client_types** (catálogo) y **loyalty_tiers** (fidelización:
-  `name, discount, benefits, color, icon`). `color` es un hex `#RRGGBB` e `icon` es una key de
-  icono (lucide) para el distintivo visual del nivel. Migraciones `008_clients.sql` /
-  `009_clients_seed.sql` / `010_loyalty_tier_appearance.sql`.
+- Tablas: **clients** (`nit?, dpi?, first_name, last_name, email, address, phone, office_phone?,
+  client_type_id?, loyalty_tier_id?, is_active`), **client_types** (catálogo) y **loyalty_tiers**
+  (fidelización: `name, discount, benefits, color, icon`). `color` es un hex `#RRGGBB` e `icon` es
+  una key de icono (lucide) para el distintivo visual del nivel. Migraciones `008_clients.sql` /
+  `009_clients_seed.sql` / `010_loyalty_tier_appearance.sql`. `office_phone`
+  (`057_clients_office_phone.sql`) es un segundo teléfono (ej. el de la oficina, cuando `phone` ya
+  es el celular de la persona de contacto) y **nunca es obligatorio**, a diferencia de `phone` —
+  mismo formato (`isValidPhone`), pero sin la regla `assertTieneTelefono` de `clientService`.
+- **Sub-proyectos de un cliente** (`client_projects`, `056_client_projects.sql`): un mismo cliente
+  (un NIT) puede facturar a nombre de varios proyectos/sucursales (ej. una razón social
+  "RETRILLA..." con "Burger King Amatitlán", "Burger King Zona 10", etc.) — el NIT es único
+  (`uq_clients_nit`), así que no se puede dar de alta un cliente nuevo por cada uno; en vez de eso,
+  cada proyecto es una fila `client_projects` (`client_id, name, location?, is_active`) que se
+  puede elegir al registrar una máquina o una orden de trabajo/cotización. Endpoints anidados bajo
+  `/clients/:id/projects` (`clientProjectController`/`clientProjectService`/
+  `clientProjectRepository`): `GET`/`POST` listan/crean, `PUT /clients/:id/projects/:projectId`
+  edita (renombrar o desactivar). Mismo permiso que ya exige poder listar clientes
+  (`requirePermission('clients.view')`) — quien llega a usar el selector de proyecto (en
+  Máquinas/Órdenes de Trabajo/Cotizaciones) ya tiene ese permiso porque esas pantallas ya cargan la
+  lista completa de clientes para su propio `ClientPicker`. `uq_client_projects_name` evita dos
+  proyectos con el mismo nombre bajo un mismo cliente (409 "Este cliente ya tiene un proyecto
+  llamado...", `clientProjectService.assertNombreLibre`).
+  - `machines.project_id`, `work_orders.project_id` y `quotes.project_id` son FK nullable a
+    `client_projects` (`ON DELETE SET NULL` — desactivar/borrar un proyecto nunca borra lo que ya
+    se guardó con esa etiqueta), igual criterio que `machine_id` en
+    `031_client_equipment_history.sql`. No hace falta tocar `machineRepository`/
+    `workOrderRepository`/`quoteRepository`: los tres arman su INSERT/UPDATE con `pickColumns`
+    sobre las columnas reales de la tabla, así que la columna nueva se guarda sola en cuanto existe
+    (el deploy que aplica la migración ya reinicia el servidor, que es cuando `pickColumns` vuelve a
+    leer `information_schema`).
+  - **`work_orders.project` (texto libre, del talonario físico) no se eliminó**: el PDF
+    (`generarOrdenTrabajoPDF`) lo sigue imprimiendo tal cual. Cuando la orden elige un sub-proyecto
+    con el selector, `workOrderService.syncProjectText` sobrescribe ese texto con el nombre del
+    proyecto elegido (para que el PDF no quede desincronizado del selector) — si no se elige
+    ninguno, el texto libre que ya hubiera (ordenes viejas, de antes de este selector) se deja
+    intacto. La Orden de Servicio sigue usando el campo de texto libre de siempre, sin selector.
+  - La Cotización no tenía un campo de texto equivalente: el PDF (`generarCotizacionPDF`) imprime
+    `quote.project_name` (JOIN contra `client_projects` en `quoteRepository`) justo debajo de
+    "Cliente" cuando la cotización tiene un `project_id`.
+  - Elegir una máquina ya existente en el `MachinePicker` (Orden de Trabajo o Cotización) autocompleta
+    también el proyecto (`m.project_id`) si la orden/cotización todavía no tenía uno elegido.
 - Endpoints: `/clients` (CRUD), `/client-types` y `/loyalty-tiers` (CRUD). Borrado de tipo/nivel
   bloqueado (409) si hay clientes que lo usan.
 - **Alta rápida (quick-create) solo exige el nombre:** `clientService.create` (alta normal, desde

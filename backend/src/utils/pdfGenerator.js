@@ -205,6 +205,12 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   doc.font('Helvetica').text(quote.client_name || '-', L + 55, y, { width: CW - 55 });
   y += Math.max(14, altoTexto(doc, quote.client_name || '-', CW - 55) + 2);
 
+  if (quote.project_name) {
+    doc.font('Helvetica-Bold').text('Proyecto:', L, y);
+    doc.font('Helvetica').text(quote.project_name, L + 55, y, { width: CW - 55 });
+    y += Math.max(14, altoTexto(doc, quote.project_name, CW - 55) + 2);
+  }
+
   if (quote.work_type) {
     doc.font('Helvetica-Bold').text('Trabajo:', L, y);
     doc.font('Helvetica').text(quote.work_type, L + 55, y, { width: CW - 55 });

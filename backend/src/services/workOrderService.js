@@ -6,6 +6,7 @@
 import * as workOrderRepository from '../repositories/workOrderRepository.js';
 import * as invoiceRepository from '../repositories/invoiceRepository.js';
 import * as quoteRepository from '../repositories/quoteRepository.js';
+import * as clientProjectRepository from '../repositories/clientProjectRepository.js';
 import * as notificationService from './notificationService.js';
 import * as numberingService from './numberingService.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -42,6 +43,20 @@ function normalizePaperForm(data) {
   if (data.pump_seal_type === '') data.pump_seal_type = null;
 }
 
+// El talonario fisico (y su PDF, generarOrdenTrabajoPDF) imprime "Proyecto" como texto
+// libre de la columna `project` -- eso es anterior a los sub-proyectos de un cliente
+// (client_projects, 056_client_projects.sql). Cuando la orden ya elige uno con el
+// selector (project_id), este texto se reemplaza por el nombre de ese sub-proyecto para
+// que el PDF lo siga imprimiendo igual, sin tener que tocar el generador. Si no se eligio
+// ninguno (project_id vacio), el texto libre que haya escrito el usuario se deja intacto
+// -- asi una orden vieja, de antes de que existiera el selector, no pierde su dato.
+async function syncProjectText(data) {
+  if (data.project_id) {
+    const project = await clientProjectRepository.findById(data.project_id);
+    data.project = project ? project.name : data.project;
+  }
+}
+
 // Crea una orden de trabajo nueva: le asigna el siguiente numero correlativo y
 // convierte los campos opcionales que llegan vacios (total, datos electricos del
 // equipo, cotizacion de origen, fechas de recibido/entrega) en "sin dato", porque
@@ -70,10 +85,12 @@ export async function create({ items, number: requestedNumber, ...data }, { limi
   if (data.hp === '') data.hp = null;
   if (data.quote_id === '' || data.quote_id === undefined) data.quote_id = null;
   if (data.machine_id === '' || data.machine_id === undefined) data.machine_id = null;
+  if (data.project_id === '' || data.project_id === undefined) data.project_id = null;
   if (data.received_at === '') data.received_at = null;
   if (data.delivery_at === '') data.delivery_at = null;
   normalizePostPricing(data);
   normalizePaperForm(data);
+  await syncProjectText(data);
   const order = await workOrderRepository.create({ ...data, number }, items);
 
   // Aviso de "orden creada" (lo manda n8n, ver services/notificationService.js).
@@ -103,10 +120,12 @@ export async function update(id, { items, client_name, created_at, updated_at,
   }
   if (data.quote_id === '') data.quote_id = null;
   if (data.machine_id === '') data.machine_id = null;
+  if (data.project_id === '') data.project_id = null;
   if (data.received_at === '') data.received_at = null;
   if (data.delivery_at === '') data.delivery_at = null;
   normalizePostPricing(data);
   normalizePaperForm(data);
+  await syncProjectText(data);
   return workOrderRepository.update(id, data, items);
 }
 

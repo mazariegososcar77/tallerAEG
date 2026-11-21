@@ -9,13 +9,14 @@ import { machinesApi } from '../../api/machinesApi.js';
 import { withUppercase } from '../../lib/text.js';
 import { notify } from '../../lib/toast.js';
 import ClientPicker from '../clients/ClientPicker.jsx';
+import ProjectPicker from '../clients/ProjectPicker.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 
 const C = { card:'var(--c-surface)', dark:'var(--c-surface-2)', border:'var(--c-line)', input:'var(--c-surface-2)', text:'var(--c-text)', muted:'var(--c-muted)', orange:'#CA8A04' };
 const inp = { width:'100%', background:C.input, border:'1px solid '+C.border, color:C.text, padding:'8px 10px', borderRadius:6, fontSize:12, boxSizing:'border-box', outline:'none' };
 const lbl = { display:'block', fontSize:10, fontWeight:800, color:C.muted, textTransform:'uppercase', letterSpacing:'.6px', marginBottom:5 };
 
-const emptyForm = (clientId) => ({ client_id:clientId||'', name:'', brand:'', model:'', serial:'', kw:'', voltage:'', amperage:'', rpm:'', hp:'', location:'', notes:'' });
+const emptyForm = (clientId) => ({ client_id:clientId||'', project_id:null, name:'', brand:'', model:'', serial:'', kw:'', voltage:'', amperage:'', rpm:'', hp:'', location:'', notes:'' });
 
 /**
  * Props:
@@ -35,7 +36,7 @@ export default function MachineFormModal({ open, onClose, onSaved, clients, mach
   useEffect(() => {
     if (!open) return;
     setForm(machine ? {
-      client_id: machine.client_id, name: machine.name || '', brand: machine.brand || '',
+      client_id: machine.client_id, project_id: machine.project_id || null, name: machine.name || '', brand: machine.brand || '',
       model: machine.model || '', serial: machine.serial || '', kw: machine.kw || '',
       voltage: machine.voltage || '', amperage: machine.amperage || '', rpm: machine.rpm || '',
       hp: machine.hp || '', location: machine.location || '', notes: machine.notes || '',
@@ -68,6 +69,10 @@ export default function MachineFormModal({ open, onClose, onSaved, clients, mach
           <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}>
             <label style={lbl}>Cliente *</label>
             <ClientPicker clients={clients} value={form.client_id} onChange={v => set('client_id', v)} />
+          </div>
+          <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}>
+            <label style={lbl}>Proyecto (opcional)</label>
+            <ProjectPicker clientId={form.client_id} value={form.project_id} onChange={v => set('project_id', v)} />
           </div>
           <div style={{ gridColumn: isMobile ? 'auto' : 'span 2' }}><label style={lbl}>Nombre *</label><input value={form.name} onChange={withUppercase(e => set('name', e.target.value))} style={inp} /></div>
           <div><label style={lbl}>Marca</label><input value={form.brand} onChange={withUppercase(e => set('brand', e.target.value))} style={inp} /></div>
