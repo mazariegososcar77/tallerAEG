@@ -5,15 +5,17 @@
 import * as workReportService from '../services/workReportService.js';
 import * as serviceOrderService from '../services/serviceOrderService.js';
 import * as uploadService from '../services/uploadService.js';
-import { resolverCampos } from '../lib/mediaUrl.js';
+import { resolverCampos, resolverReporte } from '../lib/mediaUrl.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
-// Trae los datos minimos del reporte para mostrar en la pantalla publica de firma
-// (numero de reporte/orden, equipo, cliente, y si ya esta firmado).
+// Trae el reporte (numero, equipo, cliente, fotos, notas y video) para mostrar en
+// la pantalla publica de firma -- asi quien firma a distancia puede revisar el
+// trabajo completo antes de firmar. `resolverReporte` firma las fotos y el video
+// igual que para la pantalla con sesion.
 export const getWorkReportByToken = asyncHandler(async (req, res) => {
   const report = await workReportService.getPublicByToken(req.params.token);
-  res.json(await resolverCampos(report, ['client_signature_url']));
+  res.json(await resolverReporte(report));
 });
 
 // Guarda la firma del cliente dibujada en la pantalla publica.

@@ -159,7 +159,8 @@ export default function DatePicker({
           <div
             ref={panelRef}
             className="rounded-md border border-line bg-surface p-3 shadow-lg animate-fade-in"
-            style={{ position:'fixed', left:pos.left, width:pos.width, zIndex:70, ...(pos.top != null ? { top:pos.top } : { bottom:pos.bottom }) }}
+            // Igual criterio que Combobox.jsx: mas alto que cualquier modal propio.
+            style={{ position:'fixed', left:pos.left, width:pos.width, zIndex:1000, ...(pos.top != null ? { top:pos.top } : { bottom:pos.bottom }) }}
           >
             {/* Cabecera */}
             <div className="mb-2 flex items-center justify-between">
