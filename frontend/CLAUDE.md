@@ -125,6 +125,12 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `BulkUploadModal` (Excel). Imagen vía `components/inventory/ImagePicker` (URL o subida).
 - **Clientes** (`pages/clients/`): `ClientsPage` (lista + filtros), `ClientFormModal` (alta/edición con
   NIT/DPI, contacto, tipo y fidelización) y `ClientViewModal` (detalle de solo lectura).
+  `components/clients/ClientContactsInput` (correo(s) + nombre de quien lo usa) solo agrega un
+  contacto a la lista cuando se presiona "Agregar" o Enter — si el usuario escribe el correo/nombre
+  en la fila de abajo y pasa derecho a "Guardar cambios" sin tocar "Agregar" (fácil de hacer en
+  celular), ese contacto se agrega solo en cuanto el foco sale de **toda** la fila (no de un campo
+  al otro dentro de ella): `onBlur` con un `setTimeout(0)` que revisa `document.activeElement`, no
+  `e.relatedTarget` — en varios navegadores de celular ese dato llega vacío al tocar con el dedo.
 - **Órdenes de trabajo** (`pages/workOrders/`, ruta `/ordenes`): `WorkOrdersPage`, `WorkOrderFormPage`
   (página completa, `/ordenes/nueva` y `/ordenes/:id/editar`) y `WorkOrderViewModal`. **A propósito no
   muestra precios en ningún lado** (form, lista, modal, PDF) — la orden la trabajan técnicos; el precio
