@@ -343,8 +343,11 @@ export async function existePorTokenPublico(token) {
 
 /**
  * Version publica (sin sesion) de getById: para la pantalla que abre el
- * mensajero/cliente desde el enlace de firma remota. Devuelve solo lo
- * necesario para esa pantalla -- nada de notas internas ni otros datos.
+ * mensajero/cliente desde el enlace de firma remota. Incluye las fotos, las
+ * notas por etapa/categoria y el video final -- para que quien firma a
+ * distancia pueda revisar el reporte completo antes de firmar, no solo el
+ * numero y el equipo. Lo que NO se expone es el token mismo ni datos internos
+ * de la orden (tecnicos, referencias).
  */
 export async function getPublicByToken(token) {
   const report = await workReportRepository.findByPublicToken(token);
@@ -355,6 +358,12 @@ export async function getPublicByToken(token) {
     order_kind: report.order_kind,
     client_name: report.client_name,
     equipment_name: report.equipment_name,
+    photo_schema_version: report.photo_schema_version,
+    general_notes: report.general_notes,
+    stage_notes: report.stage_notes,
+    photos: report.photos,
+    final_video_url: report.final_video_url,
+    final_video_duration_seconds: report.final_video_duration_seconds,
     already_signed: Boolean(report.client_signature_url),
     client_signature_url: report.client_signature_url,
     client_signature_name: report.client_signature_name,
