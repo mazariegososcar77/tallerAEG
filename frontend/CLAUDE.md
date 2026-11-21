@@ -124,7 +124,15 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `ArticleFormPage` (**página completa** en `/inventario/nuevo` y `/inventario/:id/editar`, no modal),
   `BulkUploadModal` (Excel). Imagen vía `components/inventory/ImagePicker` (URL o subida).
 - **Clientes** (`pages/clients/`): `ClientsPage` (lista + filtros), `ClientFormModal` (alta/edición con
-  NIT/DPI, contacto, tipo y fidelización) y `ClientViewModal` (detalle de solo lectura).
+  NIT/DPI, teléfono + teléfono de oficina —este nunca obligatorio—, contacto, tipo y fidelización) y
+  `ClientViewModal` (detalle de solo lectura).
+  **`components/clients/ProjectPicker`** (+ `ProjectFormModal`, alta rápida): selector del
+  sub-proyecto de un cliente (ver "Sub-proyectos de un cliente" en `backend/CLAUDE.md`) — mismo
+  patrón que `MachinePicker`/`ClientPicker`. Se usa en `MachineFormModal`, la pestaña general de
+  `WorkOrderFormPage` (reemplaza el campo de texto libre "Proyecto" del talonario vía la prop
+  `projectPicker` de `GeneralTab` en `TalonarioSections.jsx` — la Orden de Servicio sigue con el
+  texto libre) y `QuoteFormPage`. Elegir una máquina ya existente en el `MachinePicker` autocompleta
+  el proyecto si la orden/cotización todavía no tenía uno.
 - **Órdenes de trabajo** (`pages/workOrders/`, ruta `/ordenes`): `WorkOrdersPage`, `WorkOrderFormPage`
   (página completa, `/ordenes/nueva` y `/ordenes/:id/editar`) y `WorkOrderViewModal`. **A propósito no
   muestra precios en ningún lado** (form, lista, modal, PDF) — la orden la trabajan técnicos; el precio
