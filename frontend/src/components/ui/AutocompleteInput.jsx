@@ -148,7 +148,9 @@ export default function AutocompleteInput({
             width: pos.width,
             maxHeight: pos.maxHeight,
             ...(pos.top != null ? { top: pos.top } : { bottom: pos.bottom }),
-            zIndex: 70,
+            // Igual criterio que Combobox.jsx: mas alto que cualquier modal propio, para que
+            // el panel no abra "detras" de los campos de abajo del formulario.
+            zIndex: 1000,
             background: 'var(--c-surface)',
             border: '1px solid var(--c-line)',
             borderRadius: 8,

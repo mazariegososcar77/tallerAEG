@@ -56,6 +56,13 @@ Requiere el backend corriendo en `:4000` (ver `../backend`). Login por defecto:
   `react-hot-toast` directo. **Nunca uses `alert()`, `confirm()` ni `prompt()` del navegador**: los
   avisos van por `notify` y las confirmaciones por `components/ui/ConfirmDialog` (patrón: un estado
   `toDelete` con el registro pendiente + `<ConfirmDialog open={toDelete != null} …>`).
+- **Dropdowns flotantes (`Combobox`, `AutocompleteInput`, `DatePicker`):** su panel se renderiza en un
+  portal a `document.body` con `position: fixed` y `zIndex: 1000` — más alto que **cualquier** modal
+  propio, aunque ese modal tenga un `zIndex` alto (`MachineFormModal` usa 200, `ProjectFormModal`
+  210). Si se baja ese número, un selector abierto dentro de un modal así queda "detrás" de los
+  campos de más abajo del mismo formulario: se ve la lista, pero no se puede tocar ninguna opción
+  que caiga sobre esos campos (el click lo intercepta el campo, no la opción). Detectado al abrir el
+  selector de Proyecto justo debajo del de Cliente en `MachineFormModal`.
 - **PDF:** todos los PDF los genera el backend en endpoints protegidos, así que se piden con el token
   y se manejan como blob — nunca con un `<a href>` directo. Usa `downloadPdf(url, fileName)` de
   `src/lib/pdf.js` para descargar y `components/ui/PdfViewerModal` para **visualizar dentro de la

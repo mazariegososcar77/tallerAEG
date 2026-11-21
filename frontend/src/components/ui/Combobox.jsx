@@ -205,7 +205,10 @@ export default function Combobox({
             width: pos.width,
             maxHeight: pos.maxHeight,
             ...(pos.top != null ? { top: pos.top } : { bottom: pos.bottom }),
-            zIndex: 70,
+            // Mas alto que cualquier modal propio (MachineFormModal usa 200, ProjectFormModal
+            // 210): si no, el panel abre "detras" de los campos de abajo del formulario y sus
+            // opciones no se pueden tocar justo donde se superponen.
+            zIndex: 1000,
             background: 'var(--c-surface)',
             border: '1px solid var(--c-line)',
             borderRadius: 8,
