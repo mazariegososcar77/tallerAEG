@@ -54,23 +54,6 @@ async function assertNoDuplicado({ nit, dpi }, excludeId = null) {
   }
 }
 
-// Todo cliente lleva al menos NIT o DPI (para poder facturarle).
-function assertTieneNitODpi({ nit, dpi }) {
-  if (!nit && !dpi) {
-    const message = 'Indica al menos el NIT o el DPI del cliente.';
-    throw new ApiError(400, message, [{ field: 'nit', message }, { field: 'dpi', message }]);
-  }
-}
-
-// El telefono tambien es obligatorio para un cliente dado de alta normalmente (no asi en
-// quickCreate, ver abajo).
-function assertTieneTelefono({ phone }) {
-  if (!phone) {
-    const message = 'El teléfono es obligatorio.';
-    throw new ApiError(400, message, [{ field: 'phone', message }]);
-  }
-}
-
 // Devuelve la lista completa de clientes.
 export async function list() {
   return clientRepository.getAll();
@@ -90,9 +73,9 @@ export async function getById(id) {
 export async function create({ contacts, ...data }) {
   // is_validated no viaja en el payload (el schema zod lo descarta); la columna
   // usa su DEFAULT (1), asi que las altas del modulo Clientes entran validadas.
+  // NIT/DPI y telefono son opcionales a proposito (decision de negocio): quien
+  // registra al cliente puede no tener esos datos a mano todavia.
   const limpio = normalize(data);
-  assertTieneNitODpi(limpio);
-  assertTieneTelefono(limpio);
   await assertNoDuplicado(limpio);
   const created = await clientRepository.create(limpio);
   if (contacts !== undefined) await clientContactRepository.replaceForClient(created.id, contacts);
@@ -101,13 +84,12 @@ export async function create({ contacts, ...data }) {
 
 // Alta "de ultima instancia" desde el selector de Ordenes/Cotizaciones: el
 // cliente puede usarse de inmediato pero entra SIN validar para que un
-// administrador revise sus datos despues. A diferencia de create(), NO exige
-// NIT/DPI ni telefono -- un Tecnico en campo puede dejar un cliente "temporal"
-// solo con el nombre (lo unico que si se exige siempre, en el schema zod de la
-// ruta) y que alguien con mas datos (administrador/operador) lo complete despues
-// al validar al cliente (ver validate() abajo). Mientras tanto ese cliente no se
-// puede facturar/certificar ante la SAT (billing.certify ya revisa el NIT por su
-// cuenta).
+// administrador revise sus datos despues -- un Tecnico en campo puede dejar un
+// cliente "temporal" solo con el nombre (lo unico que si se exige siempre, en
+// el schema zod de la ruta) y que alguien con mas datos (administrador/
+// operador) lo complete despues al validar al cliente (ver validate() abajo).
+// Mientras el NIT no este, ese cliente no se puede facturar/certificar ante la
+// SAT (billing.certify ya revisa el NIT por su cuenta).
 export async function quickCreate({ contacts, ...data }) {
   const limpio = normalize(data);
   await assertNoDuplicado(limpio);
@@ -154,9 +136,9 @@ export async function update(id, { contacts, ...patch }) {
   if (!existing) throw new ApiError(404, 'Cliente no encontrado');
   const limpio = normalize(patch);
   // Se valida ANTES de tocar nada: antes, si el NIT chocaba con otro cliente, los contactos ya
-  // habian sido reemplazados cuando aparecia el error.
+  // habian sido reemplazados cuando aparecia el error. NIT/DPI nunca son obligatorios (se
+  // pueden incluso borrar dejandolos vacios), solo se revisa que no choquen con otro cliente.
   if ('nit' in limpio || 'dpi' in limpio) {
-    assertTieneNitODpi({ nit: 'nit' in limpio ? limpio.nit : existing.nit, dpi: 'dpi' in limpio ? limpio.dpi : existing.dpi });
     await assertNoDuplicado({ nit: limpio.nit, dpi: limpio.dpi }, Number(id));
   }
   if (contacts !== undefined) await clientContactRepository.replaceForClient(id, contacts);
