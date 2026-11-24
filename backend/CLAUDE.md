@@ -346,8 +346,8 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   una key de icono (lucide) para el distintivo visual del nivel. Migraciones `008_clients.sql` /
   `009_clients_seed.sql` / `010_loyalty_tier_appearance.sql`. `office_phone`
   (`057_clients_office_phone.sql`) es un segundo teléfono (ej. el de la oficina, cuando `phone` ya
-  es el celular de la persona de contacto) y **nunca es obligatorio**, a diferencia de `phone` —
-  mismo formato (`isValidPhone`), pero sin la regla `assertTieneTelefono` de `clientService`.
+  es el celular de la persona de contacto). Ninguno de los dos teléfonos es obligatorio (ver
+  "Alta rápida" más abajo) — mismo formato (`isValidPhone`) para los dos.
 - **Sub-proyectos de un cliente** (`client_projects`, `056_client_projects.sql`): un mismo cliente
   (un NIT) puede facturar a nombre de varios proyectos/sucursales (ej. una razón social
   "RETRILLA..." con "Burger King Amatitlán", "Burger King Zona 10", etc.) — el NIT es único
@@ -383,17 +383,17 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
     también el proyecto (`m.project_id`) si la orden/cotización todavía no tenía uno elegido.
 - Endpoints: `/clients` (CRUD), `/client-types` y `/loyalty-tiers` (CRUD). Borrado de tipo/nivel
   bloqueado (409) si hay clientes que lo usan.
-- **Alta rápida (quick-create) solo exige el nombre:** `clientService.create` (alta normal, desde
-  Clientes) exige NIT o DPI (`assertTieneNitODpi`) y teléfono (`assertTieneTelefono`) — el formato de
-  cada uno sí lo valida el schema zod de `clientRoutes`, pero esas dos reglas de obligatoriedad son
-  solo de `clientService`. `clientService.quickCreate` (alta rápida desde el selector de
-  Órdenes/Cotizaciones) **no** exige ninguna de las dos a propósito: un Técnico en campo puede dejar
-  un cliente "temporal" solo con el nombre (lo único que el schema zod sí exige siempre), y el
-  cliente queda `is_validated=0` para que un administrador/operador lo complete después al validarlo
-  — mientras tanto no se puede facturar/certificar ante la SAT. En el frontend, `ClientFormModal`
-  refleja esto con la prop `quick`: los campos NIT (categoría Empresa) y Teléfono (las tres
-  categorías) dejan de mostrarse como obligatorios, y el aviso "Indique al menos el NIT o el DPI" de
-  Particular se oculta. NIT y DPI son únicos cuando no están vacíos.
+- **NIT, DPI y teléfono quedan a criterio de quien registra: nunca son obligatorios, en ningún alta.**
+  Lo único que el schema zod de `clientRoutes` sí exige siempre es el nombre. `clientService.create`
+  (alta normal, desde Clientes) y `clientService.quickCreate` (alta rápida desde el selector de
+  Órdenes/Cotizaciones) ya no tienen ninguna regla de obligatoriedad adicional — la única diferencia
+  entre los dos sigue siendo `is_validated` (1 en la normal, 0 en la rápida, para que un
+  administrador/operador revise después un cliente "temporal" dado de alta por un Técnico en campo).
+  Mientras el NIT no esté, ese cliente no se puede facturar/certificar ante la SAT
+  (`billing.certify` ya revisa el NIT por su cuenta). En el frontend, `ClientFormModal` ya no marca
+  NIT/Teléfono como obligatorios en ningún modo (`quick` solo sigue decidiendo el aviso "pendiente de
+  validación" y si se llama a `create` o `quickCreate`). NIT y DPI siguen siendo únicos cuando no
+  están vacíos.
 - `clientService.toPublic` resuelve `full_name`, `client_type_name`, `loyalty_tier_name`,
   `loyalty_tier_color`, `loyalty_tier_icon`, `loyalty_discount` y `loyalty_benefits`.
 - **Permisos:** `clients.*`, `client-types.*`, `loyalty.*` (ids 23–34 en el seed). Para topear datos
