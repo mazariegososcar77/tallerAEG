@@ -172,9 +172,11 @@ function filaItem(doc, y, { L, R, CW }, { idx, par, descripcion, cantidad, preci
   return y + alto + 1;
 }
 
-// Texto del taller que va en la esquina derecha del pie de pagina.
+// Texto del taller que va en la esquina derecha del pie de pagina (el nombre ya
+// aparece en el encabezado y, en orden/reporte, tambien a la izquierda del pie
+// — aqui solo va lo que hace falta para contactar al taller: direccion y telefono).
 const pieEmpresa = (cfg) =>
-  [cfg.company_name, cfg.company_address].filter(Boolean).join(' — ');
+  [cfg.company_address, cfg.company_phone].filter(Boolean).join('  |  ');
 
 // Arma el PDF de una COTIZACION: muestra los datos del cliente, la lista
 // de equipos con su mano de obra y repuestos cotizados, y los totales
@@ -316,7 +318,7 @@ export function generarCotizacionPDF(quote, settings, { conDescuento = false } =
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
      .text('Esta cotizacion tiene validez de ' + cfg.quote_valid_days + ' dias a partir de la fecha de emision.', L, pageH - 28, { width: CW / 2 })
-     .text(pieEmpresa(cfg), R - 230, pageH - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
+     .text(pieEmpresa(cfg), R - 260, pageH - 28, { width: 260, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text(cfg.company_slogan, L, pageH - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
@@ -657,7 +659,7 @@ function armarTalonarioPDF(order, settings, { titulo, pie, firmas = false, local
   doc.rect(0, pageH - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
      .text(pie + ' - ' + cfg.company_name, L, pageH - 28, { width: CW / 2 - 10, height: 9, ellipsis: true })
-     .text(pieEmpresa(cfg), R - 230, pageH - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
+     .text(pieEmpresa(cfg), R - 260, pageH - 28, { width: 260, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text(cfg.company_slogan, L, pageH - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
@@ -768,7 +770,7 @@ export function generarFacturaPDF(invoice, settings) {
   doc.rect(0, pageH2 - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
      .text('Factura interna - ' + cfg.company_name, L, pageH2 - 28, { width: CW / 2 - 10, height: 9, ellipsis: true })
-     .text(pieEmpresa(cfg), R - 230, pageH2 - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
+     .text(pieEmpresa(cfg), R - 260, pageH2 - 28, { width: 260, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text(cfg.company_slogan, L, pageH2 - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
@@ -949,7 +951,7 @@ export function generarReportePDF(report, settings, locales = null) {
   doc.rect(0, pageH3 - 38, W, 38).fill(AZUL);
   doc.fillColor('#94a3b8').fontSize(7).font('Helvetica')
      .text('Reporte de Trabajo - ' + cfg.company_name, L, pageH3 - 28, { width: CW / 2 - 10, height: 9, ellipsis: true })
-     .text(pieEmpresa(cfg), R - 230, pageH3 - 28, { width: 230, height: 9, ellipsis: true, align: 'right' });
+     .text(pieEmpresa(cfg), R - 260, pageH3 - 28, { width: 260, height: 9, ellipsis: true, align: 'right' });
   doc.fillColor(NARANJA).fontSize(8).font('Helvetica-Bold')
      .text(cfg.company_slogan, L, pageH3 - 15, { width: CW, height: 10, ellipsis: true, align: 'center' });
 
