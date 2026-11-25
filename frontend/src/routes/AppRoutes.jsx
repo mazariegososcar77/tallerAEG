@@ -40,6 +40,7 @@ import DocumentSeriesPage from '../pages/config/DocumentSeriesPage.jsx';
 import ServiceOrdersPage from '../pages/serviceOrders/ServiceOrdersPage.jsx';
 import ServiceOrderFormPage from '../pages/serviceOrders/ServiceOrderFormPage.jsx';
 import PublicSignaturePage from '../pages/public/PublicSignaturePage.jsx';
+import PublicReportViewPage from '../pages/public/PublicReportViewPage.jsx';
 
 export default function AppRoutes() {
   return (
@@ -47,6 +48,9 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       {/* Enlace publico de firma remota (sin sesion) -- ver PublicSignaturePage.jsx */}
       <Route path="/firmar/:token" element={<PublicSignaturePage />} />
+      {/* Enlace publico de SOLO LECTURA para compartir un reporte con el cliente
+          (sin sesion, nunca se puede modificar nada) -- ver PublicReportViewPage.jsx */}
+      <Route path="/ver-reporte/:token" element={<PublicReportViewPage />} />
       <Route
         path="/"
         element={

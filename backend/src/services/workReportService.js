@@ -396,17 +396,11 @@ export async function existePorTokenPublico(token) {
   return Boolean(await workReportRepository.findByPublicToken(token));
 }
 
-/**
- * Version publica (sin sesion) de getById: para la pantalla que abre el
- * mensajero/cliente desde el enlace de firma remota. Incluye las fotos, las
- * notas por etapa/categoria y el video final -- para que quien firma a
- * distancia pueda revisar el reporte completo antes de firmar, no solo el
- * numero y el equipo. Lo que NO se expone es el token mismo ni datos internos
- * de la orden (tecnicos, referencias).
- */
-export async function getPublicByToken(token) {
-  const report = await workReportRepository.findByPublicToken(token);
-  if (!report) throw new ApiError(404, 'Enlace invalido o vencido');
+// Campos que se exponen en CUALQUIER version publica del reporte (firma
+// remota o enlace de solo lectura): fotos, notas, videos y las dos firmas si
+// ya existen. Lo que NUNCA se expone es el token mismo ni datos internos de
+// la orden (tecnicos asignados, referencias de costos, etc).
+function datosPublicosReporte(report) {
   return {
     number: report.number,
     order_number: report.order_number,
@@ -420,10 +414,55 @@ export async function getPublicByToken(token) {
     category_videos: report.category_videos,
     final_video_url: report.final_video_url,
     final_video_duration_seconds: report.final_video_duration_seconds,
-    already_signed: Boolean(report.client_signature_url),
+    tech_signature_url: report.tech_signature_url,
+    tech_signature_name: report.tech_signature_name,
     client_signature_url: report.client_signature_url,
     client_signature_name: report.client_signature_name,
   };
+}
+
+/**
+ * Version publica (sin sesion) de getById: para la pantalla que abre el
+ * mensajero/cliente desde el enlace de firma remota. Incluye las fotos, las
+ * notas por etapa/categoria y el video final -- para que quien firma a
+ * distancia pueda revisar el reporte completo antes de firmar, no solo el
+ * numero y el equipo.
+ */
+export async function getPublicByToken(token) {
+  const report = await workReportRepository.findByPublicToken(token);
+  if (!report) throw new ApiError(404, 'Enlace invalido o vencido');
+  return {
+    ...datosPublicosReporte(report),
+    already_signed: Boolean(report.client_signature_url),
+  };
+}
+
+/**
+ * Version publica (sin sesion) de getById para el enlace de SOLO LECTURA que
+ * se le comparte al cliente desde la lista de reportes (ver
+ * 059_work_reports_share_link.sql). A diferencia de getPublicByToken, este
+ * token nunca se usa para firmar -- no existe ningun endpoint publico que lo
+ * acepte para escribir algo.
+ */
+export async function getPublicByShareToken(token) {
+  const report = await workReportRepository.findByShareToken(token);
+  if (!report) throw new ApiError(404, 'Enlace invalido o vencido');
+  return datosPublicosReporte(report);
+}
+
+/**
+ * Genera (o devuelve, si ya existia) el token del enlace publico de SOLO
+ * LECTURA de este reporte -- para compartirselo al cliente y que vea fotos,
+ * videos, notas y firmas desde su propio telefono, sin sesion y sin poder
+ * modificar nada. Independiente del token de firma remota (getSigningLink).
+ */
+export async function getShareLink(id) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.share_token) return report.share_token;
+  const token = crypto.randomBytes(24).toString('base64url');
+  await workReportRepository.update(id, { share_token: token });
+  return token;
 }
 
 // Guarda la firma del cliente desde el enlace publico (sin sesion): resuelve

@@ -18,6 +18,15 @@ export const getWorkReportByToken = asyncHandler(async (req, res) => {
   res.json(await resolverReporte(report));
 });
 
+// Igual que getWorkReportByToken, pero para el enlace de SOLO LECTURA que se
+// comparte con el cliente desde la lista de reportes: mismos datos (fotos,
+// videos, notas y firmas), pero este token nunca se usa para escribir nada --
+// no hay endpoint publico que lo acepte para guardar una firma.
+export const getWorkReportByShareToken = asyncHandler(async (req, res) => {
+  const report = await workReportService.getPublicByShareToken(req.params.token);
+  res.json(await resolverReporte(report));
+});
+
 // Guarda la firma del cliente dibujada en la pantalla publica.
 export const setWorkReportSignature = asyncHandler(async (req, res) => {
   const report = await workReportService.setPublicClientSignature(

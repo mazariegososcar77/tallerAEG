@@ -97,6 +97,14 @@ export const getSigningLink = asyncHandler(async (req, res) => {
   res.json({ token });
 });
 
+// Genera (o devuelve el ya existente) el enlace publico de SOLO LECTURA, para
+// compartirselo al cliente: ve fotos, videos, notas y firmas sin poder
+// modificar nada.
+export const getShareLink = asyncHandler(async (req, res) => {
+  const token = await workReportService.getShareLink(req.params.id);
+  res.json({ token });
+});
+
 // Mapa de Relaciones: la cadena de documentos (Cotizacion -> Orden -> Reporte ->
 // Factura) de la orden que documenta este reporte. 400 si el reporte es de una
 // Orden de Servicio (no tiene cotizacion ni factura detras).

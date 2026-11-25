@@ -11,7 +11,8 @@ import { downloadPdf } from '../../lib/pdf.js';
 import { notify } from '../../lib/toast.js';
 import PdfViewerModal from '../../components/ui/PdfViewerModal.jsx';
 import DocumentFlowModal from '../../components/documentFlow/DocumentFlowModal.jsx';
-import { Camera, Search, Pencil, Eye, Download, Network } from 'lucide-react';
+import Modal from '../../components/ui/Modal.jsx';
+import { Camera, Search, Pencil, Eye, Download, Network, Share2 } from 'lucide-react';
 
 const STATUS_LABELS = {
   en_progreso: { label: 'En Progreso', color: '#f59e0b' },
@@ -25,6 +26,9 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
   const [loading, setLoading] = useState(true);
   const [pdfReport, setPdfReport] = useState(null); // reporte que se esta viendo en el visor de PDF
   const [flowSource, setFlowSource] = useState(null); // { type: 'work_report', id } para el Mapa de Relaciones
+  const [shareReport, setShareReport] = useState(null); // reporte para el que se esta generando el enlace de solo lectura
+  const [shareLink, setShareLink] = useState('');
+  const [loadingShare, setLoadingShare] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,6 +53,24 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
     try {
       await downloadPdf(`/api/work-reports/${report.id}/pdf`, `reporte-${report.number}.pdf`);
     } catch (e) { notify.error('Error al generar PDF'); }
+  };
+
+  // Genera (o recupera) el enlace publico de SOLO LECTURA para compartirselo al
+  // cliente: ve fotos, videos, notas y firmas desde su propio telefono, sin
+  // sesion y sin poder modificar nada (ver PublicReportViewPage.jsx).
+  const handleShare = async (report) => {
+    setShareReport(report);
+    setShareLink('');
+    setLoadingShare(true);
+    try {
+      const { token } = await workReportsApi.getShareLink(report.id);
+      setShareLink(`${window.location.origin}/ver-reporte/${token}`);
+    } catch (e) {
+      notify.error(e.message || 'No se pudo generar el enlace');
+      setShareReport(null);
+    } finally {
+      setLoadingShare(false);
+    }
   };
 
   return (
@@ -107,6 +129,7 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
                     )}
                     <button onClick={() => setPdfReport(report)} title="Visualizar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#3b82f6' }}><Eye size={16} /></button>
                     <button onClick={() => handleDownloadPDF(report)} title="Descargar PDF" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#10b981' }}><Download size={16} /></button>
+                    <button onClick={() => handleShare(report)} title="Compartir con el cliente (solo lectura)" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#CA8A04' }}><Share2 size={16} /></button>
                     <button onClick={() => navigate('/reportes/' + report.id + '/editar')} title="Ver / Editar reporte" style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: 7, padding: '7px 10px', cursor: 'pointer', color: '#94a3b8' }}><Pencil size={16} /></button>
                   </div>
                 </div>
@@ -126,6 +149,48 @@ export default function WorkReportsPage({ flowType = 'pre' }) {
         fileName={pdfReport ? `reporte-${pdfReport.number}.pdf` : ''}
         title={pdfReport ? `Reporte No. ${pdfReport.number}` : ''}
       />
+
+      {/* Enlace de solo lectura para compartir con el cliente (sin sesion, no se
+          puede modificar nada -- ver PublicReportViewPage.jsx). */}
+      <Modal
+        open={shareReport != null}
+        onClose={() => setShareReport(null)}
+        title={shareReport ? `Compartir Reporte No. ${shareReport.number}` : ''}
+        accentColor="#CA8A04"
+      >
+        {loadingShare ? (
+          <p style={{ color: 'var(--c-muted)', fontSize: 13 }}>Generando enlace...</p>
+        ) : (
+          <div>
+            <p style={{ fontSize: 13, color: 'var(--c-muted)', margin: '0 0 12px' }}>
+              Comparte este enlace con el cliente: lo abre en su celular sin necesitar cuenta en el sistema
+              y ve las fotos, videos, notas y firmas del reporte. No puede modificar nada.
+            </p>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <input
+                readOnly
+                value={shareLink}
+                onFocus={e => e.target.select()}
+                style={{ flex: 1, minWidth: 200, padding: '8px 10px', borderRadius: 6, border: '1px solid var(--c-line)', background: 'var(--c-surface-2)', color: 'var(--c-text)', fontSize: 12 }}
+              />
+              <button
+                type="button"
+                onClick={() => { navigator.clipboard.writeText(shareLink); notify.success('Enlace copiado'); }}
+                style={{ background: 'var(--c-surface-2)', border: '1px solid var(--c-line)', color: 'var(--c-text)', padding: '0 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+              >
+                Copiar
+              </button>
+              <a
+                href={`https://wa.me/?text=${encodeURIComponent('Aquí puedes ver tu reporte de trabajo: ' + shareLink)}`}
+                target="_blank" rel="noreferrer"
+                style={{ background: '#25D366', border: 'none', color: '#fff', padding: '0 14px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+              >
+                Enviar por WhatsApp
+              </a>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

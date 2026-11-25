@@ -121,6 +121,14 @@ export async function findByPublicToken(token) {
   return row ? findById(row.id) : null;
 }
 
+// Igual que findByPublicToken, pero para el enlace de solo-lectura que se le
+// comparte al cliente (ver 059_work_reports_share_link.sql) -- token
+// independiente del de firma remota.
+export async function findByShareToken(token) {
+  const [[row]] = await pool.query('SELECT id FROM work_reports WHERE share_token = ?', [token]);
+  return row ? findById(row.id) : null;
+}
+
 // Guarda un nuevo reporte de trabajo (todavía sin fotos; las fotos se agregan después con addPhoto).
 export async function create(data) {
   const fields = Object.keys(data).join(', ');

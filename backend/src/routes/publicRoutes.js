@@ -42,6 +42,22 @@ router.get('/work-reports/:token', publicController.getWorkReportByToken);
 
 /**
  * @openapi
+ * /public/work-reports/share/{token}:
+ *   get:
+ *     tags: [Enlace publico de firma]
+ *     summary: Reporte completo (fotos, videos, notas y firmas) por su token de SOLO LECTURA, sin sesion
+ *     description: >
+ *       Token independiente del de firma remota: quien lo tenga solo puede ver el reporte, nunca
+ *       modificarlo -- no existe ningun endpoint publico que acepte este token para escribir algo.
+ *     parameters: [{ in: path, name: token, required: true, schema: { type: string } }]
+ *     responses:
+ *       200: { description: Datos completos del reporte }
+ *       404: { description: Enlace invalido o vencido }
+ */
+router.get('/work-reports/share/:token', publicController.getWorkReportByShareToken);
+
+/**
+ * @openapi
  * /public/work-reports/{token}/signature:
  *   post:
  *     tags: [Enlace publico de firma]
