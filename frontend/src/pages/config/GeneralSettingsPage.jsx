@@ -288,6 +288,15 @@ export default function GeneralSettingsPage() {
             noUppercase
           />
           <Input
+            label="Celular"
+            value={form.company_mobile}
+            onChange={(e) => set('company_mobile', e.target.value)}
+            disabled={!canEdit}
+            maxLength={60}
+            placeholder="Opcional"
+            noUppercase
+          />
+          <Input
             label="NIT del centro de servicios"
             value={form.company_nit}
             onChange={(e) => set('company_nit', e.target.value)}
