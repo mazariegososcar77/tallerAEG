@@ -71,6 +71,9 @@ export const workReportsApi = {
   // Genera (o recupera) el enlace publico de firma remota del cliente, para
   // entregas con mensajero (el cliente no esta en el taller). Devuelve { token }.
   getSigningLink: (id) => client.post(`/work-reports/${id}/signing-link`).then(r => r.data),
+  // Igual, pero para el enlace de SOLO LECTURA que se comparte con el cliente
+  // (fotos, videos, notas y firmas) -- este token nunca sirve para firmar.
+  getShareLink: (id) => client.post(`/work-reports/${id}/share-link`).then(r => r.data),
   // Mapa de Relaciones: cadena de documentos (Cotizacion -> Orden -> Reporte -> Factura).
   getDocumentFlow: (id) => client.get(`/work-reports/${id}/document-flow`).then(r => r.data),
 };
@@ -81,6 +84,9 @@ export const workReportsApi = {
 // que es seguro llamarlas desde una pantalla sin login.
 export const publicWorkReportsApi = {
   get: (token) => client.get(`/public/work-reports/${token}`).then(r => r.data),
+  // Enlace de SOLO LECTURA (pages/public/PublicReportViewPage.jsx): mismos datos,
+  // pero sin ningun endpoint de escritura asociado a este token.
+  getByShareToken: (token) => client.get(`/public/work-reports/share/${token}`).then(r => r.data),
   // Aqui no hay sesion: la subida se autoriza con el mismo token del enlace, por eso
   // pide la URL firmada a su propio endpoint publico y no al general.
   setSignature: async (token, file, name) => {

@@ -344,4 +344,21 @@ router.post('/:id/reopen', requirePermission('work-reports.force-edit'), workRep
 // Generar/recuperar el token del enlace publico de firma remota.
 router.post('/:id/signing-link', requirePermission('work-reports.update'), workReportController.getSigningLink);
 
+/**
+ * @openapi
+ * /work-reports/{id}/share-link:
+ *   post:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Generar (o recuperar) el enlace publico de SOLO LECTURA para compartir con el cliente
+ *     description: >
+ *       A diferencia de /signing-link, este token nunca sirve para firmar ni modificar nada --
+ *       solo para que el cliente vea fotos, videos, notas y firmas (ver /public/work-reports/share).
+ *     security: [{ bearerAuth: [] }]
+ *     parameters: [{ in: path, name: id, required: true, schema: { type: integer } }]
+ *     responses:
+ *       200: { description: "{ token }" }
+ */
+// Generar/recuperar el token del enlace publico de solo lectura.
+router.post('/:id/share-link', requirePermission('work-reports.update'), workReportController.getShareLink);
+
 export default router;
