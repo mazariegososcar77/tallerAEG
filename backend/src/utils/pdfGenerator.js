@@ -62,6 +62,7 @@ const EMPRESA_FALLBACK = {
   company_slogan: 'Desde el año 2000, solidez, innovación y servicio',
   company_address: 'Guatemala, Guatemala',
   company_phone: '(+502) 5502-5055',
+  company_mobile: '',
   company_email: '',
   company_nit: '',
   quote_valid_days: 15,
@@ -128,8 +129,9 @@ function dibujarDatosEmpresa(doc, cfg, x = 160) {
   linea(cfg.company_address);
   linea([
     cfg.company_phone && 'Tel: ' + cfg.company_phone,
-    cfg.company_nit && 'NIT: ' + cfg.company_nit,
+    cfg.company_mobile && 'Cel: ' + cfg.company_mobile,
   ].filter(Boolean).join('   '));
+  linea(cfg.company_nit && 'NIT: ' + cfg.company_nit);
   linea(cfg.company_email);
 }
 
@@ -179,8 +181,13 @@ function filaItem(doc, y, { L, R, CW }, { idx, par, descripcion, cantidad, preci
 // taller (mas larga que el dato de relleno con el que se probo originalmente)
 // se cortaba con "...": ahora el pie tiene su propio renglon a todo lo ancho,
 // con espacio de sobra para address+telefono reales.
-const pieEmpresa = (cfg) =>
-  [cfg.company_address, cfg.company_phone].filter(Boolean).join('   |   ');
+const pieEmpresa = (cfg) => {
+  const telefonos = [
+    cfg.company_phone && 'Tel: ' + cfg.company_phone,
+    cfg.company_mobile && 'Cel: ' + cfg.company_mobile,
+  ].filter(Boolean).join('   ');
+  return [cfg.company_address, telefonos].filter(Boolean).join('   |   ');
+};
 
 // Arma el PDF de una COTIZACION: muestra los datos del cliente, la lista
 // de equipos con su mano de obra y repuestos cotizados, y los totales

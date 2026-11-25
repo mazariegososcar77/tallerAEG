@@ -33,6 +33,7 @@ export const DEFAULT_SETTINGS = {
   company_slogan: 'Desde el año 2000, solidez, innovación y servicio',
   company_address: 'Guatemala, Guatemala',
   company_phone: '(+502) 0000-0000',
+  company_mobile: '',
   company_email: '',
   company_nit: '',
   quote_valid_days: 15,

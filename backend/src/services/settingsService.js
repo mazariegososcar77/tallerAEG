@@ -32,6 +32,7 @@ export const SETTINGS_SCHEMA = {
   company_slogan:   { type: 'text', default: 'Desde el año 2000, solidez, innovación y servicio', max: 160 },
   company_address:  { type: 'text', default: 'Guatemala, Guatemala', max: 200 },
   company_phone:    { type: 'text', default: '(+502) 5502-5055', max: 60 },
+  company_mobile:   { type: 'text', default: '', max: 60 },
   company_email:    { type: 'text', default: '', max: 120 },
   company_nit:      { type: 'text', default: '', max: 40 },
 
