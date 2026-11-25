@@ -233,17 +233,14 @@ async function deleteVideoFile(videoUrl) {
  * destino final: el MP4 ya comprimido (unos pocos MB) se sube al bucket y los
  * dos archivos locales se borran, asi que el disco de la VM deja de crecer.
  */
-export async function setVideo(id, file, canForceEdit = false) {
-  const report = await workReportRepository.findById(id);
-  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
-  if (report.status === 'finalizado' && !canForceEdit) {
-    throw new ApiError(409, 'El reporte ya esta finalizado');
-  }
-  if (report.photo_schema_version === 1) {
-    throw new ApiError(400, 'Este reporte usa el esquema de fotos anterior, sin video de prueba final');
-  }
-  if (!file) throw new ApiError(400, 'No se recibio el video');
-
+/**
+ * Comprime un video crudo (ffmpeg, vía processVideo) y lo deja en su destino
+ * definitivo -- el bucket si esta configurado, o UPLOADS_DIR si no. Factorizado
+ * de setVideo porque setCategoryVideo (ver abajo) necesita exactamente el mismo
+ * procesamiento, solo que el resultado se guarda en otro lado (una fila por
+ * categoria en vez de las 3 columnas del video final).
+ */
+async function processAndStoreVideo(file) {
   const enLaNube = gcs.estaConfigurado();
   const filename = crypto.randomUUID() + '.mp4';
   // Con la nube encendida el comprimido es de paso (se sube y se borra), asi
@@ -256,12 +253,7 @@ export async function setVideo(id, file, canForceEdit = false) {
       videoUrl = gcs.construirRutaObjeto('videos', 'mp4');
       await gcs.subirArchivo(outputPath, videoUrl, 'video/mp4');
     }
-    await deleteVideoFile(report.final_video_url);
-    return workReportRepository.setVideo(id, {
-      final_video_url: videoUrl,
-      final_video_duration_seconds: durationSeconds,
-      final_video_size_bytes: sizeBytes,
-    });
+    return { videoUrl, durationSeconds, sizeBytes };
   } catch (err) {
     await fs.unlink(outputPath).catch(() => {});
     throw err;
@@ -274,6 +266,26 @@ export async function setVideo(id, file, canForceEdit = false) {
   }
 }
 
+export async function setVideo(id, file, canForceEdit = false) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status === 'finalizado' && !canForceEdit) {
+    throw new ApiError(409, 'El reporte ya esta finalizado');
+  }
+  if (report.photo_schema_version === 1) {
+    throw new ApiError(400, 'Este reporte usa el esquema de fotos anterior, sin video de prueba final');
+  }
+  if (!file) throw new ApiError(400, 'No se recibio el video');
+
+  const { videoUrl, durationSeconds, sizeBytes } = await processAndStoreVideo(file);
+  await deleteVideoFile(report.final_video_url);
+  return workReportRepository.setVideo(id, {
+    final_video_url: videoUrl,
+    final_video_duration_seconds: durationSeconds,
+    final_video_size_bytes: sizeBytes,
+  });
+}
+
 // Quita el video final de un reporte (respetando el mismo bloqueo de "finalizado").
 export async function removeVideo(id, canForceEdit = false) {
   const report = await workReportRepository.findById(id);
@@ -283,6 +295,49 @@ export async function removeVideo(id, canForceEdit = false) {
   }
   await deleteVideoFile(report.final_video_url);
   return workReportRepository.removeVideo(id);
+}
+
+/**
+ * Sube (o reemplaza) el video de UNA categoria del reporte, ademas de sus fotos --
+ * por ejemplo, grabar la pantalla del multimetro en "Mediciones Electricas de
+ * Ingreso" cuando el valor se mueve y una foto sola no lo deja claro. A diferencia
+ * del video final (una sola ranura por reporte), aqui hay una ranura por categoria;
+ * mismo procesamiento y mismo tope de duracion (MAX_VIDEO_SECONDS). Es opcional: no
+ * se exige para finalizar el reporte (getMissingRequirements no lo pide).
+ */
+export async function setCategoryVideo(id, stage, file, canForceEdit = false) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status === 'finalizado' && !canForceEdit) {
+    throw new ApiError(409, 'El reporte ya esta finalizado');
+  }
+  if (report.photo_schema_version === 1 || !PHOTO_CATEGORIES.some((c) => c.key === stage)) {
+    throw new ApiError(400, 'Categoria invalida para este reporte');
+  }
+  if (!file) throw new ApiError(400, 'No se recibio el video');
+
+  const existente = await workReportRepository.findCategoryVideo(id, stage);
+  const { videoUrl, durationSeconds, sizeBytes } = await processAndStoreVideo(file);
+  if (existente) await deleteVideoFile(existente.video_url);
+  await workReportRepository.setCategoryVideo(id, stage, {
+    video_url: videoUrl, duration_seconds: durationSeconds, size_bytes: sizeBytes,
+  });
+  return workReportRepository.findById(id);
+}
+
+// Quita el video de una categoria del reporte (respetando el mismo bloqueo de "finalizado").
+export async function removeCategoryVideo(id, stage, canForceEdit = false) {
+  const report = await workReportRepository.findById(id);
+  if (!report) throw new ApiError(404, 'Reporte de trabajo no encontrado');
+  if (report.status === 'finalizado' && !canForceEdit) {
+    throw new ApiError(409, 'El reporte ya esta finalizado');
+  }
+  const existente = await workReportRepository.findCategoryVideo(id, stage);
+  if (existente) {
+    await deleteVideoFile(existente.video_url);
+    await workReportRepository.removeCategoryVideo(id, stage);
+  }
+  return workReportRepository.findById(id);
 }
 
 // Guarda la firma (dibujada a mano y convertida a imagen) del tecnico o del
@@ -362,6 +417,7 @@ export async function getPublicByToken(token) {
     general_notes: report.general_notes,
     stage_notes: report.stage_notes,
     photos: report.photos,
+    category_videos: report.category_videos,
     final_video_url: report.final_video_url,
     final_video_duration_seconds: report.final_video_duration_seconds,
     already_signed: Boolean(report.client_signature_url),

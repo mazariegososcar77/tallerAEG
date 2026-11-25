@@ -600,6 +600,17 @@ descartan del payload, igual que `client_name` (no es una columna de `quotes`).
   (`canvas.toBlob`) y se suben igual que una foto de etapa: `POST /work-reports/:id/signature`
   (multipart, campo `photo`, reutiliza `uploadReportPhoto`; body `role` `tech`/`client` + `name`).
   Respeta el mismo bloqueo de "finalizado" que fotos/notas.
+- **Video final + video por categoría** (`037_work_report_photo_categories.sql` /
+  `058_work_report_category_videos.sql`): el video final de prueba es una sola ranura por reporte
+  (columnas `final_video_*` en `work_reports`, `POST/DELETE /work-reports/:id/video`); además,
+  cualquier categoría puede llevar su propio video corto (una fila por categoría en
+  `work_report_category_videos`, `UNIQUE (work_report_id, stage)`, `POST/DELETE
+  /work-reports/:id/category-video/:stage`) — hoy solo lo usa "Mediciones Eléctricas de Ingreso"
+  desde el frontend, pero el backend acepta cualquiera de las 8 categorías
+  (`workReportService.setCategoryVideo` valida contra `PHOTO_CATEGORIES`). Es opcional: no entra en
+  `getMissingRequirements`. Mismo procesamiento que el video final (`processAndStoreVideo`, factorizado
+  de `setVideo`: ffprobe + ffmpeg, 30 segundos máximo, el crudo nunca se conserva) y mismo criterio de
+  "finalizado" bloqueado salvo `work-reports.force-edit`.
 - **PDF del reporte:** `GET /work-reports/:id/pdf` → `generarReportePDF` en `pdfGenerator.js`. Dibuja
   las fotos de cada etapa embebiendo el archivo real desde `UPLOADS_DIR` (no la URL) — si el archivo no
   existe en disco, cae a un rectángulo gris en vez de romper el PDF. Las firmas se embeben igual, con el

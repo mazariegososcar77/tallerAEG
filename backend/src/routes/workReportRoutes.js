@@ -164,6 +164,39 @@ router.delete('/:id/video', requirePermission('work-reports.update'), workReport
 
 /**
  * @openapi
+ * /work-reports/{id}/category-video/{stage}:
+ *   post:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Subir (o reemplazar) el video de UNA categoria del reporte (multipart, campo "video")
+ *     description: >
+ *       Ademas del video final de prueba, cualquier categoria de foto puede llevar su propio
+ *       video corto (ej. grabar la pantalla del multimetro en "Mediciones Electricas de
+ *       Ingreso"). Opcional: no se exige para finalizar el reporte. Mismo procesamiento que
+ *       el video final (ffprobe + ffmpeg, 30 segundos maximo).
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *       - { in: path, name: stage, required: true, schema: { type: string }, description: 'Clave de la categoria, ej. mediciones_ingreso' }
+ *     responses:
+ *       200: { description: Reporte con el video de la categoria guardado }
+ *       400: { description: Video invalido, mayor a 30 segundos, o categoria invalida }
+ *   delete:
+ *     tags: [Reportes de Trabajo]
+ *     summary: Quitar el video de una categoria del reporte
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *       - { in: path, name: stage, required: true, schema: { type: string } }
+ *     responses:
+ *       200: { description: Reporte sin el video de esa categoria }
+ */
+// Subir/reemplazar el video de una categoria del reporte.
+router.post('/:id/category-video/:stage', requirePermission('work-reports.update'), uploadReportVideo, workReportController.setCategoryVideo);
+// Quitar el video de una categoria del reporte.
+router.delete('/:id/category-video/:stage', requirePermission('work-reports.update'), workReportController.removeCategoryVideo);
+
+/**
+ * @openapi
  * /work-reports/{id}/items:
  *   get:
  *     tags: [Reportes de Trabajo]

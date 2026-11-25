@@ -46,7 +46,7 @@ function WorkReportSummary({ doc }) {
   const [viewer, setViewer] = useState(null); // { images, index } | null
   const titles = doc.photo_schema_version === 1 ? STAGE_TITLES_V1 : STAGE_TITLES_V2;
   const stages = Object.keys(titles).filter(key =>
-    (doc.photos || []).some(p => p.stage === key) || doc.stage_notes?.[key]
+    (doc.photos || []).some(p => p.stage === key) || doc.stage_notes?.[key] || (doc.category_videos || []).some(v => v.stage === key)
   );
   if (!stages.length && !doc.general_notes && !doc.final_video_url) return null;
 
@@ -61,6 +61,7 @@ function WorkReportSummary({ doc }) {
       {stages.map(key => {
         const photos = (doc.photos || []).filter(p => p.stage === key);
         const note = doc.stage_notes?.[key];
+        const categoryVideo = (doc.category_videos || []).find(v => v.stage === key);
         const images = photos.map(p => ({ url: p.photo_url, caption: p.caption }));
         return (
           <div key={key} style={{ marginBottom: 12 }}>
@@ -81,6 +82,9 @@ function WorkReportSummary({ doc }) {
                   </button>
                 ))}
               </div>
+            )}
+            {categoryVideo && (
+              <video src={categoryVideo.video_url} controls style={{ width: '100%', maxWidth: 240, borderRadius: 8, background: '#000', marginTop: 6 }} />
             )}
           </div>
         );

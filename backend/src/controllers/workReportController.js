@@ -66,6 +66,21 @@ export const removeVideo = asyncHandler(async (req, res) => {
   res.json(await resolverReporte(report));
 });
 
+// Cuando el usuario sube (o reemplaza) el video de una categoria del reporte
+// (ademas de sus fotos), esto lo comprime y lo guarda. Es opcional.
+export const setCategoryVideo = asyncHandler(async (req, res) => {
+  const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
+  const report = await workReportService.setCategoryVideo(req.params.id, req.params.stage, req.file, canForceEdit);
+  res.json(await resolverReporte(report));
+});
+
+// Cuando el usuario quita el video de una categoria del reporte, esto lo elimina.
+export const removeCategoryVideo = asyncHandler(async (req, res) => {
+  const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
+  const report = await workReportService.removeCategoryVideo(req.params.id, req.params.stage, canForceEdit);
+  res.json(await resolverReporte(report));
+});
+
 // Cuando el técnico o el cliente firman en la pantalla (dibujando su firma), esto la guarda junto con su nombre.
 export const setSignature = asyncHandler(async (req, res) => {
   const canForceEdit = req.user.permissions.includes('work-reports.force-edit');
