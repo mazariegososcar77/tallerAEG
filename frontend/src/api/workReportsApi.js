@@ -46,6 +46,15 @@ export const workReportsApi = {
     return client.post(`/work-reports/${id}/video`, form).then(r => r.data);
   },
   removeVideo: (id) => client.delete(`/work-reports/${id}/video`).then(r => r.data),
+  // Igual que uploadVideo/removeVideo, pero el video de UNA categoria (ademas de sus
+  // fotos) -- ej. grabar la pantalla del multimetro en "Mediciones Electricas de
+  // Ingreso". Opcional: hay como mucho uno por categoria.
+  uploadCategoryVideo: (id, stage, file) => {
+    const form = new FormData();
+    form.append('video', file);
+    return client.post(`/work-reports/${id}/category-video/${stage}`, form).then(r => r.data);
+  },
+  removeCategoryVideo: (id, stage) => client.delete(`/work-reports/${id}/category-video/${stage}`).then(r => r.data),
   // Sube la imagen de una firma (tecnico o cliente que recibe) capturada en pantalla.
   setSignature: async (id, file, role, name) => {
     const rutaObjeto = await subirArchivo(file, { entidad: 'firmas' });

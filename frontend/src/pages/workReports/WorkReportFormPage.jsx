@@ -49,7 +49,10 @@ const STAGES = [
 const PHOTO_CATEGORIES = [
   { key: 'ingreso',            title: 'Ingreso de Equipo',                  hint: 'Condiciones físicas, accesorios y posición en que llegó el equipo.', min: 1 },
   { key: 'placa_datos',        title: 'Placa de Datos',                     hint: 'Placa con los datos técnicos del equipo, legible.', min: 1 },
-  { key: 'mediciones_ingreso', title: 'Mediciones Eléctricas de Ingreso',   hint: 'Megaohms, ohms y amperaje, tomados al recibir el equipo.', min: 3 },
+  // `video: true`: ademas de las fotos, esta categoria puede llevar un video corto propio
+  // (opcional) -- la pantalla del multimetro se mueve, y una foto sola no siempre deja ver
+  // el valor con claridad.
+  { key: 'mediciones_ingreso', title: 'Mediciones Eléctricas de Ingreso',   hint: 'Megaohms, ohms y amperaje, tomados al recibir el equipo.', min: 3, video: true },
   { key: 'desarme',            title: 'Proceso de Desarme',                 hint: 'Estator, rotor, tapaderas y accesorios durante el desarme.', min: 4 },
   { key: 'mantenimiento',      title: 'Mantenimiento o Rebobinado',         hint: 'Estator empapelado/rebobinado, barniz rojo, eje, cojinetes nuevos, tapaderas, trabajos de torno y repuestos.', min: 7 },
   { key: 'repuestos',          title: 'Repuestos',                          hint: 'Repuestos nuevos empaquetados y ya instalados.', min: 2 },
@@ -199,6 +202,19 @@ export default function WorkReportFormPage() {
       final_video_duration_seconds: updated.final_video_duration_seconds,
       final_video_size_bytes: updated.final_video_size_bytes,
     }));
+  };
+
+  // Busca el video (si hay) de una categoria especifica, dentro de report.category_videos.
+  const categoryVideoFor = (stage) => report.category_videos?.find(v => v.stage === stage);
+  // Sube (o reemplaza) el video de una categoria. Mismo criterio que handleUploadVideo:
+  // solo se mergea ese video en el estado local, sin tocar stageNotes/generalNotes.
+  const handleUploadCategoryVideo = async (stage, file) => {
+    const updated = await workReportsApi.uploadCategoryVideo(id, stage, file);
+    setReport(prev => ({ ...prev, category_videos: updated.category_videos }));
+  };
+  const handleRemoveCategoryVideo = async (stage) => {
+    const updated = await workReportsApi.removeCategoryVideo(id, stage);
+    setReport(prev => ({ ...prev, category_videos: updated.category_videos }));
   };
 
   // Guarda la firma dibujada (del tecnico o de quien recibe) junto con el nombre de quien firma.
@@ -376,6 +392,19 @@ export default function WorkReportFormPage() {
                 disabled={readOnly}
                 min={isLegacy ? undefined : cat.min}
               />
+              {cat.video && (
+                <div style={{ marginTop:10 }}>
+                  <label style={lbl}>Video de la etapa (opcional, máx. 30 segundos)</label>
+                  <VideoField
+                    videoUrl={categoryVideoFor(cat.key)?.video_url}
+                    durationSeconds={categoryVideoFor(cat.key)?.duration_seconds}
+                    sizeBytes={categoryVideoFor(cat.key)?.size_bytes}
+                    disabled={readOnly}
+                    onUpload={(file) => handleUploadCategoryVideo(cat.key, file)}
+                    onRemove={() => handleRemoveCategoryVideo(cat.key)}
+                  />
+                </div>
+              )}
               <div style={{ marginTop:10 }}>
                 <label style={lbl}>Nota de la etapa</label>
                 <textarea

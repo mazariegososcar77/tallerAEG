@@ -70,6 +70,11 @@ export async function findById(id, executor = pool) {
     [id]
   );
   report.photos = photos;
+  const [categoryVideos] = await executor.query(
+    'SELECT * FROM work_report_category_videos WHERE work_report_id = ? ORDER BY stage',
+    [id]
+  );
+  report.category_videos = categoryVideos;
   if (report.stage_notes && typeof report.stage_notes === 'string') {
     report.stage_notes = JSON.parse(report.stage_notes);
   }
@@ -189,4 +194,34 @@ export async function removeVideo(id) {
     [id]
   );
   return findById(id);
+}
+
+// Busca el video de una categoria especifica de un reporte (o null si no tiene).
+export async function findCategoryVideo(reportId, stage) {
+  const [[row]] = await pool.query(
+    'SELECT * FROM work_report_category_videos WHERE work_report_id = ? AND stage = ?',
+    [reportId, stage]
+  );
+  return row || null;
+}
+
+// Guarda (o reemplaza) el video de una categoria del reporte -- una ranura por categoria,
+// mismo criterio que el video final (setVideo) pero con una fila por cada una.
+export async function setCategoryVideo(reportId, stage, { video_url, duration_seconds, size_bytes }) {
+  await pool.query(
+    `INSERT INTO work_report_category_videos (work_report_id, stage, video_url, duration_seconds, size_bytes)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE video_url = VALUES(video_url), duration_seconds = VALUES(duration_seconds), size_bytes = VALUES(size_bytes)`,
+    [reportId, stage, video_url, duration_seconds, size_bytes]
+  );
+  return findCategoryVideo(reportId, stage);
+}
+
+// Quita el video de una categoria del reporte. Devuelve true si sí habia algo que borrar.
+export async function removeCategoryVideo(reportId, stage) {
+  const [result] = await pool.query(
+    'DELETE FROM work_report_category_videos WHERE work_report_id = ? AND stage = ?',
+    [reportId, stage]
+  );
+  return result.affectedRows > 0;
 }

@@ -76,6 +76,9 @@ export async function resolverReporte(report) {
   if (Array.isArray(report.photos)) {
     copia.photos = await resolverCampos(report.photos, ['photo_url']);
   }
+  if (Array.isArray(report.category_videos)) {
+    copia.category_videos = await resolverCampos(report.category_videos, ['video_url']);
+  }
   return copia;
 }
 
