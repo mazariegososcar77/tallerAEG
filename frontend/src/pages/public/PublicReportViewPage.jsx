@@ -26,7 +26,10 @@ export default function PublicReportViewPage() {
     <div className="min-h-app" style={{ background:C.bg, display:'flex', flexDirection:'column', alignItems:'center', padding:'32px 16px' }}>
       <img src="/logo.png" alt="Centro de Servicio AEG" style={{ height:64, marginBottom:16 }} />
 
-      <div style={{ width:'100%', maxWidth:480, background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:20, boxShadow:'0 2px 10px rgba(0,0,0,.06)' }}>
+      <div
+        className="w-full max-w-[480px] sm:max-w-2xl lg:max-w-4xl xl:max-w-5xl"
+        style={{ background:C.card, border:'1px solid '+C.border, borderRadius:12, padding:20, boxShadow:'0 2px 10px rgba(0,0,0,.06)' }}
+      >
         {error ? (
           <div style={{ textAlign:'center', padding:'20px 0' }}>
             <p style={{ color:'#ef4444', fontWeight:700, marginBottom:6 }}>Enlace no válido</p>
